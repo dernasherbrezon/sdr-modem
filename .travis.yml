@@ -1,0 +1,29 @@
+language: c
+
+dist: focal
+
+compiler:
+  - clang
+  - gcc
+
+addons:
+  sonarcloud:
+    organization: "dernasherbrezon-github"
+    token:
+      secure: "123"
+
+  apt:
+    packages:
+    - libconfig-dev
+    - valgrind
+    - check
+    - make
+    - cmake
+    - pkg-config
+
+script:
+  - set -e
+  - if [[ $TRAVIS_COMPILER == 'gcc' ]]; then sh ./build_debug.sh; fi
+  - mkdir release && cd release
+  - cmake ..
+  - make

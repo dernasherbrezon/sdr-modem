@@ -1,0 +1,73 @@
+cmake_minimum_required(VERSION 2.8)
+project(sdr-modem)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+set(CMAKE_C_FLAGS "-std=c99")
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+endif()
+file(GLOB SOURCES src/*.c)
+list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+
+add_executable(sdr_modem src/main.c)
+
+install(TARGETS sdr_modem DESTINATION /usr/bin/)
+install(FILES src/resources/config.conf DESTINATION /etc/sdr-modem/)
+
+add_library(sdr_modemLib ${SOURCES})
+target_link_libraries(sdr_modem sdr_modemLib)
+
+find_package(PkgConfig REQUIRED)
+
+#pkg_check_modules(PC_RTLSDR REQUIRED librtlsdr>=0.5.4)
+#include_directories(${PC_RTLSDR_INCLUDE_DIRS})
+#target_link_libraries(sdr_modemLib ${PC_RTLSDR_LINK_LIBRARIES})
+
+#pkg_check_modules(PC_VOLK REQUIRED volk)
+#include_directories(${PC_VOLK_INCLUDE_DIRS})
+#target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
+
+#pkg_check_modules(PC_ZLIB REQUIRED zlib)
+#include_directories(${PC_ZLIB_INCLUDE_DIRS})
+#target_link_libraries(sdr_modemLib ${PC_ZLIB_LINK_LIBRARIES})
+
+pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
+include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
+target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LINK_LIBRARIES})
+
+find_package(Threads REQUIRED)
+target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(sdr_modemLib m)
+
+enable_testing()
+
+file(GLOB TEST_SOURCES test/test_*.c)
+file(GLOB TEST_RESOURCES test/resources/*)
+file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
+file(GLOB PERF_SOURCES test/perf_*.c)
+
+file(GLOB AUX_TEST_SOURCES test/*.c)
+list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "test_.*\\.c")
+list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "perf_.*\\.c")
+list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "mock_.*\\.c")
+
+pkg_check_modules(PC_CHECK REQUIRED check)
+include_directories(${PC_CHECK_INCLUDE_DIRS})
+
+foreach(curTest ${TEST_SOURCES})
+	get_filename_component(curTestName ${curTest} NAME_WE)
+	add_test(NAME ${curTestName} COMMAND ${curTestName} ${curTest})
+	add_executable(${curTestName} ${curTest} ${AUX_TEST_SOURCES})
+	target_link_libraries(${curTestName} sdr_modemLib ${PC_CHECK_LINK_LIBRARIES})
+endforeach()
+
+foreach(curPerfTest ${PERF_SOURCES})
+	get_filename_component(curPerfTestName ${curPerfTest} NAME_WE)
+	add_executable(${curPerfTestName} ${curPerfTest})
+	target_link_libraries(${curPerfTestName} sdr_modemLib ${PC_CHECK_LINK_LIBRARIES})
+endforeach()
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+	add_custom_target("coverage")
+	add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/test_core.dir/test/*.c.o)
+endif()
