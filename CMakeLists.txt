@@ -23,9 +23,9 @@ find_package(PkgConfig REQUIRED)
 #include_directories(${PC_RTLSDR_INCLUDE_DIRS})
 #target_link_libraries(sdr_modemLib ${PC_RTLSDR_LINK_LIBRARIES})
 
-#pkg_check_modules(PC_VOLK REQUIRED volk)
-#include_directories(${PC_VOLK_INCLUDE_DIRS})
-#target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
+pkg_check_modules(PC_VOLK REQUIRED volk)
+include_directories(${PC_VOLK_INCLUDE_DIRS})
+target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
 
 #pkg_check_modules(PC_ZLIB REQUIRED zlib)
 #include_directories(${PC_ZLIB_INCLUDE_DIRS})
