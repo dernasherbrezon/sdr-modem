@@ -6,7 +6,7 @@ set(CMAKE_C_FLAGS "-std=c99")
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
 endif()
-file(GLOB SOURCES src/*.c)
+file(GLOB_RECURSE SOURCES src *.c)
 list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
 
 add_executable(sdr_modem src/main.c)
