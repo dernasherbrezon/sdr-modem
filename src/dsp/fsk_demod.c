@@ -1,8 +1,10 @@
 #include "fsk_demod.h"
 #include "quadrature_demod.h"
+#include "dc_blocker.h"
 #include <math.h>
 #include <errno.h>
-#include "fir_filter.h"
+
+#include "lpf.h"
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -10,7 +12,8 @@
 
 struct fsk_demod_t {
 
-	lpf_complex *lpf_ccf;
+	lpf *lpf1;
+	lpf *lpf2;
 	quadrature_demod *quad_demod;
 	dc_blocker *dc;
 
@@ -25,7 +28,7 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 	*result = (struct fsk_demod_t ) { 0 };
 
 	float carson_cutoff = fabs(deviation) + baud_rate / 2.0f;
-	int code = lpf_complex_create(sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, &result->lpf_ccf);
+	int code = lpf_create(sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
 	if (code != 0) {
 		destroy_fsk_demod(result);
 		return code;
@@ -35,7 +38,11 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 		destroy_fsk_demod(result);
 		return code;
 	}
-	//FIXME another low pass filter with decimation
+	code = lpf_create(sampling_freq, (float)baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
+	if (code != 0) {
+		destroy_fsk_demod(result);
+		return code;
+	}
 
 	float sps = sampling_freq / (float) baud_rate;
 
@@ -54,16 +61,20 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 void fsk_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, fsk_demod *demod) {
 	float complex *lpf_output = NULL;
 	size_t lpf_output_len = 0;
-	lpf_complex_process(input, input_len, &lpf_output, &lpf_output_len, demod->lpf_ccf);
+	lpf_process(input, input_len, (void**)&lpf_output, &lpf_output_len, demod->lpf1);
 
 	float *qd_output = NULL;
 	size_t qd_output_len = 0;
 	quadrature_demod_process(lpf_output, lpf_output_len, &qd_output, &qd_output_len, demod->quad_demod);
 
+	float *lpf2_output = NULL;
+	size_t lpf2_output_len = 0;
+	lpf_process(qd_output, qd_output_len, (void**)&lpf2_output, &lpf2_output_len, demod->lpf2);
+
 	float *dc_output = NULL;
 	size_t dc_output_len = 0;
 	if (demod->dc != NULL) {
-		dc_blocker_process(qd_output, qd_output_len, &dc_output, &dc_output_len, demod->dc);
+		dc_blocker_process(lpf2_output, lpf2_output_len, &dc_output, &dc_output_len, demod->dc);
 	} else {
 		dc_output = qd_output;
 		dc_output_len = qd_output_len;

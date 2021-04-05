@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <check.h>
-#include "../src/dsp/lpf.h"
+#include "../src/dsp/lpf_taps.h"
 
 float *taps = NULL;
 

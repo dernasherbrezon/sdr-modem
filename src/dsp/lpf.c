@@ -1,4 +1,4 @@
-#include "fir_filter.h"
+#include "lpf.h"
 
 #include <errno.h>
 #include <volk/volk.h>
@@ -6,7 +6,7 @@
 
 #include "lpf_taps.h"
 
-struct lpf_complex_t {
+struct lpf_t {
 
 	float **taps;
 	size_t aligned_taps_len;
@@ -14,16 +14,17 @@ struct lpf_complex_t {
 	size_t taps_len;
 	float *original_taps;
 
-	float *working_buffer;
+	void *working_buffer;
 	size_t history_offset;
 	size_t working_len_total;
-	float complex *volk_output;
+	void *volk_output;
 
-	float complex *output;
+	void *output;
 	size_t output_len;
+	uint8_t num_bytes;
 };
 
-int create_aligned_taps(float *original_taps, size_t taps_len, lpf_complex *filter) {
+int create_aligned_taps(float *original_taps, size_t taps_len, lpf *filter) {
 	size_t alignment = volk_get_alignment();
 	size_t number_of_aligned = fmax((size_t ) 1, alignment / sizeof(float));
 	// Make a set of taps at all possible alignments
@@ -51,45 +52,46 @@ int create_aligned_taps(float *original_taps, size_t taps_len, lpf_complex *filt
 	return 0;
 }
 
-int lpf_complex_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width, size_t output_len, lpf_complex **filter) {
-	struct lpf_complex_t *result = malloc(sizeof(struct lpf_complex_t));
+int lpf_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width, size_t output_len, uint8_t num_bytes, lpf **filter) {
+	struct lpf_t *result = malloc(sizeof(struct lpf_t));
 	if (result == NULL) {
 		return -ENOMEM;
 	}
 	// init all fields with 0 so that destroy_* method would work
-	*result = (struct lpf_complex_t ) { 0 };
+	*result = (struct lpf_t ) { 0 };
 
 	float *taps = NULL;
 	size_t len;
 	int code = create_low_pass_filter(1.0, sampling_freq, cutoff_freq, transition_width, &taps, &len);
 	if (code != 0) {
-		lpf_complex_destroy(result);
+		lpf_destroy(result);
 		return code;
 	}
+	result->num_bytes = num_bytes;
 	result->original_taps = taps;
 	result->taps_len = len;
 	result->history_offset = len - 1;
 	code = create_aligned_taps(taps, len, result);
 	if (code != 0) {
-		lpf_complex_destroy(result);
+		lpf_destroy(result);
 		return code;
 	}
 	result->working_len_total = output_len + result->history_offset;
-	result->working_buffer = volk_malloc(sizeof(float complex) * result->working_len_total, result->alignment);
+	result->working_buffer = volk_malloc(num_bytes * result->working_len_total, result->alignment);
 	if (result->working_buffer == NULL) {
-		lpf_complex_destroy(result);
+		lpf_destroy(result);
 		return -ENOMEM;
 	}
 	result->output_len = output_len;
-	result->output = malloc(sizeof(float complex) * output_len);
+	result->output = malloc(num_bytes * output_len);
 	if (result->output == NULL) {
-		lpf_complex_destroy(result);
+		lpf_destroy(result);
 		return -ENOMEM;
 	}
 
-	result->volk_output = volk_malloc(1 * sizeof(float complex), result->alignment);
+	result->volk_output = volk_malloc(1 * num_bytes, result->alignment);
 	if (result->volk_output == NULL) {
-		lpf_complex_destroy(result);
+		lpf_destroy(result);
 		return -ENOMEM;
 	}
 
@@ -97,30 +99,42 @@ int lpf_complex_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t tr
 	return 0;
 }
 
-void lpf_complex_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len, lpf_complex *filter) {
-	memcpy(filter->working_buffer + filter->history_offset, input, input_len * sizeof(float complex));
+void lpf_process(const void *input, size_t input_len, void **output, size_t *output_len, lpf *filter) {
+	memcpy(filter->working_buffer + filter->history_offset, input, input_len * filter->num_bytes);
 	size_t working_len = filter->history_offset + input_len;
 	size_t i = 0;
-	for (; i < input_len; i++) {
-		const lv_32fc_t *buf = (const lv_32fc_t*) (filter->working_buffer + i);
+	if (filter->num_bytes == sizeof(float complex)) {
+		for (; i < input_len; i++) {
+			const lv_32fc_t *buf = (const lv_32fc_t*) (filter->working_buffer + i);
 
-		const lv_32fc_t *aligned_buffer = (const lv_32fc_t*) ((size_t) buf & ~(filter->alignment - 1));
-		unsigned align_index = buf - aligned_buffer;
+			const lv_32fc_t *aligned_buffer = (const lv_32fc_t*) ((size_t) buf & ~(filter->alignment - 1));
+			unsigned align_index = buf - aligned_buffer;
 
-		volk_32fc_32f_dot_prod_32fc_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
-		filter->output[i] = *filter->volk_output;
+			volk_32fc_32f_dot_prod_32fc_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
+			((float complex*) filter->output)[i] =  *(float complex*)filter->volk_output;
+		}
+	} else if (filter->num_bytes == sizeof(float)) {
+		for (; i < input_len; i++) {
+			const float *buf = (const float*) (filter->working_buffer + i);
+
+			const float *aligned_buffer = (const float*) ((size_t) buf & ~(filter->alignment - 1));
+			unsigned align_index = buf - aligned_buffer;
+
+			volk_32f_x2_dot_prod_32f_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
+			((float*) filter->output)[i] = *(float*)filter->volk_output;
+		}
 	}
 
 	filter->history_offset = working_len - i;
 	if (i > 0) {
-		memmove(filter->working_buffer, filter->working_buffer + i, sizeof(float complex) * filter->history_offset);
+		memmove(filter->working_buffer, filter->working_buffer + i, filter->num_bytes * filter->history_offset);
 	}
 
 	*output = filter->output;
 	*output_len = i;
 }
 
-int lpf_complex_destroy(lpf_complex *filter) {
+int lpf_destroy(lpf *filter) {
 	if (filter == NULL) {
 		return 0;
 	}
