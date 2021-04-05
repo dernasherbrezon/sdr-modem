@@ -33,7 +33,7 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 	*result = (struct fsk_demod_t ) { 0 };
 
 	float carson_cutoff = fabs(deviation) + baud_rate / 2.0f;
-	int code = lpf_create(sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
+	int code = lpf_create(1, sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
 	if (code != 0) {
 		destroy_fsk_demod(result);
 		return code;
@@ -43,7 +43,7 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 		destroy_fsk_demod(result);
 		return code;
 	}
-	code = lpf_create(sampling_freq, (float) baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
+	code = lpf_create(decimation, sampling_freq, (float) baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
 	if (code != 0) {
 		destroy_fsk_demod(result);
 		return code;
@@ -129,5 +129,6 @@ int destroy_fsk_demod(fsk_demod *demod) {
 	if (demod->output != NULL) {
 		free(demod->output);
 	}
+	free(demod);
 	return 0;
 }

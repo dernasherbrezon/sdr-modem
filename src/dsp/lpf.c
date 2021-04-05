@@ -7,6 +7,7 @@
 #include "lpf_taps.h"
 
 struct lpf_t {
+	int decimation;
 
 	float **taps;
 	size_t aligned_taps_len;
@@ -52,7 +53,7 @@ int create_aligned_taps(float *original_taps, size_t taps_len, lpf *filter) {
 	return 0;
 }
 
-int lpf_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width, size_t output_len, uint8_t num_bytes, lpf **filter) {
+int lpf_create(int decimation, uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width, size_t output_len, uint8_t num_bytes, lpf **filter) {
 	struct lpf_t *result = malloc(sizeof(struct lpf_t));
 	if (result == NULL) {
 		return -ENOMEM;
@@ -67,6 +68,7 @@ int lpf_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition
 		lpf_destroy(result);
 		return code;
 	}
+	result->decimation = decimation;
 	result->num_bytes = num_bytes;
 	result->original_taps = taps;
 	result->taps_len = len;
@@ -103,6 +105,7 @@ void lpf_process(const void *input, size_t input_len, void **output, size_t *out
 	memcpy(filter->working_buffer + filter->history_offset, input, input_len * filter->num_bytes);
 	size_t working_len = filter->history_offset + input_len;
 	size_t i = 0;
+	//FIXME decimation
 	if (filter->num_bytes == sizeof(float complex)) {
 		for (; i < input_len; i++) {
 			const lv_32fc_t *buf = (const lv_32fc_t*) (filter->working_buffer + i);
