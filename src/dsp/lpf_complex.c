@@ -98,6 +98,7 @@ int lpf_complex_create(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t tr
 
 void lpf_complex_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len, lpf_complex *filter) {
 	memcpy(filter->working_buffer + filter->history_offset, input, input_len * sizeof(float complex));
+	size_t working_len = filter->history_offset + input_len;
 	size_t i = 0;
 	for (; i < input_len; i++) {
 		const lv_32fc_t *buf = (const lv_32fc_t*) (filter->working_buffer + i);
@@ -107,6 +108,11 @@ void lpf_complex_process(const float complex *input, size_t input_len, float com
 
 		volk_32fc_32f_dot_prod_32fc_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
 		filter->output[i] = *filter->volk_output;
+	}
+
+	filter->history_offset = working_len - i;
+	if (i > 0) {
+		memmove(filter->working_buffer, filter->working_buffer + i, sizeof(float complex) * filter->history_offset);
 	}
 
 	*output = filter->output;

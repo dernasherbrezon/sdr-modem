@@ -1,0 +1,69 @@
+#include <stdlib.h>
+#include <volk/volk.h>
+#include <errno.h>
+#include <string.h>
+#include "quadrature_demod.h"
+#include "../math/fast_atan2f.h"
+
+struct quadrature_demod_t {
+	float gain;
+
+	float complex *working_buffer;
+	size_t history_offset;
+	size_t working_buffer_len;
+
+	float *output;
+	size_t output_len;
+};
+
+int quadrature_demod_create(float gain, uint32_t max_input_buffer_length, quadrature_demod **demod) {
+	struct quadrature_demod_t *result = malloc(sizeof(struct quadrature_demod_t));
+	if (result == NULL) {
+		return -ENOMEM;
+	}
+	// init all fields with 0 so that destroy_* method would work
+	*result = (struct quadrature_demod_t ) { 0 };
+	result->gain = gain;
+	result->output_len = max_input_buffer_length;
+	result->output = malloc(sizeof(float) * result->output_len);
+	if (result->output == NULL) {
+		quadrature_demod_destroy(result);
+		return -ENOMEM;
+	}
+	result->history_offset = 1;
+	result->working_buffer_len = result->output_len + result->history_offset;
+	result->working_buffer = malloc(sizeof(float complex) * result->working_buffer_len);
+	if (result->working_buffer == NULL) {
+		quadrature_demod_destroy(result);
+		return -ENOMEM;
+	}
+
+	*demod = result;
+	return 0;
+}
+
+void quadrature_demod_process(float complex *input, size_t input_len, float **output, size_t *output_len, quadrature_demod *demod) {
+	memcpy(demod->working_buffer + demod->history_offset, input, sizeof(float complex) * input_len);
+	volk_32fc_x2_multiply_conjugate_32fc(demod->output, &demod->working_buffer[1], &demod->working_buffer[0], input_len);
+	for (int i = 0; i < input_len; i++) {
+		demod->output[i] = demod->gain * fast_atan2f(cimagf(demod->output[i]), crealf(demod->output[i]));
+	}
+	memmove(demod->working_buffer, demod->working_buffer + input_len, sizeof(float complex) * demod->history_offset);
+
+	*output = demod->output;
+	*output_len = input_len;
+}
+
+int quadrature_demod_destroy(quadrature_demod *demod) {
+	if (demod == NULL) {
+		return 0;
+	}
+	if (demod->output != NULL) {
+		free(demod->output);
+	}
+	if (demod->working_buffer != NULL) {
+		free(demod->working_buffer);
+	}
+	free(demod);
+	return 0;
+}
