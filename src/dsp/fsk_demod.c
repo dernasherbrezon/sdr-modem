@@ -12,6 +12,8 @@ struct fsk_demod_t {
 
 	lpf_complex *lpf_ccf;
 	quadrature_demod *quad_demod;
+	dc_blocker *dc;
+
 };
 
 int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
@@ -33,6 +35,17 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 		destroy_fsk_demod(result);
 		return code;
 	}
+	//FIXME another low pass filter with decimation
+
+	float sps = sampling_freq / (float) baud_rate;
+
+	if (use_dc_block) {
+		code = dc_blocker_create(ceilf(sps * 32), &result->dc);
+		if (code != 0) {
+			destroy_fsk_demod(result);
+			return code;
+		}
+	}
 	//FIXME add much more
 
 	return 0;
@@ -46,6 +59,15 @@ void fsk_demodulate(const float complex *input, size_t input_len, int8_t **outpu
 	float *qd_output = NULL;
 	size_t qd_output_len = 0;
 	quadrature_demod_process(lpf_output, lpf_output_len, &qd_output, &qd_output_len, demod->quad_demod);
+
+	float *dc_output = NULL;
+	size_t dc_output_len = 0;
+	if (demod->dc != NULL) {
+		dc_blocker_process(qd_output, qd_output_len, &dc_output, &dc_output_len, demod->dc);
+	} else {
+		dc_output = qd_output;
+		dc_output_len = qd_output_len;
+	}
 
 	//FIXME go further
 }
