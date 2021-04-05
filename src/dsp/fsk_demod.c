@@ -3,6 +3,7 @@
 #include "clock_recovery_mm.h"
 #include "dc_blocker.h"
 #include <math.h>
+#include <volk/volk.h>
 #include <errno.h>
 
 #include "lpf.h"
@@ -74,11 +75,6 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 	return 0;
 }
 
-int8_t fsk_clamp(int8_t d, int8_t min, int8_t max) {
-	const int8_t t = d < min ? min : d;
-	return t > max ? max : t;
-}
-
 void fsk_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, fsk_demod *demod) {
 	float complex *lpf_output = NULL;
 	size_t lpf_output_len = 0;
@@ -105,9 +101,7 @@ void fsk_demodulate(const float complex *input, size_t input_len, int8_t **outpu
 	size_t clock_output_len = 0;
 	clock_mm_process(dc_output, dc_output_len, &clock_output, &clock_output_len, demod->clock);
 
-	for (size_t i = 0; i < clock_output_len; i++) {
-		demod->output[i] = fsk_clamp((int8_t) (clock_output[i] * 127), -128, 127);
-	}
+	volk_32f_s32f_convert_8i(demod->output, clock_output, 127.0f, clock_output_len);
 
 	*output = demod->output;
 	*output_len = clock_output_len;
