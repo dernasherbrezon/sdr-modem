@@ -1,5 +1,5 @@
-#ifndef DSP_LPF_COMPLEX_H_
-#define DSP_LPF_COMPLEX_H_
+#ifndef DSP_FIR_FILTER_H_
+#define DSP_FIR_FILTER_H_
 
 #include <stdint.h>
 #include <complex.h>
@@ -12,4 +12,4 @@ void lpf_complex_process(const float complex *input, size_t input_len, float com
 
 int lpf_complex_destroy(lpf_complex *filter);
 
-#endif /* DSP_LPF_COMPLEX_H_ */
+#endif /* DSP_FIR_FILTER_H_ */

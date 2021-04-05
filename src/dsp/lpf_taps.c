@@ -7,7 +7,7 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-#include "lpf.h"
+#include "lpf_taps.h"
 
 int sanity_check_1f(uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width) {
 	if (sampling_freq <= 0) {

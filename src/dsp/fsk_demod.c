@@ -1,8 +1,8 @@
 #include "fsk_demod.h"
-#include "lpf_complex.h"
 #include "quadrature_demod.h"
 #include <math.h>
 #include <errno.h>
+#include "fir_filter.h"
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846

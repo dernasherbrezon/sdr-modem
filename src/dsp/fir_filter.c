@@ -1,9 +1,10 @@
+#include "fir_filter.h"
+
 #include <errno.h>
 #include <volk/volk.h>
 #include <string.h>
 
-#include "lpf_complex.h"
-#include "lpf.h"
+#include "lpf_taps.h"
 
 struct lpf_complex_t {
 
