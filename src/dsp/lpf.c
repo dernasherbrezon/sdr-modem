@@ -105,26 +105,27 @@ void lpf_process(const void *input, size_t input_len, void **output, size_t *out
 	memcpy(filter->working_buffer + filter->history_offset, input, input_len * filter->num_bytes);
 	size_t working_len = filter->history_offset + input_len;
 	size_t i = 0;
-	//FIXME decimation
+	size_t produced = 0;
+	size_t max_index = working_len - (filter->taps_len - 1);
 	if (filter->num_bytes == sizeof(float complex)) {
-		for (; i < input_len; i++) {
+		for (; i < max_index; i+=filter->decimation, produced++) {
 			const lv_32fc_t *buf = (const lv_32fc_t*) (filter->working_buffer + i);
 
 			const lv_32fc_t *aligned_buffer = (const lv_32fc_t*) ((size_t) buf & ~(filter->alignment - 1));
 			unsigned align_index = buf - aligned_buffer;
 
 			volk_32fc_32f_dot_prod_32fc_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
-			((float complex*) filter->output)[i] =  *(float complex*)filter->volk_output;
+			((float complex*) filter->output)[produced] =  *(float complex*)filter->volk_output;
 		}
 	} else if (filter->num_bytes == sizeof(float)) {
-		for (; i < input_len; i++) {
+		for (; i < max_index; i+=filter->decimation, produced++) {
 			const float *buf = (const float*) (filter->working_buffer + i);
 
 			const float *aligned_buffer = (const float*) ((size_t) buf & ~(filter->alignment - 1));
 			unsigned align_index = buf - aligned_buffer;
 
 			volk_32f_x2_dot_prod_32f_a(filter->volk_output, aligned_buffer, filter->taps[align_index], filter->taps_len + align_index);
-			((float*) filter->output)[i] = *(float*)filter->volk_output;
+			((float*) filter->output)[produced] = *(float*)filter->volk_output;
 		}
 	}
 
