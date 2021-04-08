@@ -1,5 +1,5 @@
 #include "lpf.h"
-
+#include <stdio.h>
 #include <errno.h>
 #include <volk/volk.h>
 #include <string.h>
@@ -135,7 +135,7 @@ void lpf_process(const void *input, size_t input_len, void **output, size_t *out
 	}
 
 	*output = filter->output;
-	*output_len = i;
+	*output_len = produced;
 }
 
 int lpf_destroy(lpf *filter) {
@@ -159,9 +159,6 @@ int lpf_destroy(lpf *filter) {
 	}
 	if (filter->volk_output != NULL) {
 		volk_free(filter->volk_output);
-	}
-	if (filter->output != NULL) {
-		free(filter->output);
 	}
 	free(filter);
 	return 0;

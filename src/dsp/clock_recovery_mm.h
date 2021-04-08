@@ -1,6 +1,8 @@
 #ifndef DSP_CLOCK_RECOVERY_MM_H_
 #define DSP_CLOCK_RECOVERY_MM_H_
 
+#include <stdlib.h>
+
 typedef struct clock_mm_t clock_mm;
 
 int clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float omega_relative_limit, clock_mm **clock);
