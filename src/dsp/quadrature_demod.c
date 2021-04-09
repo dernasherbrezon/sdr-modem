@@ -64,14 +64,17 @@ void quadrature_demod_process(float complex *input, size_t input_len, float **ou
 }
 
 void quadrature_demod_destroy(quadrature_demod *demod) {
-	if (demod == NULL) {
-		return;
-	}
-	if (demod->output != NULL) {
-		free(demod->output);
-	}
-	if (demod->working_buffer != NULL) {
-		free(demod->working_buffer);
-	}
-	free(demod);
+    if (demod == NULL) {
+        return;
+    }
+    if (demod->output != NULL) {
+        free(demod->output);
+    }
+    if (demod->working_buffer != NULL) {
+        free(demod->working_buffer);
+    }
+    if (demod->temp_buffer != NULL) {
+        free(demod->temp_buffer);
+    }
+    free(demod);
 }
