@@ -12,6 +12,5 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
 
 }
 
-int clock_mm_destroy(clock_mm *clock) {
-	return 0;
+void clock_mm_destroy(clock_mm *clock) {
 }

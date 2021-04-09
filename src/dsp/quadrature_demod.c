@@ -63,9 +63,9 @@ void quadrature_demod_process(float complex *input, size_t input_len, float **ou
 	*output_len = input_len;
 }
 
-int quadrature_demod_destroy(quadrature_demod *demod) {
+void quadrature_demod_destroy(quadrature_demod *demod) {
 	if (demod == NULL) {
-		return 0;
+		return;
 	}
 	if (demod->output != NULL) {
 		free(demod->output);
@@ -74,5 +74,4 @@ int quadrature_demod_destroy(quadrature_demod *demod) {
 		free(demod->working_buffer);
 	}
 	free(demod);
-	return 0;
 }

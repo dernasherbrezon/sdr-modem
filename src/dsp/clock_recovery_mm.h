@@ -9,6 +9,6 @@ int clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, floa
 
 void clock_mm_process(const float *input, size_t input_len, float **output, size_t *output_len, clock_mm *clock);
 
-int clock_mm_destroy(clock_mm *clock);
+void clock_mm_destroy(clock_mm *clock);
 
 #endif /* DSP_CLOCK_RECOVERY_MM_H_ */

@@ -12,6 +12,6 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 
 void fsk_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, fsk_demod *demod);
 
-int destroy_fsk_demod(fsk_demod *demod);
+void destroy_fsk_demod(fsk_demod *demod);
 
 #endif /* DSP_FSK_DEMOD_H_ */

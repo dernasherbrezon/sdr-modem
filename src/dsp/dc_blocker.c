@@ -15,9 +15,8 @@ void dc_blocker_process(const float *input, size_t input_len, float **output, si
 
 }
 
-int dc_blocker_destroy(dc_blocker *blocker) {
+void dc_blocker_destroy(dc_blocker *blocker) {
 	if( blocker == NULL ) {
-		return 0;
+		return;
 	}
-	return 0;
 }

@@ -107,9 +107,9 @@ void fsk_demodulate(const float complex *input, size_t input_len, int8_t **outpu
 	*output_len = clock_output_len;
 }
 
-int destroy_fsk_demod(fsk_demod *demod) {
+void destroy_fsk_demod(fsk_demod *demod) {
 	if (demod == NULL) {
-		return 0;
+		return;
 	}
 	if (demod->lpf1 != NULL) {
 		lpf_destroy(demod->lpf1);
@@ -130,5 +130,4 @@ int destroy_fsk_demod(fsk_demod *demod) {
 		free(demod->output);
 	}
 	free(demod);
-	return 0;
 }
