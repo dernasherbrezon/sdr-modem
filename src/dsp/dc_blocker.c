@@ -6,6 +6,7 @@
 
 struct moving_average {
     float *delay_line;
+    int delay_line_len;
     int length;
     float inDelayed;
     float outD1;
@@ -38,12 +39,13 @@ int moving_average_create(int length, struct moving_average **mavg) {
     }
     // init all fields with 0 so that destroy_* method would work
     *result = (struct moving_average) {0};
-    result->delay_line = malloc(sizeof(float) * length);
+    result->delay_line_len = length - 1;
+    result->delay_line = malloc(sizeof(float) * result->delay_line_len);
     if (result->delay_line == NULL) {
         moving_average_destroy(result);
         return -ENOMEM;
     }
-    memset(result->delay_line, 0, sizeof(float) * length);
+    memset(result->delay_line, 0, sizeof(float) * result->delay_line_len);
     result->length = length;
     result->inDelayed = 0.0F;
     result->outD1 = 0.0F;
@@ -54,8 +56,8 @@ int moving_average_create(int length, struct moving_average **mavg) {
 float moving_average_process(float input, struct moving_average *mavg) {
     float inDelayed = mavg->inDelayed;
     mavg->inDelayed = mavg->delay_line[0];
-    memmove(mavg->delay_line, mavg->delay_line + 1, sizeof(float) * (mavg->length - 1));
-    mavg->delay_line[(mavg->length - 1)] = input;
+    memmove(mavg->delay_line, mavg->delay_line + 1, sizeof(float) * (mavg->delay_line_len - 1));
+    mavg->delay_line[(mavg->delay_line_len - 1)] = input;
     float y = input - inDelayed + mavg->outD1;
     mavg->outD1 = y;
     return y / mavg->length;
