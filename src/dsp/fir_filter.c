@@ -103,6 +103,13 @@ void fir_filter_process_float(const float *input, size_t input_len, float *worki
     *output_len = produced;
 }
 
+float fir_filter_process_float_single(const float *input, size_t input_len, fir_filter *filter) {
+    const float *aligned_buffer = (const float *) ((size_t) input & ~(filter->alignment - 1));
+    size_t align_index = input - aligned_buffer;
+    volk_32f_x2_dot_prod_32f_a(filter->volk_output, aligned_buffer, filter->taps[align_index], (unsigned int) (filter->taps_len + align_index));
+    return *(float *)filter->volk_output;
+}
+
 void fir_filter_process_complex(const float complex *input, size_t input_len, float complex *working_buffer, void **output,
                          size_t *output_len, fir_filter *filter) {
     memcpy(working_buffer + filter->history_offset, input, input_len * filter->num_bytes);

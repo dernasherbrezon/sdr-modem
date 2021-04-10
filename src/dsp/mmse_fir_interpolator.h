@@ -5,9 +5,9 @@
 
 typedef struct mmse_fir_interpolator_t mmse_fir_interpolator;
 
-int mmse_fir_interpolator_create(size_t output_len, mmse_fir_interpolator **interp);
+int mmse_fir_interpolator_create(mmse_fir_interpolator **interp);
 
-void mmse_fir_interpolator_process(const float *input, const size_t input_len, float mu, mmse_fir_interpolator *interp);
+float mmse_fir_interpolator_process(const float *input, const size_t input_len, float mu, mmse_fir_interpolator *interp);
 
 void mmse_fir_interpolator_destroy(mmse_fir_interpolator *interp);
 

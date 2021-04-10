@@ -1,8 +1,19 @@
 #include "utils.h"
 #include <check.h>
+#include <volk/volk.h>
 
 void setup_input_data(float **input, size_t input_offset, size_t len) {
     float *result = malloc(sizeof(float) * len);
+    ck_assert(result != NULL);
+    for (size_t i = 0; i < len; i++) {
+        // don't care about the loss of data
+        result[i] = (float) (input_offset + i);
+    }
+    *input = result;
+}
+
+void setup_volk_input_data(float **input, size_t input_offset, size_t len) {
+    float *result = volk_malloc(sizeof(float) * len, volk_get_alignment());
     ck_assert(result != NULL);
     for (size_t i = 0; i < len; i++) {
         // don't care about the loss of data

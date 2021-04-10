@@ -1,15 +1,17 @@
 #include "mmse_fir_interpolator.h"
 #include "fir_filter.h"
 #include <errno.h>
+#include <math.h>
+#include <string.h>
 
 struct mmse_fir_interpolator_t {
     int taps_len;
     int steps;
-    fir_filter *filters;
+    fir_filter **filters;
     size_t filters_len;
 };
 
-int mmse_fir_interpolator_create(size_t output_len, mmse_fir_interpolator **interp) {
+int mmse_fir_interpolator_create(mmse_fir_interpolator **interp) {
     struct mmse_fir_interpolator_t *result = malloc(sizeof(struct mmse_fir_interpolator_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -151,24 +153,41 @@ int mmse_fir_interpolator_create(size_t output_len, mmse_fir_interpolator **inte
             {0.00000e+00f,  0.00000e+00f, 0.00000e+00f,  1.00000e+00f, 0.00000e+00f, 0.00000e+00f,  0.00000e+00f, 0.00000e+00f} // 128/128
     };
     result->filters_len = result->steps + 1;
-    result->filters = malloc(sizeof(fir_filter) * result->filters_len);
+    result->filters = malloc(sizeof(fir_filter *) * result->filters_len);
     if (result->filters == NULL) {
         mmse_fir_interpolator_destroy(result);
         return -ENOMEM;
     }
+    int result_code = 0;
     for (size_t i = 0; i < result->filters_len; i++) {
-        int code = fir_filter_create(1, taps[i], result->taps_len, output_len, sizeof(float), &result->filters[i]);
-        if (code != 0) {
-            mmse_fir_interpolator_destroy(result);
-            return code;
+        fir_filter *curFilter = NULL;
+        float *filter_taps = malloc(sizeof(float) * result->taps_len);
+        if( filter_taps == NULL ) {
+            result->filters[i] = NULL;
+            result_code = -ENOMEM;
+            continue;
         }
+        memcpy(filter_taps, taps[i], sizeof(float) * result->taps_len);
+        int code = fir_filter_create(1, filter_taps, result->taps_len, result->taps_len, sizeof(float), &curFilter);
+        //init all filters anyway
+        if (code != 0) {
+            result_code = code;
+            result->filters[i] = NULL;
+        } else {
+            result->filters[i] = curFilter;
+        }
+    }
+    if( result_code != 0 ) {
+        mmse_fir_interpolator_destroy(result);
+        return result_code;
     }
     *interp = result;
     return 0;
 }
 
-void mmse_fir_interpolator_process(const float *input, const size_t input_len, float mu, mmse_fir_interpolator *interp) {
-
+float mmse_fir_interpolator_process(const float *input, const size_t input_len, float mu, mmse_fir_interpolator *interp) {
+    int imu = (int) rint(mu * interp->steps);
+    return fir_filter_process_float_single(input, input_len, interp->filters[imu]);
 }
 
 void mmse_fir_interpolator_destroy(mmse_fir_interpolator *interp) {
@@ -177,7 +196,7 @@ void mmse_fir_interpolator_destroy(mmse_fir_interpolator *interp) {
     }
     if (interp->filters != NULL) {
         for (size_t i = 0; i < interp->filters_len; i++) {
-            fir_filter_destroy(&interp->filters[i]);
+            fir_filter_destroy(interp->filters[i]);
         }
         free(interp->filters);
     }

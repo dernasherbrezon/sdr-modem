@@ -28,6 +28,8 @@ int fir_filter_create(int decimation, float *taps, size_t taps_len, size_t outpu
 
 void fir_filter_process(const void *input, size_t input_len, void **output, size_t *output_len, fir_filter *filter);
 
+float fir_filter_process_float_single(const float *input, size_t input_len, fir_filter *filter);
+
 void fir_filter_destroy(fir_filter *filter);
 
 
