@@ -11,4 +11,6 @@ float mmse_fir_interpolator_process(const float *input, const size_t input_len, 
 
 void mmse_fir_interpolator_destroy(mmse_fir_interpolator *interp);
 
+int mmse_fir_interpolator_taps(mmse_fir_interpolator *interp);
+
 #endif //SDR_MODEM_MMSE_FIR_INTERPOLATOR_H

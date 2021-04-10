@@ -190,6 +190,10 @@ float mmse_fir_interpolator_process(const float *input, const size_t input_len, 
     return fir_filter_process_float_single(input, input_len, interp->filters[imu]);
 }
 
+int mmse_fir_interpolator_taps(mmse_fir_interpolator *interp) {
+    return interp->taps_len;
+}
+
 void mmse_fir_interpolator_destroy(mmse_fir_interpolator *interp) {
     if (interp == NULL) {
         return;
