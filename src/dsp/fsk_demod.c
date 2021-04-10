@@ -59,7 +59,7 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 		}
 	}
 
-	code = clock_mm_create(sps, (sps * M_PI) / 100, 0.5f, 0.5f / 8.0f, 0.01f, &result->clock);
+	code = clock_mm_create(sps, (sps * M_PI) / 100, 0.5f, 0.5f / 8.0f, 0.01f, max_input_buffer_length, &result->clock);
 	if (code != 0) {
 		destroy_fsk_demod(result);
 		return code;

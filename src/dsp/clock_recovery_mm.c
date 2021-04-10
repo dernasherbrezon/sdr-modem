@@ -4,7 +4,7 @@ struct clock_mm_t {
 
 };
 
-int clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float omega_relative_limit, clock_mm **clock) {
+int clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float omega_relative_limit, size_t output_len, clock_mm **clock) {
 	return 0;
 }
 
