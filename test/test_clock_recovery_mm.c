@@ -20,6 +20,13 @@ START_TEST (test_normal) {
                               20.176548F, 22.611200F, 25.053421F, 27.484411F, 29.919767F, 32.351070F, 34.790939F,
                               37.227158F};
     assert_float_array(expected, sizeof(expected) / sizeof(float), output, output_len);
+
+    clock_mm_process(float_input + 42, 38, &output, &output_len, clock);
+    const float expected2[] = {39.662235F, 42.105213F, 44.534428F, 46.975555F, 49.400551F, 51.844826F, 54.276859F,
+                               56.714336F, 59.148190F, 61.577019F, 64.029373F, 66.450058F, 68.900490F, 71.325760F,
+                               73.759659F};
+    assert_float_array(expected2, sizeof(expected2) / sizeof(float), output, output_len);
+
 }
 
 END_TEST
