@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <math.h>
+#include <volk/volk.h>
 
 struct clock_mm_t {
     mmse_fir_interpolator *interp;
@@ -25,17 +26,21 @@ struct clock_mm_t {
 
 int
 clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float omega_relative_limit, size_t output_len,
-                 clock_mm **clock) {
+                clock_mm **clock) {
     struct clock_mm_t *result = malloc(sizeof(struct clock_mm_t));
     if (result == NULL) {
         return -ENOMEM;
     }
     // init all fields with 0 so that destroy_* method would work
     *result = (struct clock_mm_t) {0};
+    result->mu = mu;
     result->omega = omega;
     result->gain_omega = gain_omega;
     result->gain_mu = gain_mu;
     result->omega_relative_limit = omega_relative_limit;
+    result->omega_mid = omega;
+    result->omega_lim = result->omega_mid * result->omega_relative_limit;
+
     result->last_sample = 0.0F;
     int code = mmse_fir_interpolator_create(&result->interp);
     if (code != 0) {
@@ -48,9 +53,9 @@ clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float om
         clock_mm_destroy(result);
         return -ENOMEM;
     }
-    result->history_offset = mmse_fir_interpolator_taps(result->interp) - 1;
+    result->history_offset = 0;
     result->working_len_total = output_len + result->history_offset;
-    result->working_buffer = malloc(sizeof(float) * result->working_len_total);
+    result->working_buffer = volk_malloc(sizeof(float) * result->working_len_total, volk_get_alignment());
     if (result->working_buffer == NULL) {
         clock_mm_destroy(result);
         return -ENOMEM;
@@ -69,16 +74,19 @@ static inline float branchless_clip(float x, float clip) {
 }
 
 void clock_mm_process(const float *input, size_t input_len, float **output, size_t *output_len, clock_mm *clock) {
+    // prepend history to the input
     memcpy(clock->working_buffer + clock->history_offset, input, input_len * sizeof(float));
     int taps_len = mmse_fir_interpolator_taps(clock->interp);
     int ii = 0;                                  // input index
     int oo = 0;                                  // output index
-    int ni = input_len - taps_len; // don't use more input than this
+    size_t working_len = clock->history_offset + input_len;
+    size_t max_index = working_len - (taps_len - 1);
     float mm_val;
 
-    while (ii < ni) {
+    while (ii < max_index) {
         // produce output sample
-        clock->output[oo] = mmse_fir_interpolator_process(clock->working_buffer + ii, taps_len, clock->mu, clock->interp);
+        clock->output[oo] = mmse_fir_interpolator_process(clock->working_buffer + ii, taps_len, clock->mu,
+                                                          clock->interp);
         mm_val = slice(clock->last_sample) * clock->output[oo] - slice(clock->output[oo]) * clock->last_sample;
         clock->last_sample = clock->output[oo];
 
@@ -86,11 +94,12 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
         clock->omega = clock->omega_mid + branchless_clip(clock->omega - clock->omega_mid, clock->omega_lim);
         clock->mu = clock->mu + clock->omega + clock->gain_mu * mm_val;
         ii += (int) floorf(clock->mu);
-        clock->mu = clock->mu = floorf(clock->mu);
+        clock->mu = clock->mu - floorf(clock->mu);
         oo++;
     }
 
-    //FIXME copy history
+    clock->history_offset = working_len - ii;
+    memmove(clock->working_buffer, clock->working_buffer + ii, sizeof(float) * clock->history_offset);
 
     *output = clock->output;
     *output_len = oo;
@@ -107,7 +116,7 @@ void clock_mm_destroy(clock_mm *clock) {
         free(clock->output);
     }
     if (clock->working_buffer != NULL) {
-        free(clock->working_buffer);
+        volk_free(clock->working_buffer);
     }
     free(clock);
 }

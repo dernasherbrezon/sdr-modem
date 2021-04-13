@@ -2,6 +2,7 @@
 #include "../src/dsp/mmse_fir_interpolator.h"
 #include "utils.h"
 #include <volk/volk.h>
+#include <stdio.h>
 
 mmse_fir_interpolator *interp = NULL;
 float *float_input = NULL;
@@ -11,7 +12,7 @@ START_TEST(test_normal) {
     ck_assert_int_eq(code, 0);
     setup_volk_input_data(&float_input, 0, 8);
     float result = mmse_fir_interpolator_process(float_input, 8, 0.14, interp);
-    ck_assert(fabsl(3.858919 - result) < 0.001);
+    ck_assert(fabsl(3.140217F - result) < 0.001);
 }
 
 END_TEST

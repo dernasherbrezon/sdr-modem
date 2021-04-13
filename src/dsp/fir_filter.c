@@ -23,7 +23,8 @@ int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter 
             result[i][j] = 0;
         }
         for (size_t j = 0; j < taps_len; j++) {
-            result[i][i + j] = original_taps[j];
+            //reverse original taps
+            result[i][i + j] = original_taps[taps_len - j - 1];
         }
     }
     filter->taps = result;

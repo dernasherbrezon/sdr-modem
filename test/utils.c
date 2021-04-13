@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <check.h>
 #include <volk/volk.h>
+#include <stdio.h>
 
 void setup_input_data(float **input, size_t input_offset, size_t len) {
     float *result = malloc(sizeof(float) * len);
