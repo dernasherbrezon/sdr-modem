@@ -24,7 +24,7 @@ struct fsk_demod_t {
 	size_t output_len;
 };
 
-int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
+int fsk_demod_create(uint32_t sampling_freq, int baud_rate, float deviation, int decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
 	struct fsk_demod_t *result = malloc(sizeof(struct fsk_demod_t));
 	if (result == NULL) {
 		return -ENOMEM;
@@ -35,17 +35,17 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 	float carson_cutoff = fabs(deviation) + baud_rate / 2.0f;
 	int code = lpf_create(1, sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
 	if (code != 0) {
-		destroy_fsk_demod(result);
+        fsk_demod_destroy(result);
 		return code;
 	}
 	code = quadrature_demod_create((sampling_freq / (2 * M_PI * deviation)), max_input_buffer_length, &result->quad_demod);
 	if (code != 0) {
-		destroy_fsk_demod(result);
+        fsk_demod_destroy(result);
 		return code;
 	}
 	code = lpf_create(decimation, sampling_freq, (float) baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
 	if (code != 0) {
-		destroy_fsk_demod(result);
+        fsk_demod_destroy(result);
 		return code;
 	}
 
@@ -54,28 +54,29 @@ int create_fsk_demod(uint32_t sampling_freq, int baud_rate, float deviation, int
 	if (use_dc_block) {
 		code = dc_blocker_create(ceilf(sps * 32), &result->dc);
 		if (code != 0) {
-			destroy_fsk_demod(result);
+            fsk_demod_destroy(result);
 			return code;
 		}
 	}
 
 	code = clock_mm_create(sps, (sps * M_PI) / 100, 0.5f, 0.5f / 8.0f, 0.01f, max_input_buffer_length, &result->clock);
 	if (code != 0) {
-		destroy_fsk_demod(result);
+        fsk_demod_destroy(result);
 		return code;
 	}
 
 	result->output_len = max_input_buffer_length;
 	result->output = malloc(sizeof(int8_t) * result->output_len);
 	if (result->output == NULL) {
-		destroy_fsk_demod(result);
+        fsk_demod_destroy(result);
 		return -ENOMEM;
 	}
 
+	*demod = result;
 	return 0;
 }
 
-void fsk_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, fsk_demod *demod) {
+void fsk_demod_process(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, fsk_demod *demod) {
 	float complex *lpf_output = NULL;
 	size_t lpf_output_len = 0;
 	lpf_process(input, input_len, (void**) &lpf_output, &lpf_output_len, demod->lpf1);
@@ -93,8 +94,8 @@ void fsk_demodulate(const float complex *input, size_t input_len, int8_t **outpu
 	if (demod->dc != NULL) {
 		dc_blocker_process(lpf2_output, lpf2_output_len, &dc_output, &dc_output_len, demod->dc);
 	} else {
-		dc_output = qd_output;
-		dc_output_len = qd_output_len;
+		dc_output = lpf2_output;
+		dc_output_len = lpf2_output_len;
 	}
 
 	float *clock_output = NULL;
@@ -107,7 +108,7 @@ void fsk_demodulate(const float complex *input, size_t input_len, int8_t **outpu
 	*output_len = clock_output_len;
 }
 
-void destroy_fsk_demod(fsk_demod *demod) {
+void fsk_demod_destroy(fsk_demod *demod) {
 	if (demod == NULL) {
 		return;
 	}
