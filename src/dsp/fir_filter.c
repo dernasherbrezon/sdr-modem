@@ -33,7 +33,7 @@ int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter 
     return 0;
 }
 
-int fir_filter_create(int decimation, float *taps, size_t taps_len,
+int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
                       size_t max_input_buffer_length, size_t num_bytes, fir_filter **filter) {
     struct fir_filter_t *result = malloc(sizeof(struct fir_filter_t));
     if (result == NULL) {

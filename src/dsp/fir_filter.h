@@ -6,7 +6,7 @@
 typedef struct fir_filter_t fir_filter;
 
 struct fir_filter_t {
-    int decimation;
+    uint8_t decimation;
 
     float **taps;
     size_t aligned_taps_len;
@@ -24,7 +24,7 @@ struct fir_filter_t {
     size_t num_bytes;
 };
 
-int fir_filter_create(int decimation, float *taps, size_t taps_len, size_t output_len, size_t num_bytes, fir_filter **filter);
+int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len, size_t output_len, size_t num_bytes, fir_filter **filter);
 
 void fir_filter_process(const void *input, size_t input_len, void **output, size_t *output_len, fir_filter *filter);
 

@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#include "config.h"
-//#include "tcp_server.h"
-//#include "core.h"
-//
-//static tcp_server *server = NULL;
+#include "server_config.h"
+#include "tcp_server.h"
+#include "core.h"
+
+static tcp_server *server = NULL;
 
 void sdrmodem_stop_async(int signum) {
-//	stop_tcp_server(server);
-//	server = NULL;
+	tcp_server_destroy(server);
+	server = NULL;
 }
 
 int main(int argc, char **argv) {
@@ -21,34 +21,34 @@ int main(int argc, char **argv) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	printf("hello world\n");
 	struct server_config *server_config = NULL;
-	int code = create_server_config(&server_config, argv[1]);
+	int code = server_config_create(&server_config, argv[1]);
 	if (code != 0) {
 		exit(EXIT_FAILURE);
 	}
 
-//	core *core = NULL;
-//	code = create_core(server_config, &core);
-//	if (code != 0) {
-//		destroy_server_config(server_config);
-//		exit(EXIT_FAILURE);
-//	}
+	core *core = NULL;
+	code = core_create(server_config, &core);
+	if (code != 0) {
+		server_config_destroy(server_config);
+		exit(EXIT_FAILURE);
+	}
 
 	signal(SIGINT, sdrmodem_stop_async);
 	signal(SIGHUP, sdrmodem_stop_async);
 	signal(SIGTERM, sdrmodem_stop_async);
 
-//	code = start_tcp_server(server_config, core, &server);
-//	if (code != 0) {
-//		destroy_core(core);
-//		destroy_server_config(server_config);
-//		exit(EXIT_FAILURE);
-//	}
-//
-//	// wait here until server terminates
-//	join_tcp_server_thread(server);
-//
-//	// server will be freed on its own thread
-//	destroy_core(core);
-//	destroy_server_config(server_config);
+	code = tcp_server_create(server_config, core, &server);
+	if (code != 0) {
+        core_destroy(core);
+		server_config_destroy(server_config);
+		exit(EXIT_FAILURE);
+	}
+
+	// wait here until server terminates
+	tcp_server_join_thread(server);
+
+	// server will be freed on its own thread
+    core_destroy(core);
+	server_config_destroy(server_config);
 }
 

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "config.h"
+#include "server_config.h"
 
 char* read_and_copy_str(const config_setting_t *setting, const char *default_value) {
 	const char *value;
@@ -25,7 +25,7 @@ char* read_and_copy_str(const config_setting_t *setting, const char *default_val
 	return bind_address;
 }
 
-int create_server_config(struct server_config **config, const char *path) {
+int server_config_create(struct server_config **config, const char *path) {
 	fprintf(stdout, "loading configuration from: %s\n", path);
 	struct server_config *result = malloc(sizeof(struct server_config));
 	if (result == NULL) {
@@ -40,7 +40,7 @@ int create_server_config(struct server_config **config, const char *path) {
 	if (code == CONFIG_FALSE) {
 		fprintf(stderr, "<3>unable to read configuration: %s\n", config_error_text(&libconfig));
 		config_destroy(&libconfig);
-		free(result);
+        server_config_destroy(result);
 		return -1;
 	}
 
@@ -58,7 +58,7 @@ int create_server_config(struct server_config **config, const char *path) {
 	char *bind_address = read_and_copy_str(setting, "127.0.0.1");
 	if (bind_address == NULL) {
 		config_destroy(&libconfig);
-		free(result);
+        server_config_destroy(result);
 		return -ENOMEM;
 	}
 	result->bind_address = bind_address;
@@ -80,7 +80,7 @@ int create_server_config(struct server_config **config, const char *path) {
 		read_timeout_seconds = config_setting_get_int(setting);
 		if (read_timeout_seconds <= 0) {
 			config_destroy(&libconfig);
-			destroy_server_config(result);
+            server_config_destroy(result);
 			fprintf(stderr, "<3>read timeout should be positive: %d\n", read_timeout_seconds);
 			return -1;
 		}
@@ -97,21 +97,29 @@ int create_server_config(struct server_config **config, const char *path) {
 	char *base_path = read_and_copy_str(setting, default_folder);
 	if (base_path == NULL) {
 		config_destroy(&libconfig);
-		free(result);
+        server_config_destroy(result);
 		return -ENOMEM;
 	}
 	result->base_path = base_path;
 	fprintf(stdout, "base path for storing results: %s\n", result->base_path);
 
-	setting = config_lookup(&libconfig, "use_gzip");
-	bool use_gzip;
-	if (setting == NULL) {
-		use_gzip = true;
-	} else {
-		use_gzip = config_setting_get_bool(setting);
-	}
-	result->use_gzip = use_gzip;
-	fprintf(stdout, "using gzip: %d\n", result->use_gzip);
+    setting = config_lookup(&libconfig, "rx_sdr_type");
+    uint8_t rx_sdr_type;
+    if (setting == NULL) {
+        rx_sdr_type = RX_SDR_TYPE_SDR_SERVER;
+    } else {
+        const char *rx_sdr_type_str = config_setting_get_string(setting);
+        if (strcmp(rx_sdr_type_str, "sdr-server") == 0) {
+            rx_sdr_type = RX_SDR_TYPE_SDR_SERVER;
+        } else {
+            config_destroy(&libconfig);
+            server_config_destroy(result);
+            fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
+            return -1;
+        }
+        fprintf(stdout, "RX sdr: %s\n", rx_sdr_type_str);
+    }
+    result->rx_sdr_type = rx_sdr_type;
 
 	config_destroy(&libconfig);
 
@@ -119,7 +127,7 @@ int create_server_config(struct server_config **config, const char *path) {
 	return 0;
 }
 
-void destroy_server_config(struct server_config *config) {
+void server_config_destroy(struct server_config *config) {
 	if (config == NULL) {
 		return;
 	}

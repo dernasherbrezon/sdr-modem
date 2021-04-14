@@ -9,7 +9,7 @@ struct lpf_t {
     fir_filter *filter;
 };
 
-int lpf_create(int decimation, uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width,
+int lpf_create(uint8_t decimation, uint32_t sampling_freq, uint32_t cutoff_freq, uint32_t transition_width,
                size_t max_input_buffer_length, size_t num_bytes, lpf **filter) {
     struct lpf_t *result = malloc(sizeof(struct lpf_t));
     if (result == NULL) {

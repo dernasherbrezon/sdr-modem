@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define RX_SDR_TYPE_SDR_SERVER 0
+
 struct server_config {
 	// socket settings
 	char* bind_address;
@@ -12,13 +14,14 @@ struct server_config {
 
 	uint32_t buffer_size;
 
+    uint8_t rx_sdr_type;
+
 	// output settings
 	char *base_path;
-	bool use_gzip;
 };
 
-int create_server_config(struct server_config **config, const char *path);
+int server_config_create(struct server_config **config, const char *path);
 
-void destroy_server_config(struct server_config *config);
+void server_config_destroy(struct server_config *config);
 
 #endif /* CONFIG_H_ */

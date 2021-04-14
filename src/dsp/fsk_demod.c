@@ -24,7 +24,7 @@ struct fsk_demod_t {
 	size_t output_len;
 };
 
-int fsk_demod_create(uint32_t sampling_freq, int baud_rate, float deviation, int decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
+int fsk_demod_create(uint32_t sampling_freq, int baud_rate, float deviation, uint8_t decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
 	struct fsk_demod_t *result = malloc(sizeof(struct fsk_demod_t));
 	if (result == NULL) {
 		return -ENOMEM;
