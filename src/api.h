@@ -29,7 +29,7 @@ struct request {
 
     //generic RX SDR settings
 	uint32_t rx_center_freq;
-	uint32_t rx_sampling_rate;
+	uint32_t rx_sampling_freq;
 	uint8_t rx_destination;
 
 	//sdr-server RX settings

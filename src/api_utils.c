@@ -7,7 +7,7 @@ void api_network_to_host(struct request *req) {
         return;
     }
     req->rx_center_freq = ntohl(req->rx_center_freq);
-    req->rx_sampling_rate = ntohl(req->rx_sampling_rate);
+    req->rx_sampling_freq = ntohl(req->rx_sampling_freq);
     req->rx_destination = req->rx_destination;
     req->rx_sdr_server_band_freq = ntohl(req->rx_sdr_server_band_freq);
     req->demod_type = req->demod_type;

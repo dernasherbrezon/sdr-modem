@@ -88,6 +88,16 @@ int server_config_create(struct server_config **config, const char *path) {
 	result->read_timeout_seconds = read_timeout_seconds;
 	fprintf(stdout, "read timeout %ds\n", result->read_timeout_seconds);
 
+    setting = config_lookup(&libconfig, "queue_size");
+    int queue_size;
+    if (setting == NULL) {
+        queue_size = 64;
+    } else {
+        queue_size = config_setting_get_int(setting);
+    }
+    fprintf(stdout, "queue_size: %d\n", queue_size);
+    result->queue_size = queue_size;
+
 	const char *default_folder = getenv("TMPDIR");
 	if (default_folder == NULL) {
 		default_folder = "/tmp";

@@ -4,11 +4,13 @@
 
 struct linked_list_t {
     struct linked_list_t *next;
+
     void *data;
+
     void (*destructor)(void *data);
 };
 
-int linked_list_create(void *data, void (*destructor)(void *data), linked_list **list) {
+int linked_list_add(void *data, void (*destructor)(void *), linked_list **list) {
     struct linked_list_t *result = malloc(sizeof(struct linked_list_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -18,16 +20,48 @@ int linked_list_create(void *data, void (*destructor)(void *data), linked_list *
     result->data = data;
     result->destructor = destructor;
 
-    *list = result;
+    if (*list == NULL) {
+        *list = result;
+    } else {
+        linked_list *node = *list;
+        while (node->next != NULL) {
+            node = node->next;
+        }
+        node->next = result;
+    }
     return 0;
 }
 
-int linked_list_add(void *data, void (*destructor)(void *), linked_list *list) {
-    linked_list *node = list;
-    while (node->next != NULL) {
-        node = node->next;
+void *linked_list_find(void *id, bool (*selector)(void *id, void *data), linked_list *list) {
+    linked_list *cur_node = list;
+    while (cur_node != NULL) {
+        if (selector(id, cur_node) == true) {
+            return cur_node->data;
+        }
+        cur_node = cur_node->next;
     }
-    return linked_list_create(data, destructor, &node->next);
+    return NULL;
+}
+
+void linked_list_destroy_by_id(void *id, bool (*selector)(void *id, void *data), linked_list **list) {
+    linked_list *cur_node = *list;
+    linked_list *previous = NULL;
+    while (cur_node != NULL) {
+        linked_list *next = cur_node->next;
+        if (selector(id, next->data) == false) {
+            previous = cur_node;
+            cur_node = next;
+            continue;
+        }
+        if (previous == NULL) {
+            *list = next;
+        } else {
+            previous->next = next;
+        }
+        cur_node->destructor(cur_node->data);
+        free(cur_node);
+        break;
+    }
 }
 
 void linked_list_destroy_by_selector(bool (*selector)(void *), linked_list **list) {
@@ -62,14 +96,4 @@ void linked_list_destroy(linked_list *list) {
         free(cur);
         cur = next;
     }
-}
-
-int linked_list_size(linked_list *list) {
-    int result = 0;
-    linked_list *cur = list;
-    while (cur != NULL) {
-        result++;
-        cur = cur->next;
-    }
-    return result;
 }

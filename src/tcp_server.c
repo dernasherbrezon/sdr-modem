@@ -27,7 +27,7 @@ struct tcp_server_t {
 	pthread_t acceptor_thread;
 	core *core;
 	struct server_config *server_config;
-	int client_counter;
+    uint32_t client_counter;
 
 	linked_list *tcp_nodes;
 	pthread_mutex_t mutex;
@@ -166,7 +166,7 @@ static void* tcp_worker(void *arg) {
 		respond_failure(node->config->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
 	} else {
 		write_message(node->config->client_socket, RESPONSE_STATUS_SUCCESS, node->config->id);
-		fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", node->config->id, api_demod_type_str(node->config->req->demod_type), node->config->req->rx_center_freq, node->config->req->rx_sampling_rate, node->config->req->rx_destination);
+		fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", node->config->id, api_demod_type_str(node->config->req->demod_type), node->config->req->rx_center_freq, node->config->req->rx_sampling_freq, node->config->req->rx_destination);
 		while (node->config->is_running) {
 			struct message_header header;
 			code = read_struct(node->config->client_socket, &header, sizeof(struct message_header));
@@ -221,15 +221,6 @@ void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_unlock(&server->mutex);
 }
 
-void add_tcp_node(struct tcp_client_config *node) {
-	pthread_mutex_lock(&node->server->mutex);
-	if (node->server->tcp_nodes == NULL) {
-        linked_list_create(node, &tcp_client_config_destroy, &node->server->tcp_nodes);
-	} else {
-        linked_list_add(node, &tcp_client_config_destroy, node->server->tcp_nodes);
-	}
-	pthread_mutex_unlock(&node->server->mutex);
-}
 
 void remove_all_tcp_nodes(tcp_server *server) {
     pthread_mutex_lock(&server->mutex);
@@ -285,7 +276,9 @@ void handle_new_client(int client_socket, tcp_server *server) {
 	}
 	tcp_node->client_thread = client_thread;
 
-	add_tcp_node(tcp_node);
+    pthread_mutex_lock(&server->mutex);
+    linked_list_add(tcp_node, &tcp_client_config_destroy, &server->tcp_nodes);
+    pthread_mutex_unlock(&server->mutex);
 }
 
 static void* acceptor_worker(void *arg) {

@@ -37,6 +37,7 @@ START_TEST (test_success) {
     ck_assert_int_eq(config->buffer_size, 2048);
     ck_assert_int_eq(config->rx_sdr_type, RX_SDR_TYPE_SDR_SERVER);
     ck_assert_str_eq(config->base_path, "/tmp/");
+    ck_assert_int_eq(config->queue_size, 64);
 }
 END_TEST
 

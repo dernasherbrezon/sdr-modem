@@ -16,7 +16,7 @@ struct client_config {
     struct request *req;
 
 	int client_socket;
-	uint8_t id;
+	uint32_t id;
 	atomic_bool is_running;
 	core *core;
 
