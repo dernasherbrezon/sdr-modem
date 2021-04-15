@@ -12,10 +12,11 @@
 
 #include "api.h"
 #include "tcp_server.h"
+#include "linked_list.h"
+#include "api_utils.h"
 
-struct linked_list_tcp_node {
+struct tcp_client_config {
 	struct client_config *config;
-	struct linked_list_tcp_node *next;
 	pthread_t client_thread;
 	tcp_server *server;
 };
@@ -28,7 +29,7 @@ struct tcp_server_t {
 	struct server_config *server_config;
 	int client_counter;
 
-	struct linked_list_tcp_node *tcp_nodes;
+	linked_list *tcp_nodes;
 	pthread_mutex_t mutex;
 };
 
@@ -74,28 +75,23 @@ int read_client_config(int client_socket, int client_id, struct server_config *s
 	}
 	// init all fields with 0
 	*result = (struct client_config ) { 0 };
-	struct request req;
+	struct request *req = NULL;
 	if (read_struct(client_socket, &req, sizeof(struct request)) < 0) {
 		fprintf(stderr, "<3>[%d] unable to read request fully\n", client_id);
 		free(result);
 		return -1;
 	}
-//	result->center_freq = ntohl(req.center_freq);
-//	result->sampling_rate = ntohl(req.sampling_rate);
-//	result->band_freq = ntohl(req.band_freq);
-//	result->client_socket = client_socket;
-//	result->destination = req.destination;
-//	if (result->sampling_rate > 0 && server_config->band_sampling_rate % result->sampling_rate != 0) {
-//		fprintf(stderr, "<3>[%d] sampling frequency is not an integer factor of server sample rate: %u\n", client_id, server_config->band_sampling_rate);
-//		free(result);
-//		return -1;
-//	}
+    api_network_to_host(req);
+    result->req = req;
+    result->client_socket = client_socket;
+    result->id = client_id;
 
 	*config = result;
 	return 0;
 }
 
-int validate_client_config(struct client_config *config, struct server_config *server_config, int client_id) {
+int validate_client_config(struct client_config *config, struct server_config *server_config) {
+
 //	if (config->center_freq == 0) {
 //		fprintf(stderr, "<3>[%d] missing center_freq parameter\n", client_id);
 //		return -1;
@@ -163,14 +159,14 @@ void respond_failure(int client_socket, uint8_t status, uint8_t details) {
 }
 
 static void* tcp_worker(void *arg) {
-	struct linked_list_tcp_node *node = (struct linked_list_tcp_node*) arg;
+	struct tcp_client_config *node = (struct tcp_client_config*) arg;
 	fprintf(stdout, "[%d] tcp_worker is starting\n", node->config->id);
 	int code = core_add_client(node->config);
 	if (code != 0) {
 		respond_failure(node->config->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
 	} else {
 		write_message(node->config->client_socket, RESPONSE_STATUS_SUCCESS, node->config->id);
-		fprintf(stdout, "[%d] center_freq %d sampling_rate %d destination %d\n", node->config->id, node->config->center_freq, node->config->sampling_rate, node->config->destination);
+		fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", node->config->id, api_demod_type_str(node->config->req->demod_type), node->config->req->rx_center_freq, node->config->req->rx_sampling_rate, node->config->req->rx_destination);
 		while (node->config->is_running) {
 			struct message_header header;
 			code = read_struct(node->config->client_socket, &header, sizeof(struct message_header));
@@ -201,67 +197,45 @@ static void* tcp_worker(void *arg) {
 	return (void*) 0;
 }
 
-void cleanup_terminated_threads(tcp_server *server) {
-	pthread_mutex_lock(&server->mutex);
-	struct linked_list_tcp_node *cur_node = server->tcp_nodes;
-	struct linked_list_tcp_node *previous = NULL;
-	while (cur_node != NULL) {
-		struct linked_list_tcp_node *next = cur_node->next;
-		if (cur_node->config->is_running) {
-			previous = cur_node;
-			cur_node = next;
-			continue;
-		}
-		if (previous == NULL) {
-			server->tcp_nodes = next;
-		} else {
-			previous->next = next;
-		}
-
-		fprintf(stdout, "[%d] tcp_worker is stopping\n", cur_node->config->id);
-		pthread_join(cur_node->client_thread, NULL);
-		free(cur_node->config);
-		free(cur_node);
-
-		cur_node = next;
-	}
-//	if (server->tcp_nodes == NULL) {
-//		server->current_band_freq = 0;
-//	}
-	pthread_mutex_unlock(&server->mutex);
+bool tcp_client_config_is_stopped(void *data) {
+    struct tcp_client_config *node = (struct tcp_client_config *)data;
+    if( node->config->is_running ) {
+        return false;
+    }
+    return true;
 }
 
-void add_tcp_node(struct linked_list_tcp_node *node) {
+void tcp_client_config_destroy(void *data) {
+    struct tcp_client_config *node = (struct tcp_client_config *)data;
+    fprintf(stdout, "[%d] tcp_worker is stopping\n", node->config->id);
+    node->config->is_running = false;
+    close(node->config->client_socket);
+    pthread_join(node->client_thread, NULL);
+    free(node->config);
+    free(node);
+}
+
+void cleanup_terminated_threads(tcp_server *server) {
+    pthread_mutex_lock(&server->mutex);
+    linked_list_destroy_by_selector(&tcp_client_config_is_stopped, &server->tcp_nodes);
+    pthread_mutex_unlock(&server->mutex);
+}
+
+void add_tcp_node(struct tcp_client_config *node) {
 	pthread_mutex_lock(&node->server->mutex);
 	if (node->server->tcp_nodes == NULL) {
-		node->server->tcp_nodes = node;
+        linked_list_create(node, &tcp_client_config_destroy, &node->server->tcp_nodes);
 	} else {
-		struct linked_list_tcp_node *cur_node = node->server->tcp_nodes;
-		while (cur_node->next != NULL) {
-			cur_node = cur_node->next;
-		}
-		cur_node->next = node;
+        linked_list_add(node, &tcp_client_config_destroy, node->server->tcp_nodes);
 	}
 	pthread_mutex_unlock(&node->server->mutex);
 }
 
 void remove_all_tcp_nodes(tcp_server *server) {
-	pthread_mutex_lock(&server->mutex);
-	// get number of threads and signal them to terminate
-	struct linked_list_tcp_node *cur_node = server->tcp_nodes;
-	while (cur_node != NULL) {
-		struct linked_list_tcp_node *next = cur_node->next;
-		cur_node->config->is_running = false;
-		close(cur_node->config->client_socket);
-
-		fprintf(stdout, "[%d] tcp_worker is stopping\n", cur_node->config->id);
-		pthread_join(cur_node->client_thread, NULL);
-		free(cur_node->config);
-		free(cur_node);
-
-		cur_node = next;
-	}
-	pthread_mutex_unlock(&server->mutex);
+    pthread_mutex_lock(&server->mutex);
+    linked_list_destroy(server->tcp_nodes);
+    server->tcp_nodes = NULL;
+    pthread_mutex_unlock(&server->mutex);
 }
 
 void handle_new_client(int client_socket, tcp_server *server) {
@@ -270,7 +244,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
 		respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
 		return;
 	}
-	if (validate_client_config(config, server->server_config, server->client_counter) < 0) {
+	if (validate_client_config(config, server->server_config) < 0) {
 		respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
 		free(config);
 		return;
@@ -291,16 +265,14 @@ void handle_new_client(int client_socket, tcp_server *server) {
 
 	config->is_running = true;
 	config->core = server->core;
-	config->id = server->client_counter;
 
-	struct linked_list_tcp_node *tcp_node = malloc(sizeof(struct linked_list_tcp_node));
+	struct tcp_client_config *tcp_node = malloc(sizeof(struct tcp_client_config));
 	if (tcp_node == NULL) {
 		respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
 		free(config);
 		return;
 	}
 	tcp_node->config = config;
-	tcp_node->next = NULL;
 	tcp_node->server = server;
 
 	pthread_t client_thread;
@@ -392,7 +364,6 @@ int tcp_server_create(struct server_config *config, core *core, tcp_server **ser
 	result->server_config = config;
 	// start counting from 0
 	result->client_counter = -1;
-//	result->current_band_freq = 0;
 	int opt = 1;
 	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
 		free(result);

@@ -1,6 +1,8 @@
 #ifndef API_H_
 #define API_H_
 
+#include <stdint.h>
+
 #define PROTOCOL_VERSION 0
 
 // client to server

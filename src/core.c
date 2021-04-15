@@ -13,7 +13,7 @@
 struct linked_list_node {
 	struct linked_list_node *next;
 	struct client_config *config;
-//	queue *queue;
+	queue *queue;
 	pthread_t dsp_thread;
 	FILE *file;
 };
@@ -94,14 +94,14 @@ static void* dsp_worker(void *arg) {
 		}
 //		process(input, input_len, &filter_output, &filter_output_len, config_node->filter);
 		int code;
-		if (config_node->config->destination == REQUEST_RX_DESTINATION_FILE) {
-			code = write_to_file(config_node, filter_output, filter_output_len);
-		} else if (config_node->config->destination == REQUEST_RX_DESTINATION_SOCKET) {
-			code = write_to_socket(config_node, filter_output, filter_output_len);
-		} else {
-			fprintf(stderr, "<3>unknown destination: %d\n", config_node->config->destination);
-			code = -1;
-		}
+//		if (config_node->config->destination == REQUEST_RX_DESTINATION_FILE) {
+//			code = write_to_file(config_node, filter_output, filter_output_len);
+//		} else if (config_node->config->destination == REQUEST_RX_DESTINATION_SOCKET) {
+//			code = write_to_socket(config_node, filter_output, filter_output_len);
+//		} else {
+//			fprintf(stderr, "<3>unknown destination: %d\n", config_node->config->destination);
+//			code = -1;
+//		}
 
 //		complete_buffer_processing(config_node->queue);
 
