@@ -24,7 +24,7 @@ struct fsk_demod_t {
 	size_t output_len;
 };
 
-int fsk_demod_create(uint32_t sampling_freq, int baud_rate, float deviation, uint8_t decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
+int fsk_demod_create(uint32_t sampling_freq, uint32_t baud_rate, int32_t deviation, uint8_t decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
 	struct fsk_demod_t *result = malloc(sizeof(struct fsk_demod_t));
 	if (result == NULL) {
 		return -ENOMEM;
@@ -32,7 +32,7 @@ int fsk_demod_create(uint32_t sampling_freq, int baud_rate, float deviation, uin
 	// init all fields with 0 so that destroy_* method would work
 	*result = (struct fsk_demod_t ) { 0 };
 
-	float carson_cutoff = fabs(deviation) + baud_rate / 2.0f;
+	float carson_cutoff = abs(deviation) + baud_rate / 2.0f;
 	int code = lpf_create(1, sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
 	if (code != 0) {
         fsk_demod_destroy(result);

@@ -35,18 +35,18 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
 }
 
 START_TEST(test_normal) {
-    int code = fsk_demod_create(192000, 40000, 5000.0f, 1, 2000, true, 32000, &demod);
+    int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, 32000, &demod);
     ck_assert_int_eq(code, 0);
-    FILE *input = fopen("nusat.cf32", "r");
+    input = fopen("nusat.cf32", "r");
     ck_assert(input != NULL);
-    FILE *expected = fopen("processed.s8", "r");
+    expected = fopen("processed.s8", "r");
     ck_assert(expected != NULL);
     size_t buffer_len = 2048;
     buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(buffer != NULL);
     while (true) {
         size_t actual_read = 0;
-        int code = read_data(buffer, &actual_read, buffer_len, input);
+        code = read_data(buffer, &actual_read, buffer_len, input);
         if (code != 0 && actual_read == 0) {
             break;
         }

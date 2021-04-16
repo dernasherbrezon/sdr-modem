@@ -120,12 +120,18 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
 
     //FIXME setup doppler correction
 
-    int code;
+    int code = 0;
     if (req->demod_type == REQUEST_DEMOD_TYPE_FSK) {
         code = fsk_demod_create(req->rx_sampling_freq, req->demod_baud_rate,
                                 req->demod_fsk_deviation, req->demod_decimation,
                                 req->demod_fsk_transition_width, req->demod_fsk_use_dc_block,
                                 server_config->buffer_size, &result->fsk_demod);
+    }
+
+    if (code != 0) {
+        fprintf(stderr, "<3>unable to create demodulator\n");
+        dsp_worker_destroy(result);
+        return code;
     }
 
     char file_path[4096];
@@ -143,7 +149,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
                         &client_queue);
     if (code != 0) {
         dsp_worker_destroy(result);
-        return -1;
+        return code;
     }
     result->queue = client_queue;
 
