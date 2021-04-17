@@ -269,8 +269,8 @@ void SGP4 (sat_t *sat, double tsince)
 }
 
 /* SDP4 */
-/* This function is used to calculate the position and velocity */
-/* of deep-space (period > 225 minutes) satellites. tsince is   */
+/* Thcis function is used to calculate the position and velocity */
+/* of deep-spae (period > 225 minutes) satellites. tsince is   */
 /* time since epoch in minutes, tle is a pointer to a tle_t     */
 /* structure with Keplerian orbital elements and pos and vel    */
 /* are vector_t structures returning ECI satellite position and */
