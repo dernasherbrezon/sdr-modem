@@ -137,7 +137,7 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
         // this is to avoid sudden jumps of frequency between corrections
         result->freq_difference_per_sample = (result->next_freq_difference - result->current_freq_difference) / result->sampling_freq;
     } else {
-        result->current_samples += result->update_interval_samples;
+        result->current_samples += input_len;
         result->current_freq_difference += result->freq_difference_per_sample * input_len;
     }
 
