@@ -5,7 +5,8 @@
 #include <volk/volk.h>
 #include <sys/time.h>
 
-float SPEED_OF_LIGHT = 2.99792458E8;
+// km/sec
+float SPEED_OF_LIGHT = 2.99792458E5;
 
 struct doppler_t {
     sig_source *source;
@@ -38,7 +39,7 @@ int32_t doppler_calculate_shift(doppler *result) {
     }
 
     Convert_Sat_State(&result->satellite->pos, &result->satellite->vel);
-    Calculate_Obs(tsince, &result->satellite->pos, &result->satellite->vel, result->ground_station, result->obs_set);
+    Calculate_Obs(result->satellite->jul_utc, &result->satellite->pos, &result->satellite->vel, result->ground_station, result->obs_set);
     return result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT;
 }
 
@@ -130,7 +131,7 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
             result->current_freq_difference = result->next_freq_difference;
         }
 
-        result->satellite->jul_utc = result->jul_start_time + result->next_update_samples / (double) result->sampling_freq;
+        result->satellite->jul_utc = result->jul_start_time + result->next_update_samples / (double) result->sampling_freq / secday;
         result->next_freq_difference = doppler_calculate_shift(result);
         // linear interpolation between next and current doppler shift
         // this is to avoid sudden jumps of frequency between corrections
