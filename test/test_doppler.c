@@ -19,7 +19,6 @@ START_TEST (test_success) {
     size_t output_len = 0;
     doppler_process(input, input_len, &output, &output_len, dopp);
 }
-
 END_TEST
 
 void teardown() {

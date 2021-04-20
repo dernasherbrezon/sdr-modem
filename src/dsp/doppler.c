@@ -13,8 +13,8 @@ struct doppler_t {
     uint32_t center_freq;
     double jul_start_time;
 
-    uint32_t current_freq_difference;
-    uint32_t next_freq_difference;
+    int32_t current_freq_difference;
+    int32_t next_freq_difference;
     float freq_difference_per_sample;
 
     uint32_t update_interval_samples;
@@ -29,7 +29,7 @@ struct doppler_t {
     size_t output_len;
 };
 
-uint32_t doppler_calculate_shift(doppler *result) {
+int32_t doppler_calculate_shift(doppler *result) {
     double tsince = (result->satellite->jul_utc - result->satellite->jul_epoch) * xmnpda;
     if (result->satellite->flags & DEEP_SPACE_EPHEM_FLAG) {
         SDP4(result->satellite, tsince);
@@ -54,8 +54,8 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
         doppler_destroy(result);
         return -ENOMEM;
     }
-    result->ground_station->lat = latitude;
-    result->ground_station->lon = longitude;
+    result->ground_station->lat = Radians(latitude);
+    result->ground_station->lon = Radians(longitude);
     result->ground_station->alt = altitude;
     result->center_freq = center_freq;
     if (start_time_seconds == 0) {
@@ -64,7 +64,7 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
         struct tm *cdate = gmtime(&start_time_seconds);
         cdate->tm_year += 1900;
         cdate->tm_mon += 1;
-        result->jul_start_time = Julian_Date(&cdate);
+        result->jul_start_time = Julian_Date(cdate);
     }
     result->current_freq_difference = 0;
     result->freq_difference_per_sample = 0.0F;
