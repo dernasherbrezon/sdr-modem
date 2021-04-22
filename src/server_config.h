@@ -1,5 +1,5 @@
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#ifndef SERVER_CONFIG_H_
+#define SERVER_CONFIG_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -25,4 +25,4 @@ int server_config_create(struct server_config **config, const char *path);
 
 void server_config_destroy(struct server_config *config);
 
-#endif /* CONFIG_H_ */
+#endif /* SERVER_CONFIG_H_ */

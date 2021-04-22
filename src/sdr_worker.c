@@ -13,6 +13,7 @@ struct sdr_worker_t {
 };
 
 static void *sdr_worker_callback(void *arg) {
+    sdr_worker *worker = (sdr_worker *) arg;
 //    core *core = (struct core_t *) arg;
 //    uint32_t buffer_size = core->server_config->buffer_size;
     //FIXME

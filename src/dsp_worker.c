@@ -5,6 +5,7 @@
 #include "dsp/fsk_demod.h"
 #include "queue.h"
 #include "api.h"
+#include "dsp/doppler.h"
 #include <string.h>
 #include <complex.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@ struct dsp_worker_t {
     uint32_t id;
     int client_socket;
     fsk_demod *fsk_demod;
+    doppler *dopp;
     queue *queue;
     pthread_t dsp_thread;
     FILE *file;
@@ -70,7 +72,13 @@ static void *dsp_worker_callback(void *arg) {
         if (input == NULL) {
             break;
         }
-        //FIXME correct doppler
+        if (worker->dopp != NULL) {
+            float complex *doppler_output = NULL;
+            size_t doppler_output_len = 0;
+            doppler_process(input, input_len, &doppler_output, &doppler_output_len, worker->dopp);
+            input = doppler_output;
+            input_len = doppler_output_len;
+        }
         if (worker->fsk_demod != NULL) {
             fsk_demod_process(input, input_len, &demod_output, &demod_output_len, worker->fsk_demod);
         }
@@ -95,7 +103,7 @@ static void *dsp_worker_callback(void *arg) {
             // this would trigger client disconnect
             // I could use "break" here, but "continue" is a bit better:
             //   - single route for abnormal termination (i.e. disk space issue) and normal (i.e. client disconnected)
-            //   - all shutdown sequences have: stop tcp thread, then dsp thread, then rtlsdr thread
+            //   - all shutdown sequences have: stop tcp thread, then dsp thread, then sdr thread
             //   - processing the queue and writing to the already full disk is OK (I hope)
             //   - calling "close" socket multiple times is OK (I hope)
             close(worker->client_socket);
@@ -118,9 +126,16 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     result->id = id;
     result->client_socket = client_socket;
 
-    //FIXME setup doppler correction
-
     int code = 0;
+    if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
+        code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->rx_sampling_freq, req->rx_center_freq, 0, server_config->buffer_size, req->tle, &result->dopp);
+    }
+    if (code != 0) {
+        fprintf(stderr, "<3>unable to create doppler correction block\n");
+        dsp_worker_destroy(result);
+        return code;
+    }
+
     if (req->demod_type == REQUEST_DEMOD_TYPE_FSK) {
         code = fsk_demod_create(req->rx_sampling_freq, req->demod_baud_rate,
                                 req->demod_fsk_deviation, req->demod_decimation,
@@ -134,13 +149,15 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         return code;
     }
 
-    char file_path[4096];
-    snprintf(file_path, sizeof(file_path), "%s/%d.cf32", server_config->base_path, id);
-    result->file = fopen(file_path, "wb");
-    if (result->file == NULL) {
-        fprintf(stderr, "<3>unable to open file for output: %s\n", file_path);
-        dsp_worker_destroy(result);
-        return -1;
+    if (req->rx_destination == REQUEST_RX_DESTINATION_FILE) {
+        char file_path[4096];
+        snprintf(file_path, sizeof(file_path), "%s/%d.cf32", server_config->base_path, id);
+        result->file = fopen(file_path, "wb");
+        if (result->file == NULL) {
+            fprintf(stderr, "<3>unable to open file for output: %s\n", file_path);
+            dsp_worker_destroy(result);
+            return -1;
+        }
     }
 
     // setup queue
@@ -183,6 +200,9 @@ void dsp_worker_destroy(void *data) {
     }
     if (worker->fsk_demod != NULL) {
         fsk_demod_destroy(worker->fsk_demod);
+    }
+    if (worker->dopp != NULL) {
+        doppler_destroy(worker->dopp);
     }
     free(worker);
 }
