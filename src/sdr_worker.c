@@ -5,8 +5,13 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "sdr/sdr_server_client.h"
+
 struct sdr_worker_t {
     struct sdr_worker_rx *rx;
+    sdr_server_client *client;
+
+    //FIXME setup connection details + client request
 
     linked_list *dsp_configs;
     pthread_t sdr_thread;
@@ -14,6 +19,7 @@ struct sdr_worker_t {
 
 static void *sdr_worker_callback(void *arg) {
     sdr_worker *worker = (sdr_worker *) arg;
+//    int code = sdr_server_client_create(worker->)
 //    core *core = (struct core_t *) arg;
 //    uint32_t buffer_size = core->server_config->buffer_size;
     //FIXME
@@ -61,6 +67,9 @@ void sdr_worker_destroy(void *data) {
     pthread_join(worker->sdr_thread, NULL);
     if (worker->rx != NULL) {
         free(worker->rx);
+    }
+    if (worker->client != NULL) {
+        sdr_server_client_destroy(worker->client);
     }
     free(worker);
 }
