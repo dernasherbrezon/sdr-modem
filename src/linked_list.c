@@ -10,7 +10,7 @@ struct linked_list_t {
     void (*destructor)(void *data);
 };
 
-int linked_list_add(void *data, void (*destructor)(void *), linked_list **list) {
+int linked_list_add(void *data, void (*destructor)(void *data), linked_list **list) {
     struct linked_list_t *result = malloc(sizeof(struct linked_list_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -72,12 +72,12 @@ void linked_list_destroy_by_id(void *id, bool (*selector)(void *id, void *data),
     }
 }
 
-void linked_list_destroy_by_selector(bool (*selector)(void *), linked_list **list) {
+void linked_list_destroy_by_selector(bool (*selector)(void *data), linked_list **list) {
     linked_list *cur_node = *list;
     linked_list *previous = NULL;
     while (cur_node != NULL) {
         linked_list *next = cur_node->next;
-        if (selector(next->data) == false) {
+        if (selector(cur_node->data) == false) {
             previous = cur_node;
             cur_node = next;
             continue;

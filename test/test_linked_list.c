@@ -42,6 +42,63 @@ void sample_struct_add(int id) {
     ck_assert_int_eq(code, 0);
 }
 
+bool sample_struct_selector_all(void *data) {
+    return true;
+}
+
+bool sample_struct_selector_one(void *data) {
+    struct sample_struct *test = (struct sample_struct *) data;
+    if (test->id == 1) {
+        return true;
+    }
+    return false;
+}
+
+void sample_struct_set_id(void *arg, void *data) {
+    int *param = (int *)arg;
+    struct sample_struct *test = (struct sample_struct *) data;
+    test->id = *param;
+}
+
+START_TEST (test_foreach) {
+    sample_struct_add(1);
+    int id = 8;
+    linked_list_foreach(&id, &sample_struct_set_id, llist);
+
+    void *result = linked_list_find(&id, &sample_struct_selector, llist);
+    ck_assert(result != NULL);
+    struct sample_struct *actual = (struct sample_struct *) result;
+    ck_assert_int_eq(id, actual->id);
+}
+END_TEST
+
+START_TEST (test_delete_by_selector) {
+    sample_struct_add(1);
+    sample_struct_add(2);
+    linked_list_destroy_by_selector(&sample_struct_selector_all, &llist);
+    ck_assert(llist == NULL);
+}
+END_TEST
+
+START_TEST (test_delete_by_selector1) {
+    sample_struct_add(1);
+    sample_struct_add(2);
+    linked_list_destroy_by_selector(&sample_struct_selector_one, &llist);
+}
+END_TEST
+
+START_TEST (test_delete_last2) {
+    sample_struct_add(1);
+    sample_struct_add(2);
+    int id = 1;
+    linked_list_destroy_by_id(&id, &sample_struct_selector, &llist);
+    id = 2;
+    linked_list_destroy_by_id(&id, &sample_struct_selector, &llist);
+    ck_assert(llist == NULL);
+}
+
+END_TEST
+
 START_TEST (test_delete_last) {
     sample_struct_add(1);
     int id = 1;
@@ -86,6 +143,10 @@ Suite *common_suite(void) {
 
     tcase_add_test(tc_core, test_normal);
     tcase_add_test(tc_core, test_delete_last);
+    tcase_add_test(tc_core, test_delete_last2);
+    tcase_add_test(tc_core, test_delete_by_selector);
+    tcase_add_test(tc_core, test_delete_by_selector1);
+    tcase_add_test(tc_core, test_foreach);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
