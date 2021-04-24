@@ -18,7 +18,7 @@
 #include "dsp_worker.h"
 #include "sdr_worker.h"
 
-struct tcp_client_config {
+struct tcp_worker {
     struct client_config *config;
     pthread_t client_thread;
     tcp_server *server;
@@ -41,7 +41,7 @@ struct tcp_server_t {
     struct server_config *server_config;
     uint32_t client_counter;
 
-    linked_list *tcp_nodes;
+    linked_list *tcp_workers;
     linked_list *sdr_configs;
     pthread_mutex_t mutex;
 };
@@ -185,73 +185,69 @@ void respond_failure(int client_socket, uint8_t status, uint8_t details) {
 }
 
 static void *tcp_worker_callback(void *arg) {
-    struct tcp_client_config *node = (struct tcp_client_config *) arg;
-    fprintf(stdout, "[%d] tcp_worker is starting\n", node->config->id);
-    write_message(node->config->client_socket, RESPONSE_STATUS_SUCCESS, node->config->id);
-    fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", node->config->id,
-            api_demod_type_str(node->config->req->demod_type), node->config->req->rx_center_freq,
-            node->config->req->rx_sampling_freq, node->config->req->rx_destination);
-    while (node->config->is_running) {
+    struct tcp_worker *worker = (struct tcp_worker *) arg;
+    fprintf(stdout, "[%d] tcp_worker is starting\n", worker->config->id);
+    while (worker->config->is_running) {
         struct message_header header;
-        int code = read_struct(node->config->client_socket, &header, sizeof(struct message_header));
+        int code = read_struct(worker->config->client_socket, &header, sizeof(struct message_header));
         if (code < -1) {
             // read timeout happened. it's ok.
             // client already sent all information we need
             continue;
         }
         if (code == -1) {
-            fprintf(stdout, "[%d] client disconnected\n", node->config->id);
+            fprintf(stdout, "[%d] client disconnected\n", worker->config->id);
             break;
         }
         if (header.protocol_version != PROTOCOL_VERSION) {
-            fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", node->config->id, header.protocol_version);
+            fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", worker->config->id, header.protocol_version);
             continue;
         }
         if (header.type != TYPE_SHUTDOWN) {
-            fprintf(stderr, "<3>[%d] unsupported request: %d\n", node->config->id, header.type);
+            fprintf(stderr, "<3>[%d] unsupported request: %d\n", worker->config->id, header.type);
             continue;
         }
-        fprintf(stdout, "[%d] client requested disconnect\n", node->config->id);
+        fprintf(stdout, "[%d] client requested disconnect\n", worker->config->id);
         break;
     }
-    pthread_mutex_lock(&node->server->mutex);
-    uint32_t id = node->config->id;
-    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &node->server->sdr_configs);
-    pthread_mutex_unlock(&node->server->mutex);
-    node->config->is_running = false;
-    close(node->config->client_socket);
+    pthread_mutex_lock(&worker->server->mutex);
+    uint32_t id = worker->config->id;
+    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
+    pthread_mutex_unlock(&worker->server->mutex);
+    worker->config->is_running = false;
+    close(worker->config->client_socket);
     return (void *) 0;
 }
 
-bool tcp_client_config_is_stopped(void *data) {
-    struct tcp_client_config *node = (struct tcp_client_config *) data;
-    if (node->config->is_running) {
+bool tcp_worker_is_stopped(void *data) {
+    struct tcp_worker *worker = (struct tcp_worker *) data;
+    if (worker->config->is_running) {
         return false;
     }
     return true;
 }
 
-void tcp_client_config_destroy(void *data) {
-    struct tcp_client_config *node = (struct tcp_client_config *) data;
-    fprintf(stdout, "[%d] tcp_worker is stopping\n", node->config->id);
-    node->config->is_running = false;
-    close(node->config->client_socket);
-    pthread_join(node->client_thread, NULL);
-    free(node->config);
-    free(node);
+void tcp_worker_destroy(void *data) {
+    struct tcp_worker *worker = (struct tcp_worker *) data;
+    fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->config->id);
+    worker->config->is_running = false;
+    close(worker->config->client_socket);
+    pthread_join(worker->client_thread, NULL);
+    free(worker->config);
+    free(worker);
 }
 
 void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_lock(&server->mutex);
-    linked_list_destroy_by_selector(&tcp_client_config_is_stopped, &server->tcp_nodes);
+    linked_list_destroy_by_selector(&tcp_worker_is_stopped, &server->tcp_workers);
     pthread_mutex_unlock(&server->mutex);
 }
 
 
-void remove_all_tcp_nodes(tcp_server *server) {
+void remove_all_tcp_workers(tcp_server *server) {
     pthread_mutex_lock(&server->mutex);
-    linked_list_destroy(server->tcp_nodes);
-    server->tcp_nodes = NULL;
+    linked_list_destroy(server->tcp_workers);
+    server->tcp_workers = NULL;
     pthread_mutex_unlock(&server->mutex);
 }
 
@@ -278,7 +274,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
         return;
     }
 
-    struct tcp_client_config *tcp_worker = malloc(sizeof(struct tcp_client_config));
+    struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
     if (tcp_worker == NULL) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         dsp_worker_destroy(dsp_worker);
@@ -293,27 +289,29 @@ void handle_new_client(int client_socket, tcp_server *server) {
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         dsp_worker_destroy(dsp_worker);
+        tcp_worker_destroy(tcp_worker);
         free(config);
-        free(tcp_worker);
         return;
     }
     tcp_worker->client_thread = client_thread;
 
     pthread_mutex_lock(&server->mutex);
-    code = linked_list_add(tcp_worker, &tcp_client_config_destroy, &server->tcp_nodes);
+    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        tcp_client_config_destroy(tcp_worker);
+        tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         free(config);
+        pthread_mutex_lock(&server->mutex);
         return;
     }
 
+    //re-use sdr connections
+    //this will allow demodulating different modes using the same data
     sdr_worker *sdr = linked_list_find(config->rx, &sdr_worker_find_closest, server->sdr_configs);
     if (sdr != NULL) {
         code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
     } else {
-        sdr_worker *sdr = NULL;
         code = sdr_worker_create(config->client_socket, config->rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
         if (code == 0) {
             code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
@@ -325,10 +323,16 @@ void handle_new_client(int client_socket, tcp_server *server) {
     }
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        tcp_client_config_destroy(tcp_worker);
+        tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         free(config);
-        return;
+    }
+
+    if (code == 0) {
+        write_message(config->client_socket, RESPONSE_STATUS_SUCCESS, config->id);
+        fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", config->id,
+                api_demod_type_str(config->req->demod_type), config->req->rx_center_freq,
+                config->req->rx_sampling_freq, config->req->rx_destination);
     }
     pthread_mutex_unlock(&server->mutex);
 }
@@ -384,7 +388,7 @@ static void *acceptor_worker(void *arg) {
 
     }
 
-    remove_all_tcp_nodes(server);
+    remove_all_tcp_workers(server);
 
     printf("tcp server stopped\n");
     return (void *) 0;
@@ -396,7 +400,7 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
         return -ENOMEM;
     }
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-    result->tcp_nodes = NULL;
+    result->tcp_workers = NULL;
 
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == 0) {

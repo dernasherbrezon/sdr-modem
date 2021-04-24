@@ -102,17 +102,23 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
         return code;
     }
     if (header->protocol_version != SDR_SERVER_PROTOCOL_VERSION) {
-        fprintf(stderr, "<3>invalid protocol version detected: %d\n", header->protocol_version);
+        fprintf(stderr, "<3>unsupported protocol version: %d\n", header->protocol_version);
+        free(header);
         return -1;
     }
+    if (header->type != SDR_SERVER_TYPE_RESPONSE) {
+        fprintf(stderr, "<3>unsupported message type: %d\n", header->type);
+        free(header);
+        return -1;
+    }
+    // header is not used
+    free(header);
     struct sdr_server_response *result = malloc(sizeof(struct sdr_server_response));
     if (result == NULL) {
-        free(header);
         return -ENOMEM;
     }
     code = sdr_server_client_read_data(result, sizeof(struct sdr_server_response), client);
     if (code != 0) {
-        free(header);
         free(result);
         return code;
     }
