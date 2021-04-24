@@ -77,7 +77,7 @@ int sdr_worker_create(struct sdr_worker_rx *rx, char *sdr_server_address, int sd
         fprintf(stderr, "<3>request to sdr server rejected: %d\n", response->details);
         sdr_worker_destroy(result);
         free(response);
-        return response->details;
+        return -1;
     }
     free(response);
 

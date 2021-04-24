@@ -41,8 +41,8 @@ struct request {
     //doppler-related settings
     uint8_t correct_doppler;
     char tle[3][80];
-    uint32_t latitude;      //radians times 10^6
-    uint32_t longitude;     //radians times 10^6
+    uint32_t latitude;      //degrees times 10^6
+    uint32_t longitude;     //degrees times 10^6
     uint32_t altitude;      //kilometers times 10^6
 
     //generic demodulator settings
@@ -51,7 +51,7 @@ struct request {
     uint8_t demod_decimation;
 
     //FSK demodulator settings
-    uint32_t demod_fsk_deviation;
+    int32_t demod_fsk_deviation;
     uint32_t demod_fsk_transition_width;
     uint8_t demod_fsk_use_dc_block;
 

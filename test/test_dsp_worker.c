@@ -29,6 +29,27 @@ struct request *create_request() {
     return result;
 }
 
+START_TEST (test_invalid_doppler_configuration) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    req = create_request();
+    char tle[3][80] = {"0", "1 0 0   0  0  00000-0  0 0  0", "2 0  0  0 0 0 0 0 0"};
+    memcpy(req->tle, tle, sizeof(tle));
+    code = dsp_worker_create(1, 0, config, req, &worker);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
+START_TEST (test_invalid_fsk_configuration) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    req = create_request();
+    req->demod_baud_rate = req->rx_sampling_freq;
+    code = dsp_worker_create(1, 0, config, req, &worker);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
 START_TEST (test_create_delete) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
@@ -36,7 +57,6 @@ START_TEST (test_create_delete) {
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, 0);
 }
-
 END_TEST
 
 void teardown() {
@@ -68,6 +88,8 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_create_delete);
+    tcase_add_test(tc_core, test_invalid_fsk_configuration);
+    tcase_add_test(tc_core, test_invalid_doppler_configuration);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

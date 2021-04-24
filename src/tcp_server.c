@@ -29,7 +29,6 @@ struct client_config {
     struct sdr_worker_rx *rx;
     int client_socket;
     uint32_t id;
-    struct server_config *server_config;
     atomic_bool is_running;
 };
 
@@ -81,7 +80,7 @@ int read_struct(int socket, void *result, size_t len) {
     return 0;
 }
 
-int read_client_config(int client_socket, int client_id, struct server_config *server_config,
+int read_client_config(int client_socket, uint32_t client_id, struct server_config *server_config,
                        struct client_config **config) {
     struct client_config *result = malloc(sizeof(struct client_config));
     if (result == NULL) {
@@ -89,6 +88,7 @@ int read_client_config(int client_socket, int client_id, struct server_config *s
     }
     // init all fields with 0
     *result = (struct client_config) {0};
+    //FIXME what about de-allocation? request + rx
     struct request *req = NULL;
     if (read_struct(client_socket, &req, sizeof(struct request)) < 0) {
         fprintf(stderr, "<3>[%d] unable to read request fully\n", client_id);
@@ -99,7 +99,6 @@ int read_client_config(int client_socket, int client_id, struct server_config *s
     result->req = req;
     result->client_socket = client_socket;
     result->id = client_id;
-    result->server_config = server_config;
 
     struct sdr_worker_rx *rx = malloc(sizeof(struct sdr_worker_rx));
     if (rx == NULL) {
@@ -326,9 +325,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
         tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         free(config);
-    }
-
-    if (code == 0) {
+    } else {
         write_message(config->client_socket, RESPONSE_STATUS_SUCCESS, config->id);
         fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", config->id,
                 api_demod_type_str(config->req->demod_type), config->req->rx_center_freq,
