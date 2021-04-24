@@ -43,7 +43,7 @@ void linked_list_foreach(void *arg, void (*foreach)(void *arg, void *data), link
 void *linked_list_find(void *id, bool (*selector)(void *id, void *data), linked_list *list) {
     linked_list *cur_node = list;
     while (cur_node != NULL) {
-        if (selector(id, cur_node) == true) {
+        if (selector(id, cur_node->data) == true) {
             return cur_node->data;
         }
         cur_node = cur_node->next;
@@ -56,7 +56,7 @@ void linked_list_destroy_by_id(void *id, bool (*selector)(void *id, void *data),
     linked_list *previous = NULL;
     while (cur_node != NULL) {
         linked_list *next = cur_node->next;
-        if (selector(id, next->data) == false) {
+        if (selector(id, cur_node->data) == false) {
             previous = cur_node;
             cur_node = next;
             continue;
