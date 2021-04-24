@@ -312,7 +312,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
     if (sdr != NULL) {
         code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
     } else {
-        code = sdr_worker_create(config->client_socket, config->rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
+        code = sdr_worker_create(config->rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
         if (code == 0) {
             code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
             if (code != 0) {

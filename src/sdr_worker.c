@@ -11,7 +11,6 @@
 struct sdr_worker_t {
     struct sdr_worker_rx *rx;
     sdr_server_client *client;
-    int client_socket;
 
     linked_list *dsp_configs;
     pthread_t sdr_thread;
@@ -44,7 +43,7 @@ static void *sdr_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int sdr_worker_create(int client_socket, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
+int sdr_worker_create(struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -54,7 +53,6 @@ int sdr_worker_create(int client_socket, struct sdr_worker_rx *rx, char *sdr_ser
 
     result->dsp_configs = NULL;
     result->rx = rx;
-    result->client_socket = client_socket;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     int code = sdr_server_client_create(sdr_server_address, sdr_server_port, max_output_buffer_length, &result->client);
@@ -132,11 +130,11 @@ bool sdr_worker_destroy_by_id(void *id, void *data) {
     if (worker->dsp_configs == NULL) {
         return false;
     }
+    pthread_mutex_lock(&worker->mutex);
     linked_list_destroy_by_id(id, &dsp_worker_find_by_id, &worker->dsp_configs);
-    if (worker->dsp_configs == NULL) {
-        return true;
-    }
-    return false;
+    bool result = (worker->dsp_configs == NULL);
+    pthread_mutex_unlock(&worker->mutex);
+    return result;
 }
 
 int sdr_worker_add_dsp_worker(dsp_worker *worker, sdr_worker *sdr) {
