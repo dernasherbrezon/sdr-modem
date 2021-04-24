@@ -6,7 +6,7 @@
 
 typedef struct queue_t queue;
 
-int create_queue(uint32_t buffer_size, int queue_size, queue **queue);
+int create_queue(uint32_t buffer_size, uint16_t queue_size, queue **queue);
 
 void queue_put(const float complex *buffer, const size_t len, queue *queue);
 void take_buffer_for_processing(float complex **buffer, size_t *len, queue *queue);

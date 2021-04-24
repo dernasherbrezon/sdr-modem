@@ -13,7 +13,7 @@ struct server_config {
 	int read_timeout_seconds;
 
 	uint32_t buffer_size;
-    int queue_size;
+    uint16_t queue_size;
 
     uint8_t rx_sdr_type;
     char *rx_sdr_server_address;

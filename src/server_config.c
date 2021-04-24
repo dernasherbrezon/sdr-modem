@@ -89,7 +89,7 @@ int server_config_create(struct server_config **config, const char *path) {
     fprintf(stdout, "read timeout %ds\n", result->read_timeout_seconds);
 
     setting = config_lookup(&libconfig, "queue_size");
-    int queue_size;
+    uint16_t queue_size;
     if (setting == NULL) {
         queue_size = 64;
     } else {

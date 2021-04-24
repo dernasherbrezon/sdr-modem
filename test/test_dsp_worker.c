@@ -29,6 +29,16 @@ struct request *create_request() {
     return result;
 }
 
+START_TEST (test_invalid_queue_size) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    config->queue_size = 0;
+    req = create_request();
+    code = dsp_worker_create(1, 0, config, req, &worker);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
 START_TEST (test_invalid_doppler_configuration) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
@@ -90,6 +100,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_create_delete);
     tcase_add_test(tc_core, test_invalid_fsk_configuration);
     tcase_add_test(tc_core, test_invalid_doppler_configuration);
+    tcase_add_test(tc_core, test_invalid_queue_size);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
