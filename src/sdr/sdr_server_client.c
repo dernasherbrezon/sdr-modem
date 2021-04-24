@@ -11,17 +11,28 @@
 
 struct sdr_server_client_t {
     int client_socket;
+
+    float complex *output;
+    size_t output_len;
 };
 
-int sdr_server_client_create(char *addr, int port, sdr_server_client **client) {
+int sdr_server_client_create(char *addr, int port, uint32_t max_output_buffer_length, sdr_server_client **client) {
     struct sdr_server_client_t *result = malloc(sizeof(struct sdr_server_client_t));
     if (result == NULL) {
         return -ENOMEM;
     }
     *result = (struct sdr_server_client_t) {0};
 
+    result->output_len = max_output_buffer_length;
+    result->output = malloc(sizeof(float complex) * result->output_len);
+    if (result->output == NULL) {
+        free(result);
+        return -ENOMEM;
+    }
+
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
+        free(result->output);
         free(result);
         fprintf(stderr, "<3>socket creation failed: %d\n", client_socket);
         return -1;
@@ -34,8 +45,9 @@ int sdr_server_client_create(char *addr, int port, sdr_server_client **client) {
     address.sin_port = htons(port);
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
+        free(result->output);
         free(result);
-        fprintf(stderr, "connection with the server failed: %d\n", code);
+        fprintf(stderr, "<3>connection with the server failed: %d\n", code);
         return -1;
     }
     fprintf(stdout, "connected to the server..\n");
@@ -108,7 +120,21 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
     return 0;
 }
 
-int sdr_server_client_request(struct sdr_server_message_header header, struct sdr_server_request request, struct sdr_server_response **response, sdr_server_client *client) {
+int sdr_server_client_read_stream(float complex **output, size_t *output_len, sdr_server_client *client) {
+    int code = sdr_server_client_read_data(client->output, sizeof(float complex) * client->output_len, client);
+    if (code != 0) {
+        return code;
+    }
+    *output = client->output;
+    *output_len = client->output_len;
+    return 0;
+}
+
+int sdr_server_client_request(struct sdr_server_request request, struct sdr_server_response **response, sdr_server_client *client) {
+    struct sdr_server_message_header header;
+    header.type = SDR_SERVER_TYPE_REQUEST;
+    header.protocol_version = SDR_SERVER_PROTOCOL_VERSION;
+
     request.band_freq = htonl(request.band_freq);
     request.center_freq = htonl(request.center_freq);
     request.sampling_rate = htonl(request.sampling_rate);
@@ -148,6 +174,9 @@ void sdr_server_client_destroy(sdr_server_client *client) {
     }
     fprintf(stdout, "disconnected from the server..\n");
     close(client->client_socket);
+    if (client->output != NULL) {
+        free(client->output);
+    }
     free(client);
 }
 

@@ -16,6 +16,8 @@ struct server_config {
     int queue_size;
 
     uint8_t rx_sdr_type;
+    char *rx_sdr_server_address;
+    int rx_sdr_server_port;
 
 	// output settings
 	char *base_path;

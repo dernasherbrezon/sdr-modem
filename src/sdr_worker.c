@@ -10,23 +10,52 @@
 struct sdr_worker_t {
     struct sdr_worker_rx *rx;
     sdr_server_client *client;
-
-    //FIXME setup connection details + client request
+    int client_socket;
 
     linked_list *dsp_configs;
     pthread_t sdr_thread;
 };
 
+struct array_t {
+    float complex *output;
+    size_t output_len;
+};
+
+void sdr_worker_foreach(void *arg, void *data) {
+    struct array_t *output = (struct array_t *) arg;
+    dsp_worker *worker = (dsp_worker *) data;
+    dsp_worker_put(output->output, output->output_len, worker);
+}
+
 static void *sdr_worker_callback(void *arg) {
     sdr_worker *worker = (sdr_worker *) arg;
-//    int code = sdr_server_client_create(worker->)
-//    core *core = (struct core_t *) arg;
-//    uint32_t buffer_size = core->server_config->buffer_size;
-    //FIXME
+    struct sdr_server_request req;
+    req.center_freq = worker->rx->rx_center_freq;
+    req.band_freq = worker->rx->band_freq;
+    req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
+    req.sampling_rate = worker->rx->rx_sampling_freq;
+    struct sdr_server_response *response = NULL;
+    int code = sdr_server_client_request(req, &response, worker->client);
+    if (code != 0) {
+        //FIXME respond failure
+        //FIXME close socket
+        return (void *) 0;
+    }
+
+    struct array_t output;
+    while (true) {
+        code = sdr_server_client_read_stream(&output.output, &output.output_len, worker->client);
+        if (code != 0) {
+            break;
+        }
+        linked_list_foreach(&output, &sdr_worker_foreach, worker->dsp_configs);
+        //FIXME mutex for iterating dsp_configs
+
+    }
     return (void *) 0;
 }
 
-int sdr_worker_create(struct sdr_worker_rx *rx, sdr_worker **worker) {
+int sdr_worker_create(int client_socket, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -36,8 +65,16 @@ int sdr_worker_create(struct sdr_worker_rx *rx, sdr_worker **worker) {
 
     result->dsp_configs = NULL;
     result->rx = rx;
+    result->client_socket = client_socket;
+
+    int code = sdr_server_client_create(sdr_server_address, sdr_server_port, max_output_buffer_length, &result->client);
+    if (code != 0) {
+        sdr_worker_destroy(result);
+        return code;
+    }
+
     pthread_t sdr_thread;
-    int code = pthread_create(&sdr_thread, NULL, &sdr_worker_callback, result);
+    code = pthread_create(&sdr_thread, NULL, &sdr_worker_callback, result);
     if (code != 0) {
         sdr_worker_destroy(result);
         return code;

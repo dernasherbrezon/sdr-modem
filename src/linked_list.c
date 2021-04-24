@@ -32,6 +32,14 @@ int linked_list_add(void *data, void (*destructor)(void *), linked_list **list) 
     return 0;
 }
 
+void linked_list_foreach(void *arg, void (*foreach)(void *arg, void *data), linked_list *list) {
+    linked_list *cur = list;
+    while (cur != NULL) {
+        foreach(arg, cur->data);
+        cur = cur->next;
+    }
+}
+
 void *linked_list_find(void *id, bool (*selector)(void *id, void *data), linked_list *list) {
     linked_list *cur_node = list;
     while (cur_node != NULL) {

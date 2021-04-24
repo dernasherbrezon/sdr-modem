@@ -109,6 +109,7 @@ int read_client_config(int client_socket, int client_id, struct server_config *s
     rx->rx_destination = req->rx_destination;
     rx->rx_sampling_freq = req->rx_sampling_freq;
     rx->rx_center_freq = req->rx_center_freq;
+    rx->band_freq = req->rx_sdr_server_band_freq;
     result->rx = rx;
 
     *config = result;
@@ -313,7 +314,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
         code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
     } else {
         sdr_worker *sdr = NULL;
-        code = sdr_worker_create(config->rx, &sdr);
+        code = sdr_worker_create(config->client_socket, config->rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
         if (code == 0) {
             code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
             if (code != 0) {

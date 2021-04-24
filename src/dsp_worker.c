@@ -30,6 +30,10 @@ bool dsp_worker_find_by_id(void *id, void *data) {
     return false;
 }
 
+void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker) {
+    queue_put(output, output_len, worker->queue);
+}
+
 int write_to_file(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
     size_t n_written;
     if (worker->file != NULL) {
