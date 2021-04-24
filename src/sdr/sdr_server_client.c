@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "../tcp_utils.h"
 #include "sdr_server_client.h"
 
 struct sdr_server_client_t {
@@ -56,47 +57,12 @@ int sdr_server_client_create(char *addr, int port, uint32_t max_output_buffer_le
     return 0;
 }
 
-int sdr_server_client_write_data(void *buffer, size_t total_len, sdr_server_client *client) {
-    size_t left = total_len;
-    while (left > 0) {
-        int written = write(client->client_socket, buffer + (total_len - left), left);
-        if (written < 0) {
-            perror("<3>unable to write the message");
-            return -1;
-        }
-        left -= written;
-    }
-    return 0;
-}
-
-int sdr_server_client_read_data(void *result, size_t len, sdr_server_client *client) {
-    size_t left = len;
-    while (left > 0) {
-        int received = recv(client->client_socket, (char *) result + (len - left), left, 0);
-        if (received < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                return -errno;
-            }
-            if (errno == EINTR) {
-                continue;
-            }
-            return -1;
-        }
-        // client has closed the socket
-        if (received == 0) {
-            return -1;
-        }
-        left -= received;
-    }
-    return 0;
-}
-
 int sdr_server_client_read_response(struct sdr_server_response **response, sdr_server_client *client) {
     struct sdr_server_message_header *header = malloc(sizeof(struct sdr_server_message_header));
     if (header == NULL) {
         return -ENOMEM;
     }
-    int code = sdr_server_client_read_data(header, sizeof(struct sdr_server_message_header), client);
+    int code = tcp_utils_read_data(header, sizeof(struct sdr_server_message_header), client->client_socket);
     if (code != 0) {
         free(header);
         return code;
@@ -117,7 +83,7 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
     if (result == NULL) {
         return -ENOMEM;
     }
-    code = sdr_server_client_read_data(result, sizeof(struct sdr_server_response), client);
+    code = tcp_utils_read_data(result, sizeof(struct sdr_server_response), client->client_socket);
     if (code != 0) {
         free(result);
         return code;
@@ -127,7 +93,7 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
 }
 
 int sdr_server_client_read_stream(float complex **output, size_t *output_len, sdr_server_client *client) {
-    int code = sdr_server_client_read_data(client->output, sizeof(float complex) * client->output_len, client);
+    int code = tcp_utils_read_data(client->output, sizeof(float complex) * client->output_len, client->client_socket);
     if (code != 0) {
         return code;
     }
@@ -154,7 +120,7 @@ int sdr_server_client_request(struct sdr_server_request request, struct sdr_serv
     }
     memcpy(buffer, &header, sizeof(struct sdr_server_message_header));
     memcpy(buffer + sizeof(struct sdr_server_message_header), &request, sizeof(struct sdr_server_request));
-    int code = sdr_server_client_write_data(buffer, total_len, client);
+    int code = tcp_utils_write_data(buffer, total_len, client->client_socket);
     free(buffer);
     if (code != 0) {
         return code;
@@ -168,7 +134,7 @@ void sdr_server_client_destroy(sdr_server_client *client) {
     }
     while (true) {
         struct sdr_server_message_header header;
-        int code = sdr_server_client_read_data(&header, sizeof(struct sdr_server_message_header), client);
+        int code = tcp_utils_read_data(&header, sizeof(struct sdr_server_message_header), client->client_socket);
         if (code < -1) {
             // read timeout happened. it's ok.
             // client already sent all information we need

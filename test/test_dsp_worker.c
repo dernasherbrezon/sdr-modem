@@ -64,8 +64,12 @@ START_TEST (test_create_delete) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
     req = create_request();
-    code = dsp_worker_create(1, 0, config, req, &worker);
+    uint32_t id = 1;
+    code = dsp_worker_create(id, 0, config, req, &worker);
     ck_assert_int_eq(code, 0);
+
+    bool result = dsp_worker_find_by_id(&id, worker);
+    ck_assert_int_eq(result, 1);
 }
 END_TEST
 

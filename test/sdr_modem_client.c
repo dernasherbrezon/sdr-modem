@@ -1,0 +1,95 @@
+#include "sdr_modem_client.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include <errno.h>
+#include "../src/tcp_utils.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <unistd.h>
+
+struct sdr_modem_client_t {
+    int client_socket;
+};
+
+int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *tcp_client) {
+    struct message_header *header = malloc(sizeof(struct message_header));
+    if (header == NULL) {
+        return -ENOMEM;
+    }
+    int code = tcp_utils_read_data(header, sizeof(struct message_header), tcp_client->client_socket);
+    if (code != 0) {
+        free(header);
+        return code;
+    }
+    struct response *result = malloc(sizeof(struct response));
+    if (result == NULL) {
+        free(header);
+        return -ENOMEM;
+    }
+    code = tcp_utils_read_data(result, sizeof(struct response), tcp_client->client_socket);
+    if (code != 0) {
+        free(header);
+        free(result);
+        return code;
+    }
+    *response_header = header;
+    *resp = result;
+    return 0;
+}
+
+int sdr_modem_client_create(const char *addr, int port, sdr_modem_client **client) {
+    struct sdr_modem_client_t *result = malloc(sizeof(struct sdr_modem_client_t));
+    if (result == NULL) {
+        return -ENOMEM;
+    }
+    *result = (struct sdr_modem_client_t) {0};
+
+    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket == -1) {
+        free(result);
+        fprintf(stderr, "<3>socket creation failed: %d\n", client_socket);
+        return -1;
+    }
+    result->client_socket = client_socket;
+
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = inet_addr(addr);
+    address.sin_port = htons(port);
+    int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
+    if (code != 0) {
+        free(result);
+        fprintf(stderr, "<3>connection with the server failed: %d\n", code);
+        return -1;
+    }
+    fprintf(stdout, "connected to the server..\n");
+
+    *client = result;
+    return 0;
+}
+
+void sdr_modem_client_destroy(sdr_modem_client *client) {
+    if (client == NULL) {
+        return;
+    }
+    close(client->client_socket);
+    free(client);
+}
+
+void sdr_modem_client_destroy_gracefully(sdr_modem_client *client) {
+    while (true) {
+        struct message_header header;
+        int code = tcp_utils_read_data(&header, sizeof(struct message_header), client->client_socket);
+        if (code < -1) {
+            // read timeout happened. it's ok.
+            // client already sent all information we need
+            continue;
+        }
+        if (code == -1) {
+            break;
+        }
+    }
+    fprintf(stdout, "disconnected from the server..\n");
+    sdr_modem_client_destroy(client);
+}
