@@ -17,10 +17,10 @@
 #include "api_utils.h"
 #include "dsp_worker.h"
 #include "sdr_worker.h"
+#include "tcp_utils.h"
 
 struct tcp_worker {
     struct request *req;
-    struct sdr_worker_rx *rx;
     int client_socket;
     uint32_t id;
     atomic_bool is_running;
@@ -45,35 +45,6 @@ void log_client(struct sockaddr_in *address, uint32_t id) {
     char str[INET_ADDRSTRLEN];
     const char *ptr = inet_ntop(AF_INET, &address->sin_addr, str, sizeof(str));
     printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
-}
-
-int read_struct(int socket, void *result, size_t len) {
-    size_t left = len;
-    while (left > 0) {
-        int received = recv(socket, (char *) result + (len - left), left, 0);
-        if (received < 0) {
-            // will happen on timeout
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                return -errno;
-            }
-            // SIGINT and SIGTERM handled in main
-            // all other signals should be ignored and syscall should be retried
-            // For example, EINTR happens when gdb disconnects
-            if (errno == EINTR) {
-                continue;
-            }
-            // other types of errors
-            // log and disconnect
-            perror("unable to read struct");
-            return -1;
-        }
-        // client has closed the socket
-        if (received == 0) {
-            return -1;
-        }
-        left -= received;
-    }
-    return 0;
 }
 
 int tcp_worker_convert(struct request *req, struct sdr_worker_rx **result) {
@@ -150,18 +121,9 @@ int write_message(int socket, uint8_t status, uint8_t details) {
     memcpy(buffer, &header, sizeof(struct message_header));
     memcpy(buffer + sizeof(struct message_header), &resp, sizeof(struct response));
 
-    size_t left = total_len;
-    while (left > 0) {
-        int written = write(socket, buffer + (total_len - left), left);
-        if (written < 0) {
-            perror("unable to write the message");
-            free(buffer);
-            return -1;
-        }
-        left -= written;
-    }
+    int code = tcp_utils_write_data(buffer, total_len, socket);
     free(buffer);
-    return 0;
+    return code;
 }
 
 void respond_failure(int client_socket, uint8_t status, uint8_t details) {
@@ -174,7 +136,7 @@ static void *tcp_worker_callback(void *arg) {
     fprintf(stdout, "[%d] tcp_worker is starting\n", worker->id);
     while (worker->is_running) {
         struct message_header header;
-        int code = read_struct(worker->client_socket, &header, sizeof(struct message_header));
+        int code = tcp_utils_read_data(&header, sizeof(struct message_header), worker->client_socket);
         if (code < -1) {
             // read timeout happened. it's ok.
             // client already sent all information we need
@@ -195,13 +157,18 @@ static void *tcp_worker_callback(void *arg) {
         fprintf(stdout, "[%d] client requested disconnect\n", worker->id);
         break;
     }
-    pthread_mutex_lock(&worker->server->mutex);
-    uint32_t id = worker->id;
-    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
-    pthread_mutex_unlock(&worker->server->mutex);
     worker->is_running = false;
     close(worker->client_socket);
     return (void *) 0;
+}
+
+bool tcp_worker_equals_by_id(void *arg, void *data) {
+    uint32_t *id = (uint32_t *) arg;
+    struct tcp_worker *worker = (struct tcp_worker *) data;
+    if (worker->id == *id) {
+        return true;
+    }
+    return false;
 }
 
 bool tcp_worker_is_stopped(void *data) {
@@ -213,6 +180,9 @@ bool tcp_worker_is_stopped(void *data) {
 }
 
 void tcp_worker_destroy(void *data) {
+    if (data == NULL) {
+        return;
+    }
     struct tcp_worker *worker = (struct tcp_worker *) data;
     fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->id);
     worker->is_running = false;
@@ -221,10 +191,10 @@ void tcp_worker_destroy(void *data) {
     if (worker->req != NULL) {
         free(worker->req);
     }
-    if (worker->rx != NULL) {
-        free(worker->rx);
-    }
+    uint32_t id = worker->id;
+    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
     free(worker);
+    fprintf(stdout, "[%d] tcp_worker stopped\n", id);
 }
 
 void cleanup_terminated_threads(tcp_server *server) {
@@ -249,32 +219,37 @@ void handle_new_client(int client_socket, tcp_server *server) {
     *tcp_worker = (struct tcp_worker) {0};
     tcp_worker->id = server->client_counter;
 
-    struct request *req = NULL;
-    if (read_struct(client_socket, &req, sizeof(struct request)) < 0) {
+    struct request *req = malloc(sizeof(struct request));
+    if (req == NULL) {
+        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        tcp_worker_destroy(tcp_worker);
+        return;
+    }
+    *req = (struct request) {0};
+    tcp_worker->req = req;
+
+    if (tcp_utils_read_data(tcp_worker->req, sizeof(struct request), client_socket) < 0) {
         fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
-    api_network_to_host(req);
+    api_network_to_host(tcp_worker->req);
 
-    if (validate_client_request(req, tcp_worker->id) < 0) {
+    if (validate_client_request(tcp_worker->req, tcp_worker->id) < 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
 
-    tcp_worker->req = req;
-
     struct sdr_worker_rx *rx = NULL;
-    int code = tcp_worker_convert(req, &rx);
+    int code = tcp_worker_convert(tcp_worker->req, &rx);
     if (code != 0) {
         fprintf(stderr, "<3>[%d] unable to create rx\n", tcp_worker->id);
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
-    tcp_worker->rx = rx;
     tcp_worker->is_running = true;
     tcp_worker->client_socket = client_socket;
     tcp_worker->server = server;
@@ -304,35 +279,53 @@ void handle_new_client(int client_socket, tcp_server *server) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
-        pthread_mutex_lock(&server->mutex);
+        pthread_mutex_unlock(&server->mutex);
         return;
     }
 
     //re-use sdr connections
     //this will allow demodulating different modes using the same data
-    sdr_worker *sdr = linked_list_find(tcp_worker->rx, &sdr_worker_find_closest, server->sdr_configs);
-    if (sdr != NULL) {
-        code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
-    } else {
-        code = sdr_worker_create(tcp_worker->rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
-        if (code == 0) {
-            code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
-            if (code != 0) {
-                // the rest of objects should be destroyed below
-                sdr_worker_destroy(sdr);
-            }
+    sdr_worker *sdr = linked_list_find(rx, &sdr_worker_find_closest, server->sdr_configs);
+    if (sdr == NULL) {
+        // take id from the first tcp client
+        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
+        if (code != 0) {
+            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
+            dsp_worker_destroy(dsp_worker);
+            pthread_mutex_unlock(&server->mutex);
+            return;
         }
+
+        code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
+        if (code != 0) {
+            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
+            dsp_worker_destroy(dsp_worker);
+            sdr_worker_destroy(sdr);
+            pthread_mutex_unlock(&server->mutex);
+            return;
+        }
+    } else {
+        free(rx);
     }
+
+    code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
+
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        tcp_worker_destroy(tcp_worker);
+        //this will destroy sdr worker only if none other dsp workers were assigned
+        linked_list_destroy_by_id(&tcp_worker->id, &sdr_worker_destroy_by_id, &server->sdr_configs);
+        linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
         dsp_worker_destroy(dsp_worker);
-    } else {
-        write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-        fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", tcp_worker->id,
-                api_demod_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
-                tcp_worker->req->rx_sampling_freq, tcp_worker->req->rx_destination);
+        pthread_mutex_unlock(&server->mutex);
+        return;
     }
+
+    write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
+    fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", tcp_worker->id,
+            api_demod_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
+            tcp_worker->req->rx_sampling_freq, tcp_worker->req->rx_destination);
     pthread_mutex_unlock(&server->mutex);
 }
 
@@ -359,7 +352,7 @@ static void *acceptor_worker(void *arg) {
         server->client_counter++;
 
         struct message_header header;
-        if (read_struct(client_socket, &header, sizeof(struct message_header)) < 0) {
+        if (tcp_utils_read_data(&header, sizeof(struct message_header), client_socket) < 0) {
             fprintf(stderr, "<3>[%d] unable to read request header fully\n", server->client_counter);
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
             continue;
@@ -398,8 +391,10 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
     if (result == NULL) {
         return -ENOMEM;
     }
+    *result = (struct tcp_server_t) {0};
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     result->tcp_workers = NULL;
+    result->sdr_configs = NULL;
 
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == 0) {

@@ -3,11 +3,12 @@
 #include <check.h>
 #include "../src/tcp_server.h"
 #include "sdr_modem_client.h"
+#include "utils.h"
 
 tcp_server *server = NULL;
 struct server_config *config = NULL;
+struct request *req = NULL;
 sdr_modem_client *client0 = NULL;
-
 
 void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
     struct message_header *response_header = NULL;
@@ -30,11 +31,26 @@ START_TEST (test_normal) {
     code = sdr_modem_client_create("127.0.0.1", 8091, &client0);
     ck_assert_int_eq(code, 0);
 
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_REQUEST;
+    req = create_request();
+    code = sdr_modem_write_request(&header, req, client0);
+    ck_assert_int_eq(code, 0);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
 }
 
 END_TEST
 
 void teardown() {
+    if (req != NULL) {
+        free(req);
+        req = NULL;
+    }
+    if (client0 != NULL) {
+        sdr_modem_client_destroy(client0);
+        client0 = NULL;
+    }
     if (server != NULL) {
         tcp_server_destroy(server);
         server = NULL;
@@ -42,10 +58,6 @@ void teardown() {
     if (config != NULL) {
         server_config_destroy(config);
         config = NULL;
-    }
-    if (client0 != NULL) {
-        sdr_modem_client_destroy(client0);
-        client0 = NULL;
     }
 }
 

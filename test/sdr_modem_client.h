@@ -7,7 +7,9 @@ typedef struct sdr_modem_client_t sdr_modem_client;
 
 int sdr_modem_client_create(const char *addr, int port, sdr_modem_client **client);
 
-int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *tcp_client);
+int sdr_modem_write_request(struct message_header *header, struct request *req, sdr_modem_client *client);
+
+int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client);
 
 void sdr_modem_client_destroy(sdr_modem_client *client);
 // this will wait until server release all resources, stop all threads and closes connection

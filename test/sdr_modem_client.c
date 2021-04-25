@@ -5,19 +5,43 @@
 #include "../src/tcp_utils.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 struct sdr_modem_client_t {
     int client_socket;
 };
 
-int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *tcp_client) {
+int sdr_modem_write_request(struct message_header *header, struct request *req, sdr_modem_client *client) {
+    req->rx_center_freq = htonl(req->rx_center_freq);
+    req->rx_sampling_freq = htonl(req->rx_sampling_freq);
+    req->rx_sdr_server_band_freq = htonl(req->rx_sdr_server_band_freq);
+    req->latitude = htonl(req->latitude);
+    req->longitude = htonl(req->longitude);
+    req->altitude = htonl(req->altitude);
+    req->demod_baud_rate = htonl(req->demod_baud_rate);
+    req->demod_fsk_deviation = htonl(req->demod_fsk_deviation);
+    req->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
+
+    size_t total_len = sizeof(struct message_header) + sizeof(struct request);
+    char *buffer = malloc(total_len);
+    if (buffer == NULL) {
+        return -ENOMEM;
+    }
+    memcpy(buffer, header, sizeof(struct message_header));
+    memcpy(buffer + sizeof(struct message_header), req, sizeof(struct request));
+
+    int code = tcp_utils_write_data(buffer, total_len, client->client_socket);
+    free(buffer);
+    return code;
+}
+
+int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client) {
     struct message_header *header = malloc(sizeof(struct message_header));
     if (header == NULL) {
         return -ENOMEM;
     }
-    int code = tcp_utils_read_data(header, sizeof(struct message_header), tcp_client->client_socket);
+    int code = tcp_utils_read_data(header, sizeof(struct message_header), client->client_socket);
     if (code != 0) {
         free(header);
         return code;
@@ -27,7 +51,7 @@ int sdr_modem_read_response(struct message_header **response_header, struct resp
         free(header);
         return -ENOMEM;
     }
-    code = tcp_utils_read_data(result, sizeof(struct response), tcp_client->client_socket);
+    code = tcp_utils_read_data(result, sizeof(struct response), client->client_socket);
     if (code != 0) {
         free(header);
         free(result);

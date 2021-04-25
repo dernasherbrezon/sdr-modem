@@ -2,32 +2,11 @@
 #include <stdio.h>
 #include <check.h>
 #include "../src/dsp_worker.h"
+#include "utils.h"
 
 dsp_worker *worker = NULL;
 struct server_config *config = NULL;
 struct request *req = NULL;
-
-struct request *create_request() {
-    struct request *result = malloc(sizeof(struct request));
-    ck_assert(result != NULL);
-    result->rx_sampling_freq = 48000;
-    result->rx_sdr_server_band_freq = 437525000;
-    result->rx_center_freq = 437525000;
-    result->altitude = 0;
-    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
-    memcpy(result->tle, tle, sizeof(tle));
-    result->latitude = 53.72 * 10E6;
-    result->longitude = 47.57F * 10E6;
-    result->correct_doppler = REQUEST_CORRECT_DOPPLER_YES;
-    result->rx_destination = REQUEST_RX_DESTINATION_FILE;
-    result->demod_type = REQUEST_DEMOD_TYPE_FSK;
-    result->demod_fsk_use_dc_block = REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES;
-    result->demod_fsk_transition_width = 2000;
-    result->demod_decimation = 1;
-    result->demod_fsk_deviation = 5000;
-    result->demod_baud_rate = 4800;
-    return result;
-}
 
 START_TEST (test_invalid_queue_size) {
     int code = server_config_create(&config, "full.conf");

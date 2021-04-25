@@ -3,6 +3,9 @@
 
 #include <complex.h>
 #include <stdlib.h>
+#include "../src/api.h"
+
+struct request *create_request();
 
 void setup_input_data(float **input, size_t input_offset, size_t len);
 

@@ -11,7 +11,7 @@
 struct sdr_worker_t {
     struct sdr_worker_rx *rx;
     sdr_server_client *client;
-
+    uint32_t id;
     linked_list *dsp_configs;
     pthread_t sdr_thread;
     pthread_mutex_t mutex;
@@ -30,6 +30,7 @@ void sdr_worker_foreach(void *arg, void *data) {
 
 static void *sdr_worker_callback(void *arg) {
     sdr_worker *worker = (sdr_worker *) arg;
+    fprintf(stdout, "[%d] sdr_worker is starting\n", worker->id);
     struct array_t output;
     while (true) {
         int code = sdr_server_client_read_stream(&output.output, &output.output_len, worker->client);
@@ -43,7 +44,7 @@ static void *sdr_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int sdr_worker_create(struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
+int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -51,6 +52,7 @@ int sdr_worker_create(struct sdr_worker_rx *rx, char *sdr_server_address, int sd
     // init all fields with 0 so that destroy_* method would work
     *result = (struct sdr_worker_t) {0};
 
+    result->id = id;
     result->dsp_configs = NULL;
     result->rx = rx;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
@@ -69,12 +71,12 @@ int sdr_worker_create(struct sdr_worker_rx *rx, char *sdr_server_address, int sd
     struct sdr_server_response *response = NULL;
     code = sdr_server_client_request(req, &response, result->client);
     if (code != 0) {
-        fprintf(stderr, "<3>unable to send request to sdr server\n");
+        fprintf(stderr, "<3>[%d] unable to send request to sdr server\n", result->id);
         sdr_worker_destroy(result);
         return code;
     }
     if (response->status != SDR_SERVER_RESPONSE_STATUS_SUCCESS) {
-        fprintf(stderr, "<3>request to sdr server rejected: %d\n", response->details);
+        fprintf(stderr, "<3>[%d] request to sdr server rejected: %d\n", result->id, response->details);
         sdr_worker_destroy(result);
         free(response);
         return -1;
@@ -106,6 +108,9 @@ bool sdr_worker_find_closest(void *id, void *data) {
 }
 
 void sdr_worker_destroy(void *data) {
+    if (data == NULL) {
+        return;
+    }
     sdr_worker *worker = (sdr_worker *) data;
     // terminate reading from sdr server first
     if (worker->client != NULL) {
