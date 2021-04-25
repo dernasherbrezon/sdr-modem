@@ -57,7 +57,7 @@ int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_ad
     result->rx = rx;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-    int code = sdr_server_client_create(sdr_server_address, sdr_server_port, max_output_buffer_length, &result->client);
+    int code = sdr_server_client_create(result->id, sdr_server_address, sdr_server_port, max_output_buffer_length, &result->client);
     if (code != 0) {
         sdr_worker_destroy(result);
         return code;
