@@ -127,7 +127,7 @@ int server_config_create(struct server_config **config, const char *path) {
             fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
             return -1;
         }
-        fprintf(stdout, "RX sdr: %s\n", rx_sdr_type_str);
+        fprintf(stdout, "rx sdr: %s\n", rx_sdr_type_str);
     }
     result->rx_sdr_type = rx_sdr_type;
     if (result->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER) {
