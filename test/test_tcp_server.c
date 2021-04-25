@@ -4,11 +4,13 @@
 #include "../src/tcp_server.h"
 #include "sdr_modem_client.h"
 #include "utils.h"
+#include "sdr_server_mock.h"
 
 tcp_server *server = NULL;
 struct server_config *config = NULL;
 struct request *req = NULL;
 sdr_modem_client *client0 = NULL;
+sdr_server_mock *mock_server = NULL;
 
 void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
     struct message_header *response_header = NULL;
@@ -27,8 +29,10 @@ START_TEST (test_normal) {
     ck_assert_int_eq(code, 0);
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
+    code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, &mock_server);
+    ck_assert_int_eq(code, 0);
 
-    code = sdr_modem_client_create("127.0.0.1", 8091, &client0);
+    code = sdr_modem_client_create(config->bind_address, config->port, &client0);
     ck_assert_int_eq(code, 0);
 
     struct message_header header;
@@ -58,6 +62,10 @@ void teardown() {
     if (config != NULL) {
         server_config_destroy(config);
         config = NULL;
+    }
+    if (mock_server != NULL) {
+        sdr_server_mock_destroy(mock_server);
+        mock_server = NULL;
     }
 }
 

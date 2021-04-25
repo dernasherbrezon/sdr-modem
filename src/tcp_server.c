@@ -61,7 +61,7 @@ int tcp_worker_convert(struct request *req, struct sdr_worker_rx **result) {
     return 0;
 }
 
-int validate_client_request(struct request *req, uint32_t client_id) {
+int validate_client_request(struct request *req, uint32_t client_id, struct server_config *config) {
     if (req->rx_center_freq == 0) {
         fprintf(stderr, "<3>[%d] missing rx_center_freq parameter\n", client_id);
         return -1;
@@ -74,7 +74,7 @@ int validate_client_request(struct request *req, uint32_t client_id) {
         fprintf(stderr, "<3>[%d] unknown rx_destination: %d\n", client_id, req->rx_destination);
         return -1;
     }
-    if (req->rx_sdr_server_band_freq == 0) {
+    if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
         fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
         return -1;
     }
@@ -236,7 +236,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
     }
     api_network_to_host(tcp_worker->req);
 
-    if (validate_client_request(tcp_worker->req, tcp_worker->id) < 0) {
+    if (validate_client_request(tcp_worker->req, tcp_worker->id, server->server_config) < 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;

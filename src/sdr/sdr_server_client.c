@@ -51,7 +51,7 @@ int sdr_server_client_create(char *addr, int port, uint32_t max_output_buffer_le
         fprintf(stderr, "<3>connection with the server failed: %d\n", code);
         return -1;
     }
-    fprintf(stdout, "connected to the server..\n");
+    fprintf(stdout, "connected to the sdr server..\n");
 
     *client = result;
     return 0;
@@ -135,12 +135,7 @@ void sdr_server_client_destroy(sdr_server_client *client) {
     while (true) {
         struct sdr_server_message_header header;
         int code = tcp_utils_read_data(&header, sizeof(struct sdr_server_message_header), client->client_socket);
-        if (code < -1) {
-            // read timeout happened. it's ok.
-            // client already sent all information we need
-            continue;
-        }
-        if (code == -1) {
+        if (code != 0) {
             break;
         }
     }
