@@ -111,6 +111,17 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
 }
 
 void doppler_process(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result) {
+    if (input == NULL || input_len == 0) {
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
+    if (input_len > result->output_len) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %d\n", input_len, result->output_len);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     // update correction frequency every X samples.
     // This would assume sample rate is taken evenly during the second
     if (result->current_samples >= result->next_update_samples) {

@@ -13,6 +13,30 @@ FILE *expected_file = NULL;
 uint8_t *expected_buffer = NULL;
 doppler *dopp = NULL;
 
+START_TEST (test_invalid_arguments) {
+    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
+    int max_buffer_length = 2000;
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
+    ck_assert_int_eq(code, 0);
+
+    float complex *output = NULL;
+    size_t output_len = 0;
+    doppler_process(NULL, 12, &output, &output_len, dopp);
+    ck_assert(output == NULL);
+
+    const float buffer[2] = {1, 2};
+    doppler_process((float complex *) buffer, 0, &output, &output_len, dopp);
+    ck_assert(output == NULL);
+
+    size_t input_buffer_len = max_buffer_length + 1;
+    input_buffer = malloc(sizeof(float complex) * input_buffer_len);
+    ck_assert(input_buffer != NULL);
+    doppler_process((float complex *) input_buffer, input_buffer_len, &output, &output_len, dopp);
+    ck_assert(output == NULL);
+}
+
+END_TEST
+
 START_TEST (test_success) {
     char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
     int max_buffer_length = 2000;
@@ -84,6 +108,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_success);
+    tcase_add_test(tc_core, test_invalid_arguments);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
