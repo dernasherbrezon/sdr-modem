@@ -15,6 +15,41 @@ void assert_buffer(const float expected[], size_t expected_len) {
     complete_buffer_processing(queue_obj);
 }
 
+START_TEST(test_invalid_arguments) {
+    int code = create_queue(4, 10, &queue_obj);
+    ck_assert_int_eq(code, 0);
+
+    // this should be ignored
+    queue_put(NULL, 25, queue_obj);
+
+    const float buffer[2] = {1, 2};
+    queue_put((const float complex *) buffer, 0, queue_obj);
+
+    const float buffer2[2] = {1, 2};
+    queue_put((const float complex *) buffer2, sizeof(buffer2) / sizeof(float) / 2, queue_obj);
+
+    assert_buffer(buffer2, 2 / 2);
+}
+
+END_TEST
+
+START_TEST(test_more_than_max_buffer) {
+    int code = create_queue(4, 10, &queue_obj);
+    ck_assert_int_eq(code, 0);
+
+    // this should be ignored
+    const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
+    queue_put((const float complex *) buffer, buffer_len, queue_obj);
+
+    const float buffer2[2] = {1, 2};
+    queue_put((const float complex *) buffer2, sizeof(buffer2) / sizeof(float) / 2, queue_obj);
+
+    assert_buffer(buffer2, 2 / 2);
+}
+
+END_TEST
+
 START_TEST (test_terminated_only_after_fully_processed) {
     int code = create_queue(262144, 10, &queue_obj);
     ck_assert_int_eq(code, 0);
@@ -80,6 +115,8 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_put_take);
     tcase_add_test(tc_core, test_overflow);
     tcase_add_test(tc_core, test_terminated_only_after_fully_processed);
+    tcase_add_test(tc_core, test_more_than_max_buffer);
+    tcase_add_test(tc_core, test_invalid_arguments);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

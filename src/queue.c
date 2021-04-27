@@ -25,6 +25,7 @@ struct queue_t {
     pthread_cond_t condition;
 
     int poison_pill;
+    uint32_t buffer_size;
 };
 
 void destroy_nodes(struct queue_node *nodes) {
@@ -83,12 +84,20 @@ int create_queue(uint32_t buffer_size, uint16_t queue_size, queue **queue) {
     result->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     result->poison_pill = 0;
+    result->buffer_size = buffer_size;
 
     *queue = result;
     return 0;
 }
 
 void queue_put(const float complex *buffer, const size_t len, queue *queue) {
+    if (buffer == NULL || len == 0) {
+        return;
+    }
+    if (len > queue->buffer_size) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %d\n", len, queue->buffer_size);
+        return;
+    }
     pthread_mutex_lock(&queue->mutex);
     struct queue_node *to_fill;
     if (queue->first_free_node == NULL) {
