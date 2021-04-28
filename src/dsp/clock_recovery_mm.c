@@ -54,7 +54,7 @@ clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float om
         return -ENOMEM;
     }
     result->history_offset = 0;
-    result->working_len_total = output_len + result->history_offset;
+    result->working_len_total = output_len + mmse_fir_interpolator_taps(result->interp);
     result->working_buffer = volk_malloc(sizeof(float) * result->working_len_total, volk_get_alignment());
     if (result->working_buffer == NULL) {
         clock_mm_destroy(result);
@@ -70,7 +70,7 @@ float slice(float x) {
 }
 
 static inline float branchless_clip(float x, float clip) {
-    return 0.5 * (fabsf(x + clip) - fabsf(x - clip));
+    return 0.5F * (fabsf(x + clip) - fabsf(x - clip));
 }
 
 void clock_mm_process(const float *input, size_t input_len, float **output, size_t *output_len, clock_mm *clock) {
@@ -79,7 +79,7 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
     int taps_len = mmse_fir_interpolator_taps(clock->interp);
     int ii = 0;                                  // input index
     int oo = 0;                                  // output index
-    int processed = 0;
+    int previous = 0;
     size_t working_len = clock->history_offset + input_len;
     size_t max_index = working_len - (taps_len - 1);
     float mm_val;
@@ -90,7 +90,7 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
                                                           clock->interp);
         mm_val = slice(clock->last_sample) * clock->output[oo] - slice(clock->output[oo]) * clock->last_sample;
         clock->last_sample = clock->output[oo];
-        processed = ii;
+        previous = ii;
 
         clock->omega = clock->omega + clock->gain_omega * mm_val;
         clock->omega = clock->omega_mid + branchless_clip(clock->omega - clock->omega_mid, clock->omega_lim);
@@ -100,8 +100,15 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
         oo++;
     }
 
-    clock->history_offset = working_len - processed;
-    memmove(clock->working_buffer, clock->working_buffer + processed, sizeof(float) * clock->history_offset);
+    size_t last_index;
+    if (ii > working_len) {
+        last_index = previous;
+    } else {
+        last_index = ii;
+    }
+    clock->history_offset = working_len - last_index;
+
+    memmove(clock->working_buffer, clock->working_buffer + last_index, sizeof(float) * clock->history_offset);
 
     *output = clock->output;
     *output_len = oo;
