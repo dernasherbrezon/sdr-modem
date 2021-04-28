@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 struct dsp_worker_t {
-    uint8_t rx_destination;
     uint32_t id;
     int client_socket;
     fsk_demod *fsk_demod;
@@ -35,13 +34,7 @@ void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker
 }
 
 int write_to_file(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
-    size_t n_written;
-    if (worker->file != NULL) {
-        n_written = fwrite(filter_output, sizeof(int8_t), filter_output_len, worker->file);
-    } else {
-        fprintf(stderr, "<3>unknown file output\n");
-        return -1;
-    }
+    size_t n_written = fwrite(filter_output, sizeof(int8_t), filter_output_len, worker->file);
     // if disk is full, then terminate the client
     if (n_written < filter_output_len) {
         return -1;
@@ -92,13 +85,10 @@ static void *dsp_worker_callback(void *arg) {
             continue;
         }
         int code;
-        if (worker->rx_destination == REQUEST_RX_DESTINATION_FILE) {
+        if (worker->file != NULL) {
             code = write_to_file(worker, demod_output, demod_output_len);
-        } else if (worker->rx_destination == REQUEST_RX_DESTINATION_SOCKET) {
-            code = write_to_socket(worker, demod_output, demod_output_len);
         } else {
-            fprintf(stderr, "<3>unknown destination: %d\n", worker->rx_destination);
-            code = -1;
+            code = write_to_socket(worker, demod_output, demod_output_len);
         }
 
         complete_buffer_processing(worker->queue);

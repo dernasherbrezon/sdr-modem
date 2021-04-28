@@ -24,7 +24,7 @@ int sdr_modem_write_request(struct message_header *header, struct request *req, 
     req->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
 
     size_t total_len = sizeof(struct message_header) + sizeof(struct request);
-    char *buffer = malloc(total_len);
+    uint8_t *buffer = malloc(total_len);
     if (buffer == NULL) {
         return -ENOMEM;
     }

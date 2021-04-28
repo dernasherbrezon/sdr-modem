@@ -117,7 +117,10 @@ int write_message(int socket, uint8_t status, uint8_t details) {
     // however populating structs and then serializing them into byte array
     // is more readable
     size_t total_len = sizeof(struct message_header) + sizeof(struct response);
-    char *buffer = malloc(total_len);
+    uint8_t *buffer = malloc(total_len);
+    if (buffer == NULL) {
+        return -ENOMEM;
+    }
     memcpy(buffer, &header, sizeof(struct message_header));
     memcpy(buffer + sizeof(struct message_header), &resp, sizeof(struct response));
 

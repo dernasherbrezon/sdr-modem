@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <complex.h>
 #include "../src/sdr/sdr_server_api.h"
 #include "../src/tcp_utils.h"
 
@@ -15,10 +16,14 @@ struct sdr_server_mock_t {
     int server_socket;
     volatile sig_atomic_t is_running;
     pthread_t acceptor_thread;
-    void (*handler)(int client_socket);
+
+    void (*handler)(int client_socket, sdr_server_mock *server);
+
+    float complex *input;
+    size_t input_len;
 };
 
-void mock_response_success(int client_socket) {
+void mock_response_success(int client_socket, sdr_server_mock *server) {
     struct sdr_server_message_header header;
     header.type = SDR_SERVER_TYPE_RESPONSE;
     header.protocol_version = SDR_SERVER_PROTOCOL_VERSION;
@@ -39,6 +44,18 @@ void mock_response_success(int client_socket) {
     memcpy(buffer + sizeof(struct sdr_server_message_header), &response, sizeof(struct sdr_server_response));
     tcp_utils_write_data(buffer, total_len, client_socket);
     free(buffer);
+
+    FILE *input_file = fopen("lucky7.cf32", "rb");
+    while (true) {
+        size_t actually_read = fread(server->input, sizeof(float complex), server->input_len, input_file);
+        if (actually_read == 0) {
+            break;
+        }
+        int code = tcp_utils_write_data((uint8_t *) server->input, sizeof(float complex) * server->input_len, client_socket);
+        if (code != 0) {
+            break;
+        }
+    }
     close(client_socket);
 }
 
@@ -61,14 +78,14 @@ static void *acceptor_worker(void *arg) {
             continue;
         }
 
-        server->handler(client_socket);
+        server->handler(client_socket, server);
     }
 
     printf("sdr server mock stopped\n");
     return (void *) 0;
 }
 
-int sdr_server_mock_create(const char *addr, int port, void (*handler)(int client_socket), sdr_server_mock **server) {
+int sdr_server_mock_create(const char *addr, int port, void (*handler)(int client_socket, sdr_server_mock *server), uint32_t max_output_buffer_length, sdr_server_mock **server) {
     struct sdr_server_mock_t *result = malloc(sizeof(struct sdr_server_mock_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -84,6 +101,8 @@ int sdr_server_mock_create(const char *addr, int port, void (*handler)(int clien
     result->server_socket = server_socket;
     result->is_running = true;
     result->handler = handler;
+    result->input_len = max_output_buffer_length;
+    result->input = malloc(sizeof(float complex) * result->input_len);
 
     int opt = 1;
     if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
@@ -133,7 +152,7 @@ int sdr_server_mock_create(const char *addr, int port, void (*handler)(int clien
 }
 
 void sdr_server_mock_destroy(sdr_server_mock *server) {
-    if( server == NULL ) {
+    if (server == NULL) {
         return;
     }
     server->is_running = false;
@@ -145,5 +164,8 @@ void sdr_server_mock_destroy(sdr_server_mock *server) {
     }
     pthread_join(server->acceptor_thread, NULL);
 
+    if (server->input != NULL) {
+        free(server->input);
+    }
     free(server);
 }

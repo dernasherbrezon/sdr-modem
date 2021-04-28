@@ -79,6 +79,7 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
     int taps_len = mmse_fir_interpolator_taps(clock->interp);
     int ii = 0;                                  // input index
     int oo = 0;                                  // output index
+    int processed = 0;
     size_t working_len = clock->history_offset + input_len;
     size_t max_index = working_len - (taps_len - 1);
     float mm_val;
@@ -89,6 +90,7 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
                                                           clock->interp);
         mm_val = slice(clock->last_sample) * clock->output[oo] - slice(clock->output[oo]) * clock->last_sample;
         clock->last_sample = clock->output[oo];
+        processed = ii;
 
         clock->omega = clock->omega + clock->gain_omega * mm_val;
         clock->omega = clock->omega_mid + branchless_clip(clock->omega - clock->omega_mid, clock->omega_lim);
@@ -98,8 +100,8 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
         oo++;
     }
 
-    clock->history_offset = working_len - ii;
-    memmove(clock->working_buffer, clock->working_buffer + ii, sizeof(float) * clock->history_offset);
+    clock->history_offset = working_len - processed;
+    memmove(clock->working_buffer, clock->working_buffer + processed, sizeof(float) * clock->history_offset);
 
     *output = clock->output;
     *output_len = oo;

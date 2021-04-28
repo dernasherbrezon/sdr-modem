@@ -12,6 +12,9 @@ struct request *req = NULL;
 sdr_modem_client *client0 = NULL;
 sdr_server_mock *mock_server = NULL;
 
+FILE *expected_file = NULL;
+uint8_t *expected_buffer = NULL;
+
 void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
     struct message_header *response_header = NULL;
     struct response *resp = NULL;
@@ -24,12 +27,14 @@ void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uin
     free(response_header);
 }
 
+//FIXME test unable to connect to sdr server
+
 START_TEST (test_normal) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
-    code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, &mock_server);
+    code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
     ck_assert_int_eq(code, 0);
 
     code = sdr_modem_client_create(config->bind_address, config->port, &client0);
@@ -66,6 +71,14 @@ void teardown() {
     if (mock_server != NULL) {
         sdr_server_mock_destroy(mock_server);
         mock_server = NULL;
+    }
+    if (expected_file != NULL) {
+        fclose(expected_file);
+        expected_file = NULL;
+    }
+    if (expected_buffer != NULL) {
+        free(expected_buffer);
+        expected_buffer = NULL;
     }
 }
 

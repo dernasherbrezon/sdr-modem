@@ -117,7 +117,7 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
         return;
     }
     if (input_len > result->output_len) {
-        fprintf(stderr, "<3>requested buffer %zu is more than max: %d\n", input_len, result->output_len);
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, result->output_len);
         *output = NULL;
         *output_len = 0;
         return;
