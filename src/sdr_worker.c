@@ -22,7 +22,7 @@ struct array_t {
     size_t output_len;
 };
 
-void sdr_worker_foreach(void *arg, void *data) {
+void sdr_worker_foreach_put(void *arg, void *data) {
     struct array_t *output = (struct array_t *) arg;
     dsp_worker *worker = (dsp_worker *) data;
     dsp_worker_put(output->output, output->output_len, worker);
@@ -38,9 +38,14 @@ static void *sdr_worker_callback(void *arg) {
             break;
         }
         pthread_mutex_lock(&worker->mutex);
-        linked_list_foreach(&output, &sdr_worker_foreach, worker->dsp_configs);
+        linked_list_foreach(&output, &sdr_worker_foreach_put, worker->dsp_configs);
         pthread_mutex_unlock(&worker->mutex);
     }
+    //this would close all client sockets
+    //and initiate cascade shutdown of sdr and dsp workers
+    pthread_mutex_lock(&worker->mutex);
+    linked_list_foreach(NULL, &dsp_worker_close_socket, worker->dsp_configs);
+    pthread_mutex_unlock(&worker->mutex);
     return (void *) 0;
 }
 
@@ -127,7 +132,9 @@ void sdr_worker_destroy(void *data) {
     if (worker->rx != NULL) {
         free(worker->rx);
     }
+    uint32_t id = worker->id;
     free(worker);
+    fprintf(stdout, "[%d] sdr_worker stopped\n", id);
 }
 
 bool sdr_worker_destroy_by_id(void *id, void *data) {

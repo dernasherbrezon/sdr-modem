@@ -136,7 +136,8 @@ void respond_failure(int client_socket, uint8_t status, uint8_t details) {
 
 static void *tcp_worker_callback(void *arg) {
     struct tcp_worker *worker = (struct tcp_worker *) arg;
-    fprintf(stdout, "[%d] tcp_worker is starting\n", worker->id);
+    uint32_t id = worker->id;
+    fprintf(stdout, "[%d] tcp_worker is starting\n", id);
     while (worker->is_running) {
         struct message_header header;
         int code = tcp_utils_read_data(&header, sizeof(struct message_header), worker->client_socket);
@@ -146,22 +147,27 @@ static void *tcp_worker_callback(void *arg) {
             continue;
         }
         if (code == -1) {
-            fprintf(stdout, "[%d] client disconnected\n", worker->id);
+            fprintf(stdout, "[%d] client disconnected\n", id);
             break;
         }
         if (header.protocol_version != PROTOCOL_VERSION) {
-            fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", worker->id, header.protocol_version);
+            fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
             continue;
         }
         if (header.type != TYPE_SHUTDOWN) {
-            fprintf(stderr, "<3>[%d] unsupported request: %d\n", worker->id, header.type);
+            fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
             continue;
         }
-        fprintf(stdout, "[%d] client requested disconnect\n", worker->id);
+        fprintf(stdout, "[%d] client requested disconnect\n", id);
         break;
     }
     worker->is_running = false;
     close(worker->client_socket);
+
+    pthread_mutex_lock(&worker->server->mutex);
+    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
+    pthread_mutex_unlock(&worker->server->mutex);
+
     return (void *) 0;
 }
 
@@ -195,7 +201,6 @@ void tcp_worker_destroy(void *data) {
         free(worker->req);
     }
     uint32_t id = worker->id;
-    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
 }

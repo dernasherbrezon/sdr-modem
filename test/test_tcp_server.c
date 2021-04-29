@@ -37,7 +37,8 @@ START_TEST (test_normal) {
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
     ck_assert_int_eq(code, 0);
 
-    code = sdr_modem_client_create(config->bind_address, config->port, &client0);
+    uint32_t batch_size = 256;
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
     ck_assert_int_eq(code, 0);
 
     struct message_header header;
@@ -47,6 +48,23 @@ START_TEST (test_normal) {
     code = sdr_modem_write_request(&header, req, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
+
+    expected_buffer = malloc(config->buffer_size * sizeof(float complex));
+    ck_assert(expected_buffer != NULL);
+    expected_file = fopen("lucky7.expected.cf32", "wb");
+    ck_assert(expected_file != NULL);
+    while (true) {
+        int8_t *output = NULL;
+        size_t output_len = 0;
+        int code = sdr_modem_read_stream(&output, &output_len, client0);
+        if (code != 0) {
+            break;
+        }
+
+        fwrite(output, sizeof(uint8_t), output_len, expected_file);
+//        size_t actually_expected_read = fread(expected_buffer, sizeof(int8_t), output_len, expected_file);
+//        assert_byte_array(expected_buffer, actually_expected_read, output, output_len);
+    }
 }
 
 END_TEST

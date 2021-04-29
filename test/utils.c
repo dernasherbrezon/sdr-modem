@@ -63,6 +63,13 @@ void assert_complex_array(const float expected[], size_t expected_size, float co
     }
 }
 
+void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size) {
+    ck_assert_int_eq(expected_size, actual_size);
+    for (size_t i = 0; i < expected_size; i++) {
+        ck_assert_int_eq(expected[i], actual[i]);
+    }
+}
+
 void assert_float_array(const float expected[], size_t expected_size, float *actual, size_t actual_size) {
     ck_assert_int_eq(expected_size, actual_size);
     for (size_t i = 0; i < expected_size; i++) {

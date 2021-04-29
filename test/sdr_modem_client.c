@@ -10,6 +10,9 @@
 
 struct sdr_modem_client_t {
     int client_socket;
+
+    int8_t *output;
+    size_t output_len;
 };
 
 int sdr_modem_write_request(struct message_header *header, struct request *req, sdr_modem_client *client) {
@@ -62,12 +65,28 @@ int sdr_modem_read_response(struct message_header **response_header, struct resp
     return 0;
 }
 
-int sdr_modem_client_create(const char *addr, int port, sdr_modem_client **client) {
+int sdr_modem_read_stream(int8_t **output, size_t *output_len, sdr_modem_client *client) {
+    int code = tcp_utils_read_data(client->output, sizeof(int8_t) * client->output_len, client->client_socket);
+    if (code != 0) {
+        return code;
+    }
+    *output = client->output;
+    *output_len = client->output_len;
+    return 0;
+}
+
+int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_length, sdr_modem_client **client) {
     struct sdr_modem_client_t *result = malloc(sizeof(struct sdr_modem_client_t));
     if (result == NULL) {
         return -ENOMEM;
     }
     *result = (struct sdr_modem_client_t) {0};
+
+    result->output_len = max_buffer_length;
+    result->output = malloc(sizeof(int8_t) * result->output_len);
+    if (result->output == NULL) {
+        return -ENOMEM;
+    }
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {

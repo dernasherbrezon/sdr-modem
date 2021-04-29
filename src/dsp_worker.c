@@ -33,6 +33,11 @@ void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker
     queue_put(output, output_len, worker->queue);
 }
 
+void dsp_worker_close_socket(void *arg, void *data) {
+    dsp_worker *worker = (dsp_worker *) data;
+    close(worker->client_socket);
+}
+
 int write_to_file(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
     size_t n_written = fwrite(filter_output, sizeof(int8_t), filter_output_len, worker->file);
     // if disk is full, then terminate the client
@@ -58,7 +63,8 @@ int write_to_socket(dsp_worker *worker, int8_t *filter_output, size_t filter_out
 
 static void *dsp_worker_callback(void *arg) {
     dsp_worker *worker = (dsp_worker *) arg;
-    fprintf(stdout, "[%d] dsp_worker is starting\n", worker->id);
+    uint32_t id = worker->id;
+    fprintf(stdout, "[%d] dsp_worker is starting\n", id);
     float complex *input = NULL;
     size_t input_len = 0;
     int8_t *demod_output = NULL;
@@ -100,7 +106,7 @@ static void *dsp_worker_callback(void *arg) {
             //   - all shutdown sequences have: stop tcp thread, then dsp thread, then sdr thread
             //   - processing the queue and writing to the already full disk is OK (I hope)
             //   - calling "close" socket multiple times is OK (I hope)
-            close(worker->client_socket);
+            dsp_worker_close_socket(NULL, worker);
         }
 
     }
