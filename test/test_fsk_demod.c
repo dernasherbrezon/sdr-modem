@@ -34,31 +34,44 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
     return result;
 }
 
-START_TEST(test_normal) {
-    int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, 32000, &demod);
-    ck_assert_int_eq(code, 0);
-    input = fopen("nusat.cf32", "r");
+void assert_files(const char *input_filename, const char *expected_filename) {
+    input = fopen(input_filename, "rb");
     ck_assert(input != NULL);
-    expected = fopen("processed.s8", "r");
+    expected = fopen(expected_filename, "rb");
     ck_assert(expected != NULL);
     size_t buffer_len = 2048;
     buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(buffer != NULL);
     while (true) {
         size_t actual_read = 0;
-        code = read_data(buffer, &actual_read, buffer_len, input);
+        int code = read_data(buffer, &actual_read, buffer_len, input);
         if (code != 0 && actual_read == 0) {
             break;
         }
         int8_t *output = NULL;
         size_t output_len = 0;
         fsk_demod_process((const complex float *) buffer, actual_read / 8, &output, &output_len, demod);
-        read_data(buffer, &actual_read, output_len, expected);
+        code = read_data(buffer, &actual_read, output_len, expected);
+        ck_assert_int_eq(code, 0);
         ck_assert_int_eq(actual_read, output_len);
         for (size_t i = 0; i < actual_read; i++) {
             ck_assert_int_eq((int8_t) buffer[i], output[i]);
         }
     }
+}
+
+START_TEST(test_normal) {
+    int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, 32000, &demod);
+    ck_assert_int_eq(code, 0);
+    assert_files("nusat.cf32", "processed.s8");
+}
+
+END_TEST
+
+START_TEST(test_handle_lucky7) {
+    int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, true, 32000, &demod);
+    ck_assert_int_eq(code, 0);
+    assert_files("lucky7.expected.cf32", "lucky7.expected.s8");
 }
 
 END_TEST
@@ -96,6 +109,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_handle_lucky7);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

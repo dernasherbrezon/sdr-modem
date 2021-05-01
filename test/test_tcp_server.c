@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <check.h>
 #include "../src/tcp_server.h"
 #include "sdr_modem_client.h"

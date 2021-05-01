@@ -164,7 +164,7 @@ void take_buffer_for_processing(float complex **buffer, size_t *len, queue *queu
     // the idea is to keep a node that being processed in the detached mode
     // i.e. input thread cannot read or write into it, while buffer is being sent to client/file (which can be slow)
     // it would allow non-mutex access to such buffer
-    // and as a result small synchornization section
+    // and as a result small synchronization section
     // and as a result faster concurrency
     queue->detached_node = queue->first_filled_node;
     queue->first_filled_node = queue->first_filled_node->next;
