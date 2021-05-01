@@ -44,7 +44,7 @@ static void *sdr_worker_callback(void *arg) {
     //this would close all client sockets
     //and initiate cascade shutdown of sdr and dsp workers
     pthread_mutex_lock(&worker->mutex);
-    linked_list_foreach(NULL, &dsp_worker_close_socket, worker->dsp_configs);
+    linked_list_foreach(NULL, &dsp_worker_shutdown, worker->dsp_configs);
     pthread_mutex_unlock(&worker->mutex);
     return (void *) 0;
 }
@@ -101,6 +101,9 @@ int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_ad
 }
 
 bool sdr_worker_find_closest(void *id, void *data) {
+    if (data == NULL) {
+        return false;
+    }
     struct sdr_worker_rx *rx = (struct sdr_worker_rx *) id;
     sdr_worker *worker = (sdr_worker *) data;
     if (worker->rx->rx_center_freq == rx->rx_center_freq &&
@@ -146,6 +149,21 @@ bool sdr_worker_find_by_dsp_id(void *id, void *data) {
     bool result = (linked_list_find(id, &dsp_worker_find_by_id, worker->dsp_configs) != NULL);
     pthread_mutex_unlock(&worker->mutex);
     return result;
+}
+
+void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *worker) {
+    if (worker == NULL) {
+        return;
+    }
+    pthread_mutex_lock(&worker->mutex);
+    if (worker->dsp_configs != NULL) {
+        linked_list_destroy_by_id(&id, &dsp_worker_find_by_id, &worker->dsp_configs);
+    }
+    bool result = (worker->dsp_configs == NULL);
+    pthread_mutex_unlock(&worker->mutex);
+    if (result) {
+        sdr_worker_destroy(worker);
+    }
 }
 
 bool sdr_worker_destroy_by_id(void *id, void *data) {

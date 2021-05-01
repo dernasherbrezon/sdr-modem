@@ -27,6 +27,7 @@ struct tcp_worker {
 
     pthread_t client_thread;
     tcp_server *server;
+    sdr_worker *sdr;
 };
 
 struct tcp_server_t {
@@ -37,7 +38,6 @@ struct tcp_server_t {
     uint32_t client_counter;
 
     linked_list *tcp_workers;
-    linked_list *sdr_configs;
     pthread_mutex_t mutex;
 };
 
@@ -161,12 +161,9 @@ static void *tcp_worker_callback(void *arg) {
         fprintf(stdout, "[%d] client requested disconnect\n", id);
         break;
     }
-    pthread_mutex_lock(&worker->server->mutex);
-    void *sdr_worker = linked_list_remove_by_id(&id, &sdr_worker_find_by_dsp_id, &worker->server->sdr_configs);
-    pthread_mutex_unlock(&worker->server->mutex);
-    if (sdr_worker != NULL) {
-        sdr_worker_destroy(sdr_worker);
-    }
+    //terminate dsp_worker if any
+    //terminate sdr_worker if no more dsp_workers there
+    sdr_worker_destroy_by_dsp_worker_id(worker->id, worker->sdr);
 
     worker->is_running = false;
     close(worker->client_socket);
@@ -188,6 +185,11 @@ bool tcp_worker_is_stopped(void *data) {
         return false;
     }
     return true;
+}
+
+bool tcp_worker_find_closest(void *id, void *data) {
+    struct tcp_worker *worker = (struct tcp_worker *) data;
+    return sdr_worker_find_closest(id, worker->sdr);
 }
 
 void tcp_worker_destroy(void *data) {
@@ -277,59 +279,52 @@ void handle_new_client(int client_socket, tcp_server *server) {
     }
 
     pthread_mutex_lock(&server->mutex);
-    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
+    //re-use sdr connections
+    //this will allow demodulating different modes using the same data
+    struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
+    if (closest == NULL) {
+        sdr_worker *sdr = NULL;
+        // take id from the first tcp client
+        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &sdr);
+        if (code != 0) {
+            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            tcp_worker_destroy(tcp_worker);
+            dsp_worker_destroy(dsp_worker);
+            pthread_mutex_unlock(&server->mutex);
+            return;
+        }
+        tcp_worker->sdr = sdr;
+    } else {
+        tcp_worker->sdr = closest->sdr;
+        free(rx);
+    }
+
+    code = sdr_worker_add_dsp_worker(dsp_worker, tcp_worker->sdr);
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        // this will trigger sdr_worker destroy
         tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         pthread_mutex_unlock(&server->mutex);
         return;
     }
 
-    //re-use sdr connections
-    //this will allow demodulating different modes using the same data
-    sdr_worker *sdr = linked_list_find(rx, &sdr_worker_find_closest, server->sdr_configs);
-    if (sdr == NULL) {
-        // take id from the first tcp client
-        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &sdr);
-        if (code != 0) {
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-            linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
-            dsp_worker_destroy(dsp_worker);
-            pthread_mutex_unlock(&server->mutex);
-            return;
-        }
-
-        code = linked_list_add(sdr, &sdr_worker_destroy, &server->sdr_configs);
-        if (code != 0) {
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-            linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
-            dsp_worker_destroy(dsp_worker);
-            sdr_worker_destroy(sdr);
-            pthread_mutex_unlock(&server->mutex);
-            return;
-        }
-    } else {
-        free(rx);
-    }
-
-    code = sdr_worker_add_dsp_worker(dsp_worker, sdr);
-
+    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        //this will destroy sdr worker only if none other dsp workers were assigned
-        linked_list_destroy_by_id(&tcp_worker->id, &sdr_worker_destroy_by_id, &server->sdr_configs);
-        linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
+        // this will trigger sdr_worker destroy
+        tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         pthread_mutex_unlock(&server->mutex);
         return;
     }
+    pthread_mutex_unlock(&server->mutex);
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
     fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", tcp_worker->id,
             api_demod_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
             tcp_worker->req->rx_sampling_freq, tcp_worker->req->rx_destination);
-    pthread_mutex_unlock(&server->mutex);
+
 }
 
 static void *acceptor_worker(void *arg) {
@@ -398,7 +393,6 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
     *result = (struct tcp_server_t) {0};
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     result->tcp_workers = NULL;
-    result->sdr_configs = NULL;
 
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == 0) {

@@ -33,9 +33,9 @@ void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker
     queue_put(output, output_len, worker->queue);
 }
 
-void dsp_worker_close_socket(void *arg, void *data) {
+void dsp_worker_shutdown(void *arg, void *data) {
     dsp_worker *worker = (dsp_worker *) data;
-    close(worker->client_socket);
+    interrupt_waiting_the_data(worker->queue);
 }
 
 int write_to_file(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
@@ -100,17 +100,11 @@ static void *dsp_worker_callback(void *arg) {
         complete_buffer_processing(worker->queue);
 
         if (code != 0) {
-            // this would trigger client disconnect
-            // I could use "break" here, but "continue" is a bit better:
-            //   - single route for abnormal termination (i.e. disk space issue) and normal (i.e. client disconnected)
-            //   - all shutdown sequences have: stop tcp thread, then dsp thread, then sdr thread
-            //   - processing the queue and writing to the already full disk is OK (I hope)
-            //   - calling "close" socket multiple times is OK (I hope)
-            dsp_worker_close_socket(NULL, worker);
+            break;
         }
 
     }
-    destroy_queue(worker->queue);
+    close(worker->client_socket);
     printf("[%d] dsp_worker stopped\n", worker->id);
     return (void *) 0;
 }
@@ -192,6 +186,7 @@ void dsp_worker_destroy(void *data) {
     fprintf(stdout, "[%d] dsp_worker is stopping\n", worker->id);
     if (worker->queue != NULL) {
         interrupt_waiting_the_data(worker->queue);
+        destroy_queue(worker->queue);
     }
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);

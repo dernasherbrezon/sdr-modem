@@ -19,6 +19,8 @@ bool sdr_worker_find_closest(void *id, void *data);
 
 bool sdr_worker_destroy_by_id(void *id, void *data);
 
+void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *sdr);
+
 bool sdr_worker_find_by_dsp_id(void *id, void *data);
 
 int sdr_worker_add_dsp_worker(dsp_worker *worker, sdr_worker *sdr);

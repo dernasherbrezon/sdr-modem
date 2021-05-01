@@ -13,9 +13,16 @@ sdr_modem_client *client0 = NULL;
 sdr_server_mock *mock_server = NULL;
 
 void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_REQUEST;
+    req = create_request();
+    int code = sdr_modem_write_request(&header, req, client0);
+    ck_assert_int_eq(code, 0);
+
     struct message_header *response_header = NULL;
     struct response *resp = NULL;
-    int code = sdr_modem_read_response(&response_header, &resp, client);
+    code = sdr_modem_read_response(&response_header, &resp, client);
     ck_assert_int_eq(code, 0);
     ck_assert_int_eq(response_header->type, type);
     ck_assert_int_eq(resp->status, status);
@@ -24,7 +31,21 @@ void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uin
     free(response_header);
 }
 
-//FIXME test unable to connect to sdr server
+START_TEST(test_unable_to_connect_to_sdr_server) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    // non-existing port
+    config->rx_sdr_server_port = 9999;
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
+
+    uint32_t batch_size = 256;
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
+    ck_assert_int_eq(code, 0);
+
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+}
+END_TEST
 
 START_TEST (test_normal) {
     int code = server_config_create(&config, "full.conf");
@@ -40,12 +61,6 @@ START_TEST (test_normal) {
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
     ck_assert_int_eq(code, 0);
 
-    struct message_header header;
-    header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_REQUEST;
-    req = create_request();
-    code = sdr_modem_write_request(&header, req, client0);
-    ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
 }
 
@@ -88,6 +103,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
