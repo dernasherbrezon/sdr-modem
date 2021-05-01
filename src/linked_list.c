@@ -51,6 +51,29 @@ void *linked_list_find(void *id, bool (*selector)(void *id, void *data), linked_
     return NULL;
 }
 
+void *linked_list_remove_by_id(void *id, bool (*selector)(void *id, void *data), linked_list **list) {
+    linked_list *cur_node = *list;
+    linked_list *previous = NULL;
+    void *result = NULL;
+    while (cur_node != NULL) {
+        linked_list *next = cur_node->next;
+        if (selector(id, cur_node->data) == false) {
+            previous = cur_node;
+            cur_node = next;
+            continue;
+        }
+        if (previous == NULL) {
+            *list = next;
+        } else {
+            previous->next = next;
+        }
+        result = cur_node->data;
+        free(cur_node);
+        break;
+    }
+    return result;
+}
+
 void linked_list_destroy_by_id(void *id, bool (*selector)(void *id, void *data), linked_list **list) {
     linked_list *cur_node = *list;
     linked_list *previous = NULL;

@@ -13,6 +13,8 @@ void linked_list_foreach(void *arg, void (*foreach)(void *arg, void *data), link
 
 void linked_list_destroy_by_id(void *id, bool (*selector)(void *id, void *data), linked_list **list);
 
+void *linked_list_remove_by_id(void *id, bool (*selector)(void *id, void *data), linked_list **list);
+
 void *linked_list_find(void *id, bool (*selector)(void *id, void *data), linked_list *list);
 
 void linked_list_destroy(linked_list *list);

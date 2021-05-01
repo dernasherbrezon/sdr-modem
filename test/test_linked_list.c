@@ -55,10 +55,23 @@ bool sample_struct_selector_one(void *data) {
 }
 
 void sample_struct_set_id(void *arg, void *data) {
-    int *param = (int *)arg;
+    int *param = (int *) arg;
     struct sample_struct *test = (struct sample_struct *) data;
     test->id = *param;
 }
+
+START_TEST(test_remove_by_id) {
+    sample_struct_add(1);
+    int id = 8;
+    void *result = linked_list_remove_by_id(&id, &sample_struct_selector, &llist);
+    ck_assert(result == NULL);
+    id = 1;
+    result = linked_list_remove_by_id(&id, &sample_struct_selector, &llist);
+    ck_assert(result != NULL);
+    ck_assert(llist == NULL);
+    sample_struct_destroy(result);
+}
+END_TEST
 
 START_TEST (test_foreach) {
     sample_struct_add(1);
@@ -70,6 +83,7 @@ START_TEST (test_foreach) {
     struct sample_struct *actual = (struct sample_struct *) result;
     ck_assert_int_eq(id, actual->id);
 }
+
 END_TEST
 
 START_TEST (test_delete_by_selector) {
@@ -78,6 +92,7 @@ START_TEST (test_delete_by_selector) {
     linked_list_destroy_by_selector(&sample_struct_selector_all, &llist);
     ck_assert(llist == NULL);
 }
+
 END_TEST
 
 START_TEST (test_delete_by_selector1) {
@@ -85,6 +100,7 @@ START_TEST (test_delete_by_selector1) {
     sample_struct_add(2);
     linked_list_destroy_by_selector(&sample_struct_selector_one, &llist);
 }
+
 END_TEST
 
 START_TEST (test_delete_last2) {
