@@ -12,9 +12,6 @@ struct request *req = NULL;
 sdr_modem_client *client0 = NULL;
 sdr_server_mock *mock_server = NULL;
 
-FILE *expected_file = NULL;
-uint8_t *expected_buffer = NULL;
-
 void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
     struct message_header *response_header = NULL;
     struct response *resp = NULL;
@@ -32,6 +29,8 @@ void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uin
 START_TEST (test_normal) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
+    // speed up test a bit
+    config->read_timeout_seconds = 2;
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
@@ -48,23 +47,6 @@ START_TEST (test_normal) {
     code = sdr_modem_write_request(&header, req, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
-
-    expected_buffer = malloc(config->buffer_size * sizeof(float complex));
-    ck_assert(expected_buffer != NULL);
-    expected_file = fopen("lucky7.expected.cf32", "wb");
-    ck_assert(expected_file != NULL);
-    while (true) {
-        int8_t *output = NULL;
-        size_t output_len = 0;
-        int code = sdr_modem_read_stream(&output, &output_len, client0);
-        if (code != 0) {
-            break;
-        }
-
-        fwrite(output, sizeof(uint8_t), output_len, expected_file);
-//        size_t actually_expected_read = fread(expected_buffer, sizeof(int8_t), output_len, expected_file);
-//        assert_byte_array(expected_buffer, actually_expected_read, output, output_len);
-    }
 }
 
 END_TEST
@@ -89,14 +71,6 @@ void teardown() {
     if (mock_server != NULL) {
         sdr_server_mock_destroy(mock_server);
         mock_server = NULL;
-    }
-    if (expected_file != NULL) {
-        fclose(expected_file);
-        expected_file = NULL;
-    }
-    if (expected_buffer != NULL) {
-        free(expected_buffer);
-        expected_buffer = NULL;
     }
 }
 

@@ -18,7 +18,7 @@ struct sdr_server_client_t {
     size_t output_len;
 };
 
-int sdr_server_client_create(uint32_t id, char *addr, int port, uint32_t max_output_buffer_length, sdr_server_client **client) {
+int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_server_client **client) {
     struct sdr_server_client_t *result = malloc(sizeof(struct sdr_server_client_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -41,6 +41,17 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, uint32_t max_out
         return -1;
     }
     result->client_socket = client_socket;
+
+    struct timeval tv;
+    tv.tv_sec = read_timeout_seconds;
+    tv.tv_usec = 0;
+    if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
+        close(client_socket);
+        perror("setsockopt - SO_RCVTIMEO");
+        free(result->output);
+        free(result);
+        return -1;
+    }
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
@@ -136,7 +147,15 @@ void sdr_server_client_destroy(sdr_server_client *client) {
     }
     while (true) {
         struct sdr_server_message_header header;
-        int code = tcp_utils_read_data(&header, sizeof(struct sdr_server_message_header), client->client_socket);
+        header.type = SDR_SERVER_TYPE_SHUTDOWN;
+        header.protocol_version = SDR_SERVER_PROTOCOL_VERSION;
+        int code = tcp_utils_write_data((uint8_t *)&header, sizeof(struct sdr_server_message_header), client->client_socket);
+        // sdr server was already disconnected
+        if (code != 0) {
+            break;
+        }
+        // if not, then wait until sdr server gracefully cleanup and shutdown current freq band
+        code = tcp_utils_read_data(&header, sizeof(struct sdr_server_message_header), client->client_socket);
         if (code != 0) {
             break;
         }

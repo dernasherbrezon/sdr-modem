@@ -33,7 +33,7 @@ START_TEST (test_success) {
     ck_assert_int_eq(code, 0);
     ck_assert_str_eq(config->bind_address, "127.0.0.1");
     ck_assert_int_eq(config->port, 8091);
-    ck_assert_int_eq(config->read_timeout_seconds, 100);
+    ck_assert_int_eq(config->read_timeout_seconds, 10);
     ck_assert_int_eq(config->buffer_size, 2048);
     ck_assert_int_eq(config->rx_sdr_type, RX_SDR_TYPE_SDR_SERVER);
     ck_assert_str_eq(config->base_path, "/tmp/");

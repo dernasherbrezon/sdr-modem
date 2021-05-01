@@ -44,19 +44,6 @@ void mock_response_success(int client_socket, sdr_server_mock *server) {
     memcpy(buffer + sizeof(struct sdr_server_message_header), &response, sizeof(struct sdr_server_response));
     tcp_utils_write_data(buffer, total_len, client_socket);
     free(buffer);
-
-    FILE *input_file = fopen("lucky7.cf32", "rb");
-    while (true) {
-        size_t actually_read = fread(server->input, sizeof(float complex), server->input_len, input_file);
-        if (actually_read == 0) {
-            break;
-        }
-        int code = tcp_utils_write_data((uint8_t *) server->input, sizeof(float complex) * server->input_len, client_socket);
-        if (code != 0) {
-            break;
-        }
-    }
-    close(client_socket);
 }
 
 static void *acceptor_worker(void *arg) {

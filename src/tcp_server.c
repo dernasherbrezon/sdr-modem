@@ -161,13 +161,15 @@ static void *tcp_worker_callback(void *arg) {
         fprintf(stdout, "[%d] client requested disconnect\n", id);
         break;
     }
+    pthread_mutex_lock(&worker->server->mutex);
+    void *sdr_worker = linked_list_remove_by_id(&id, &sdr_worker_find_by_dsp_id, &worker->server->sdr_configs);
+    pthread_mutex_unlock(&worker->server->mutex);
+    if (sdr_worker != NULL) {
+        sdr_worker_destroy(sdr_worker);
+    }
+
     worker->is_running = false;
     close(worker->client_socket);
-
-    pthread_mutex_lock(&worker->server->mutex);
-    linked_list_destroy_by_id(&id, &sdr_worker_destroy_by_id, &worker->server->sdr_configs);
-    pthread_mutex_unlock(&worker->server->mutex);
-
     return (void *) 0;
 }
 
@@ -208,13 +210,6 @@ void tcp_worker_destroy(void *data) {
 void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_lock(&server->mutex);
     linked_list_destroy_by_selector(&tcp_worker_is_stopped, &server->tcp_workers);
-    pthread_mutex_unlock(&server->mutex);
-}
-
-void remove_all_tcp_workers(tcp_server *server) {
-    pthread_mutex_lock(&server->mutex);
-    linked_list_destroy(server->tcp_workers);
-    server->tcp_workers = NULL;
     pthread_mutex_unlock(&server->mutex);
 }
 
@@ -296,7 +291,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
     sdr_worker *sdr = linked_list_find(rx, &sdr_worker_find_closest, server->sdr_configs);
     if (sdr == NULL) {
         // take id from the first tcp client
-        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->buffer_size, &sdr);
+        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &sdr);
         if (code != 0) {
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             linked_list_destroy_by_id(&tcp_worker->id, &tcp_worker_equals_by_id, &server->tcp_workers);
@@ -388,7 +383,8 @@ static void *acceptor_worker(void *arg) {
 
     }
 
-    remove_all_tcp_workers(server);
+    linked_list_destroy(server->tcp_workers);
+    server->tcp_workers = NULL;
 
     printf("tcp server stopped\n");
     return (void *) 0;

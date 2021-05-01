@@ -19,7 +19,7 @@ struct request *create_request() {
     result->demod_type = REQUEST_DEMOD_TYPE_FSK;
     result->demod_fsk_use_dc_block = REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES;
     result->demod_fsk_transition_width = 2000;
-    result->demod_decimation = 1;
+    result->demod_decimation = 2;
     result->demod_fsk_deviation = 5000;
     result->demod_baud_rate = 4800;
     return result;

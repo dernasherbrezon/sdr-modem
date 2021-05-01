@@ -49,7 +49,7 @@ static void *sdr_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, uint32_t max_output_buffer_length, sdr_worker **worker) {
+int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -62,7 +62,7 @@ int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_ad
     result->rx = rx;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-    int code = sdr_server_client_create(result->id, sdr_server_address, sdr_server_port, max_output_buffer_length, &result->client);
+    int code = sdr_server_client_create(result->id, sdr_server_address, sdr_server_port, read_timeout_seconds, max_output_buffer_length, &result->client);
     if (code != 0) {
         sdr_worker_destroy(result);
         return code;
@@ -137,12 +137,23 @@ void sdr_worker_destroy(void *data) {
     fprintf(stdout, "[%d] sdr_worker stopped\n", id);
 }
 
-bool sdr_worker_destroy_by_id(void *id, void *data) {
+bool sdr_worker_find_by_dsp_id(void *id, void *data) {
     sdr_worker *worker = (sdr_worker *) data;
+    pthread_mutex_lock(&worker->mutex);
     if (worker->dsp_configs == NULL) {
         return false;
     }
+    bool result = (linked_list_find(id, &dsp_worker_find_by_id, worker->dsp_configs) != NULL);
+    pthread_mutex_unlock(&worker->mutex);
+    return result;
+}
+
+bool sdr_worker_destroy_by_id(void *id, void *data) {
+    sdr_worker *worker = (sdr_worker *) data;
     pthread_mutex_lock(&worker->mutex);
+    if (worker->dsp_configs == NULL) {
+        return false;
+    }
     linked_list_destroy_by_id(id, &dsp_worker_find_by_id, &worker->dsp_configs);
     bool result = (worker->dsp_configs == NULL);
     pthread_mutex_unlock(&worker->mutex);
