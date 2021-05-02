@@ -7,6 +7,37 @@
 clock_mm *clock = NULL;
 float *float_input = NULL;
 
+START_TEST(test_big_buffers) {
+    size_t max_input_buffer = 10;
+    int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, max_input_buffer, &clock);
+    ck_assert_int_eq(code, 0);
+
+    setup_input_data(&float_input, 0, max_input_buffer + 1);
+    float *output = NULL;
+    size_t output_len = 0;
+    clock_mm_process(float_input, max_input_buffer + 1, &output, &output_len, clock);
+    ck_assert_int_eq(output_len, 0);
+}
+END_TEST
+
+START_TEST(test_small_buffers) {
+    int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
+    ck_assert_int_eq(code, 0);
+
+    setup_input_data(&float_input, 0, 100);
+    float *output = NULL;
+    size_t output_len = 0;
+    clock_mm_process(float_input, 4, &output, &output_len, clock);
+    ck_assert_int_eq(output_len, 0);
+    clock_mm_process(float_input + 4, 3, &output, &output_len, clock);
+    ck_assert_int_eq(output_len, 0);
+    clock_mm_process(float_input + 7, 1, &output, &output_len, clock);
+    ck_assert_int_eq(output_len, 1);
+    ck_assert(fabsl(3.007791F - output[0]) < 0.001);
+}
+
+END_TEST
+
 START_TEST (test_normal) {
     int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
     ck_assert_int_eq(code, 0);
@@ -56,6 +87,8 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_small_buffers);
+    tcase_add_test(tc_core, test_big_buffers);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

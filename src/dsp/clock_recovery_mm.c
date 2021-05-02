@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <volk/volk.h>
+#include <stdio.h>
 
 struct clock_mm_t {
     mmse_fir_interpolator *interp;
@@ -74,6 +75,13 @@ static inline float branchless_clip(float x, float clip) {
 }
 
 void clock_mm_process(const float *input, size_t input_len, float **output, size_t *output_len, clock_mm *clock) {
+    // even if mu == 1 input buffer should not be more than output buffer
+    if (input_len > clock->output_len) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, clock->output_len);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     // prepend history to the input
     memcpy(clock->working_buffer + clock->history_offset, input, input_len * sizeof(float));
     int taps_len = mmse_fir_interpolator_taps(clock->interp);
@@ -81,6 +89,13 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
     int oo = 0;                                  // output index
     int previous = 0;
     size_t working_len = clock->history_offset + input_len;
+    // not enough input
+    if (working_len < taps_len) {
+        clock->history_offset = working_len;
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     size_t max_index = working_len - (taps_len - 1);
     float mm_val;
 
