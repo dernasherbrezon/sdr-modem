@@ -77,6 +77,14 @@ START_TEST(test_handle_lucky7) {
 
 END_TEST
 
+START_TEST(test_no_dc) {
+    int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, false, max_buffer_length, &demod);
+    ck_assert_int_eq(code, 0);
+    assert_files("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
+}
+
+END_TEST
+
 void teardown() {
     if (demod != NULL) {
         fsk_demod_destroy(demod);
@@ -111,6 +119,7 @@ Suite *common_suite(void) {
 
     tcase_add_test(tc_core, test_normal);
     tcase_add_test(tc_core, test_handle_lucky7);
+    tcase_add_test(tc_core, test_no_dc);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

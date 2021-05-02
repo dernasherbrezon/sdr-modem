@@ -9,7 +9,6 @@ void assert_buffer(const float expected[], size_t expected_len) {
     float complex *result = NULL;
     size_t len = 0;
     take_buffer_for_processing(&result, &len, queue_obj);
-    // TODO doesn't work. segmentation fault if result is null
     ck_assert(result != NULL);
     assert_complex_array(expected, expected_len, result, len);
     complete_buffer_processing(queue_obj);
