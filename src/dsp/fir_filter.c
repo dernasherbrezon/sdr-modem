@@ -3,10 +3,11 @@
 #include <volk/volk.h>
 #include <string.h>
 #include <complex.h>
+#include <stdio.h>
 
 int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter *filter) {
     size_t alignment = volk_get_alignment();
-    size_t number_of_aligned = fmax((size_t) 1, (float)alignment / sizeof(float));
+    size_t number_of_aligned = fmax((size_t) 1, (float) alignment / sizeof(float));
     // Make a set of taps at all possible alignments
     float **result = malloc(number_of_aligned * sizeof(float *));
     if (result == NULL) {
@@ -52,6 +53,7 @@ int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
         fir_filter_destroy(result);
         return code;
     }
+    result->max_input_buffer_length = max_input_buffer_length;
     result->working_len_total = max_input_buffer_length + result->history_offset;
     result->working_buffer = volk_malloc(num_bytes * result->working_len_total, result->alignment);
     if (result->working_buffer == NULL) {
@@ -108,11 +110,11 @@ float fir_filter_process_float_single(const float *input, size_t input_len, fir_
     const float *aligned_buffer = (const float *) ((size_t) input & ~(filter->alignment - 1));
     size_t align_index = input - aligned_buffer;
     volk_32f_x2_dot_prod_32f_a(filter->volk_output, aligned_buffer, filter->taps[align_index], (unsigned int) (filter->taps_len + align_index));
-    return *(float *)filter->volk_output;
+    return *(float *) filter->volk_output;
 }
 
 void fir_filter_process_complex(const float complex *input, size_t input_len, float complex *working_buffer, void **output,
-                         size_t *output_len, fir_filter *filter) {
+                                size_t *output_len, fir_filter *filter) {
     memcpy(working_buffer + filter->history_offset, input, input_len * filter->num_bytes);
     size_t working_len = filter->history_offset + input_len;
     size_t i = 0;
@@ -138,9 +140,15 @@ void fir_filter_process_complex(const float complex *input, size_t input_len, fl
 }
 
 void fir_filter_process(const void *input, size_t input_len, void **output, size_t *output_len, fir_filter *filter) {
+    if (input_len > filter->max_input_buffer_length) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, filter->max_input_buffer_length);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     if (filter->num_bytes == sizeof(float complex)) {
         fir_filter_process_complex((float complex *) input, input_len, (float complex *) filter->working_buffer, output,
-                            output_len, filter);
+                                   output_len, filter);
     } else if (filter->num_bytes == sizeof(float)) {
         fir_filter_process_float((float *) input, input_len, (float *) filter->working_buffer, output, output_len, filter);
     }

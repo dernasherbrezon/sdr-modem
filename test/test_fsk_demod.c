@@ -7,6 +7,7 @@ fsk_demod *demod = NULL;
 uint8_t *buffer = NULL;
 FILE *input = NULL;
 FILE *expected = NULL;
+uint32_t max_buffer_length = 32000;
 
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
     size_t left = len;
@@ -39,7 +40,7 @@ void assert_files(const char *input_filename, const char *expected_filename) {
     ck_assert(input != NULL);
     expected = fopen(expected_filename, "rb");
     ck_assert(expected != NULL);
-    size_t buffer_len = 2048;
+    size_t buffer_len = sizeof(float complex) * max_buffer_length;
     buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(buffer != NULL);
     while (true) {
@@ -61,7 +62,7 @@ void assert_files(const char *input_filename, const char *expected_filename) {
 }
 
 START_TEST(test_normal) {
-    int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, 32000, &demod);
+    int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
     assert_files("nusat.cf32", "processed.s8");
 }
@@ -69,7 +70,7 @@ START_TEST(test_normal) {
 END_TEST
 
 START_TEST(test_handle_lucky7) {
-    int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, true, 32000, &demod);
+    int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, true, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
     assert_files("lucky7.expected.cf32", "lucky7.expected.s8");
 }

@@ -18,6 +18,7 @@ struct fir_filter_t {
     size_t history_offset;
     size_t working_len_total;
     void *volk_output;
+    size_t max_input_buffer_length;
 
     void *output;
     size_t output_len;
