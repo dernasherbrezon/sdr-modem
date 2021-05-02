@@ -18,6 +18,7 @@ START_TEST(test_big_buffers) {
     clock_mm_process(float_input, max_input_buffer + 1, &output, &output_len, clock);
     ck_assert_int_eq(output_len, 0);
 }
+
 END_TEST
 
 START_TEST(test_small_buffers) {
@@ -27,6 +28,9 @@ START_TEST(test_small_buffers) {
     setup_input_data(&float_input, 0, 100);
     float *output = NULL;
     size_t output_len = 0;
+    // no input, no output
+    clock_mm_process(float_input, 0, &output, &output_len, clock);
+    ck_assert_int_eq(output_len, 0);
     clock_mm_process(float_input, 4, &output, &output_len, clock);
     ck_assert_int_eq(output_len, 0);
     clock_mm_process(float_input + 4, 3, &output, &output_len, clock);

@@ -19,13 +19,13 @@ int lpf_create(uint8_t decimation, uint32_t sampling_freq, uint32_t cutoff_freq,
     *result = (struct lpf_t) {0};
 
     float *taps = NULL;
-    size_t len;
-    int code = create_low_pass_filter(1.0F, sampling_freq, cutoff_freq, transition_width, &taps, &len);
+    size_t taps_len = 0;
+    int code = create_low_pass_filter(1.0F, sampling_freq, cutoff_freq, transition_width, &taps, &taps_len);
     if (code != 0) {
         lpf_destroy(result);
         return code;
     }
-    code = fir_filter_create(decimation, taps, len, max_input_buffer_length, num_bytes, &result->filter);
+    code = fir_filter_create(decimation, taps, taps_len, max_input_buffer_length, num_bytes, &result->filter);
     if (code != 0) {
         lpf_destroy(result);
         return code;
