@@ -41,6 +41,8 @@ int quadrature_demod_create(float gain, uint32_t max_input_buffer_length, quadra
         quadrature_demod_destroy(result);
         return -ENOMEM;
     }
+    memset(result->working_buffer, 0, result->working_buffer_len * sizeof(float complex));
+
     result->temp_buffer_len = max_input_buffer_length;
     result->temp_buffer = malloc(sizeof(float complex) * result->temp_buffer_len);
     if (result->temp_buffer == NULL) {
