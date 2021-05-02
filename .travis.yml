@@ -15,6 +15,7 @@ addons:
   apt:
     packages:
     - libconfig-dev
+    - libc6-dbg
     - valgrind
     - check
     - make
