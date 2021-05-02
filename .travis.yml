@@ -10,7 +10,7 @@ addons:
   sonarcloud:
     organization: "dernasherbrezon-github"
     token:
-      secure: "123"
+      secure: "ENrenhZMrG0igNSBdY1BnSq7cE72lC6bPV1lU1mBWIbQ/1Ax2YWXbSF99DA9m9vhKK3faFcEmUH5jcAhOc7KI1U+aCoKjkDa2kKKvUFTYYY19bVy8R2QSsjD7btuUsGPM2N06YzTuRovNl/RP85nQkttqQPWY9C7g1RaTsrs+ftF6487Iks4TogCEBUxz4A59oQZfL66/rXJmNqs+pKni9aSFJ84OpDyH6Nwp6Drv3+zeDcb7qPq5huoxZUOdWQJ2iPADbYHIO+dBs64QDCvUWc6aq0/VFYUjoxPMndYUECepQlg4CU7/jdPLs40LCoTI3oePVNIBKcpGgfnEcuT13mPzIj8RtfzDsa9kw7pKglHncxOujpXbeeIcfc/V4YGVxrQnGQeW0X9p6JRMhlDRGAhdJ+OiMc3wP8Sypn/OhlLqpXtXvEQJvlbjBgO1sUGtVwvhiAUYVA/3zi/SL9dUXq0BGkwWeKKGkPoYDDOAemEzmsyZZHmJ17wS+Z8LlGDvh5cE7qDt+9napvxQ3GUS6VrsTMhoh7AjxlCJqEsG9zDqZBVoK6R5hRDb4BcQ5KLZZ/Vvmt817PK4MGzUTp/YVwhxKrlqvDBYkQlG6tJkimAFBTOlapPScFGaxfobgt6jcqD6ewDm4ocRXgJzugT7xORAabpaedmsHLP5aS+5Ps="
 
   apt:
     packages:
