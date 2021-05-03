@@ -61,6 +61,7 @@ clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float om
         clock_mm_destroy(result);
         return -ENOMEM;
     }
+    memset(result->working_buffer, 0, sizeof(float) * result->working_len_total);
 
     *clock = result;
     return 0;
@@ -101,7 +102,7 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
 
     while (ii < max_index) {
         // produce output sample
-        clock->output[oo] = mmse_fir_interpolator_process(clock->working_buffer + ii, taps_len, clock->mu,
+        clock->output[oo] = mmse_fir_interpolator_process(clock->working_buffer + ii, clock->mu,
                                                           clock->interp);
         mm_val = slice(clock->last_sample) * clock->output[oo] - slice(clock->output[oo]) * clock->last_sample;
         clock->last_sample = clock->output[oo];

@@ -11,7 +11,7 @@ START_TEST(test_normal) {
     int code = mmse_fir_interpolator_create(&interp);
     ck_assert_int_eq(code, 0);
     setup_volk_input_data(&float_input, 0, 8);
-    float result = mmse_fir_interpolator_process(float_input, 8, 0.14, interp);
+    float result = mmse_fir_interpolator_process(float_input, 0.14, interp);
     ck_assert(fabsl(3.140217F - result) < 0.001);
 }
 

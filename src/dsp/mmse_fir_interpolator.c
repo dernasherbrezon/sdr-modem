@@ -185,9 +185,9 @@ int mmse_fir_interpolator_create(mmse_fir_interpolator **interp) {
     return 0;
 }
 
-float mmse_fir_interpolator_process(const float *input, const size_t input_len, float mu, mmse_fir_interpolator *interp) {
+float mmse_fir_interpolator_process(const float *input, float mu, mmse_fir_interpolator *interp) {
     int imu = (int) rint(mu * interp->steps);
-    return fir_filter_process_float_single(input, input_len, interp->filters[imu]);
+    return fir_filter_process_float_single(input, interp->filters[imu]);
 }
 
 int mmse_fir_interpolator_taps(mmse_fir_interpolator *interp) {

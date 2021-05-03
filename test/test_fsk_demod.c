@@ -7,7 +7,13 @@ fsk_demod *demod = NULL;
 uint8_t *buffer = NULL;
 FILE *input = NULL;
 FILE *expected = NULL;
-uint32_t max_buffer_length = 32000;
+// buffer length is important here. do not change it
+// all test data was generated and verified with this buffer length
+// and VOLK_GENERIC=1
+// different buffer length or using SIMD can cause different precision when dealing with floats
+// this small precision issue can propagate further and cause small differences in the output.
+// i.e. instead of -31, it can produce -30
+uint32_t max_buffer_length = 4096;
 
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
     size_t left = len;
@@ -128,6 +134,10 @@ Suite *common_suite(void) {
 }
 
 int main(void) {
+    // this is especially important here
+    // env variable is defined in run_tests.sh, but also here
+    // to run this test from IDE
+    putenv("VOLK_GENERIC=1");
     int number_failed;
     Suite *s;
     SRunner *sr;
