@@ -2,9 +2,11 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
