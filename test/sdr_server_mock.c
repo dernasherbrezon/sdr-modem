@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
