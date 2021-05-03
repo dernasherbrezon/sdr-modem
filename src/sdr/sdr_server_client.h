@@ -2,6 +2,7 @@
 #define SDR_SERVER_CLIENT_H_
 
 #include <complex.h>
+#include <stdint.h>
 #include "sdr_server_api.h"
 
 typedef struct sdr_server_client_t sdr_server_client;

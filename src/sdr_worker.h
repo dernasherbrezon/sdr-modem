@@ -2,6 +2,7 @@
 #define SDR_MODEM_SDR_WORKER_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "dsp_worker.h"
 
 typedef struct sdr_worker_t sdr_worker;

@@ -2,6 +2,7 @@
 #define SDR_MODEM_FIR_FILTER_H
 
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef struct fir_filter_t fir_filter;
 

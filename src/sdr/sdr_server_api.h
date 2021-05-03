@@ -1,6 +1,8 @@
 #ifndef SDR_SERVER_API_H_
 #define SDR_SERVER_API_H_
 
+#include <stdint.h>
+
 #define SDR_SERVER_PROTOCOL_VERSION 0
 
 // client to server

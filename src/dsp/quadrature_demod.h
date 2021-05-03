@@ -2,6 +2,7 @@
 #define DSP_QUADRATURE_DEMOD_H_
 
 #include <complex.h>
+#include <stdint.h>
 
 typedef struct quadrature_demod_t quadrature_demod;
 

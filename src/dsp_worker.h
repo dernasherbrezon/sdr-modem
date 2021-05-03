@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <complex.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "api.h"
 #include "server_config.h"
