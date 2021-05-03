@@ -3,7 +3,9 @@
 
 #include <complex.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
+
 
 typedef struct doppler_t doppler;
 
