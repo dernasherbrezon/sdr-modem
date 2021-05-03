@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <check.h>
 #include "../src/dsp/fsk_demod.h"
 

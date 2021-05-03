@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <check.h>
+#include <math.h>
 #include "../src/dsp/lpf.h"
 #include "utils.h"
 

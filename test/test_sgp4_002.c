@@ -103,6 +103,7 @@ START_TEST(test_normal) {
     }
 
 }
+END_TEST
 
 void teardown() {
     if (fp != NULL) {
