@@ -19,17 +19,9 @@ target_link_libraries(sdr_modem sdr_modemLib)
 
 find_package(PkgConfig REQUIRED)
 
-#pkg_check_modules(PC_RTLSDR REQUIRED librtlsdr>=0.5.4)
-#include_directories(${PC_RTLSDR_INCLUDE_DIRS})
-#target_link_libraries(sdr_modemLib ${PC_RTLSDR_LINK_LIBRARIES})
-
 pkg_check_modules(PC_VOLK REQUIRED volk)
 include_directories(${PC_VOLK_INCLUDE_DIRS})
 target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
-
-#pkg_check_modules(PC_ZLIB REQUIRED zlib)
-#include_directories(${PC_ZLIB_INCLUDE_DIRS})
-#target_link_libraries(sdr_modemLib ${PC_ZLIB_LINK_LIBRARIES})
 
 pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
 include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
@@ -51,14 +43,16 @@ list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "test_.*\\.c")
 list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "perf_.*\\.c")
 list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "mock_.*\\.c")
 
+add_library(sdr_modemTestLib ${AUX_TEST_SOURCES})
+
 pkg_check_modules(PC_CHECK REQUIRED check)
 include_directories(${PC_CHECK_INCLUDE_DIRS})
 
 foreach(curTest ${TEST_SOURCES})
 	get_filename_component(curTestName ${curTest} NAME_WE)
 	add_test(NAME ${curTestName} COMMAND ${curTestName} ${curTest})
-	add_executable(${curTestName} ${curTest} ${AUX_TEST_SOURCES})
-	target_link_libraries(${curTestName} sdr_modemLib ${PC_CHECK_LINK_LIBRARIES})
+	add_executable(${curTestName} ${curTest})
+	target_link_libraries(${curTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LINK_LIBRARIES})
 endforeach()
 
 foreach(curPerfTest ${PERF_SOURCES})

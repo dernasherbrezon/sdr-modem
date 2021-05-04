@@ -189,7 +189,9 @@ void dsp_worker_destroy(void *data) {
     }
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);
-    destroy_queue(worker->queue);
+    if (worker->queue != NULL) {
+        destroy_queue(worker->queue);
+    }
     // cleanup everything only when thread terminates
     if (worker->file != NULL) {
         fclose(worker->file);

@@ -85,12 +85,13 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
     result->output_len = max_buffer_length;
     result->output = malloc(sizeof(int8_t) * result->output_len);
     if (result->output == NULL) {
+        sdr_modem_client_destroy(result);
         return -ENOMEM;
     }
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
-        free(result);
+        sdr_modem_client_destroy(result);
         fprintf(stderr, "<3>socket creation failed: %d\n", client_socket);
         return -1;
     }
@@ -102,7 +103,7 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
     address.sin_port = htons(port);
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
-        free(result);
+        sdr_modem_client_destroy(result);
         fprintf(stderr, "<3>connection with the server failed: %d\n", code);
         return -1;
     }
@@ -115,6 +116,9 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
 void sdr_modem_client_destroy(sdr_modem_client *client) {
     if (client == NULL) {
         return;
+    }
+    if (client->output != NULL) {
+        free(client->output);
     }
     close(client->client_socket);
     free(client);

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
-#define _XOPEN_SOURCE
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <check.h>
 #include "../src/dsp/fsk_demod.h"
