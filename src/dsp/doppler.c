@@ -90,6 +90,7 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
         doppler_destroy(result);
         return -ENOMEM;
     }
+    *result->satellite = (sat_t) {0};
     code = Get_Next_Tle_Set(tle, &result->satellite->tle);
     // yes yes. 1 is for success
     if (code != 1) {

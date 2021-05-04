@@ -186,10 +186,10 @@ void dsp_worker_destroy(void *data) {
     fprintf(stdout, "[%d] dsp_worker is stopping\n", worker->id);
     if (worker->queue != NULL) {
         interrupt_waiting_the_data(worker->queue);
-        destroy_queue(worker->queue);
     }
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);
+    destroy_queue(worker->queue);
     // cleanup everything only when thread terminates
     if (worker->file != NULL) {
         fclose(worker->file);

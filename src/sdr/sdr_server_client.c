@@ -60,9 +60,9 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout
     address.sin_port = htons(port);
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
+        fprintf(stderr, "<3>[%d] connection with sdr server failed: %d\n", result->id, code);
         free(result->output);
         free(result);
-        fprintf(stderr, "<3>[%d] connection with sdr server failed: %d\n", result->id, code);
         return -1;
     }
     fprintf(stdout, "[%d] connected to sdr server..\n", result->id);

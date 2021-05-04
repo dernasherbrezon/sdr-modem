@@ -166,5 +166,8 @@ void server_config_destroy(struct server_config *config) {
     if (config->base_path != NULL) {
         free(config->base_path);
     }
+    if (config->rx_sdr_server_address != NULL) {
+        free(config->rx_sdr_server_address);
+    }
     free(config);
 }
