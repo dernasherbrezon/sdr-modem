@@ -144,6 +144,7 @@ int main(void) {
     // env variable is defined in run_tests.sh, but also here
     // to run this test from IDE
     setenv("VOLK_GENERIC", "1", 1);
+    setenv("VOLK_ALIGNMENT", "16", 1);
 
     int number_failed;
     Suite *s;

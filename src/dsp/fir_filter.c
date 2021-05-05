@@ -6,9 +6,7 @@
 #include <stdio.h>
 
 int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter *filter) {
-    size_t alignment = volk_get_alignment();
-    printf("alignment is: %zu\n", alignment);
-    size_t number_of_aligned = fmax((size_t) 1, (float) alignment / sizeof(float));
+    size_t number_of_aligned = fmax((size_t) 1, (float) filter->alignment / sizeof(float));
     // Make a set of taps at all possible alignments
     float **result = malloc(number_of_aligned * sizeof(float *));
     if (result == NULL) {
@@ -16,7 +14,7 @@ int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter 
     }
     for (int i = 0; i < number_of_aligned; i++) {
         size_t aligned_taps_len = taps_len + number_of_aligned - 1;
-        result[i] = (float *) volk_malloc(aligned_taps_len * sizeof(float), alignment);
+        result[i] = (float *) volk_malloc(aligned_taps_len * sizeof(float), filter->alignment);
         // some taps will be longer than original, but
         // since they contain zeros, multiplication on an input will produce 0
         // there is a tradeoff: multiply unaligned input or
@@ -31,7 +29,6 @@ int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter 
     }
     filter->taps = result;
     filter->aligned_taps_len = number_of_aligned;
-    filter->alignment = alignment;
     return 0;
 }
 
@@ -43,6 +40,13 @@ int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
     }
     // init all fields with 0 so that destroy_* method would work
     *result = (struct fir_filter_t) {0};
+
+    char *alignment_override = getenv("VOLK_ALIGNMENT");
+    if (alignment_override != NULL) {
+        result->alignment = atoi(alignment_override);
+    } else {
+        result->alignment = volk_get_alignment();
+    }
 
     result->decimation = decimation;
     result->num_bytes = num_bytes;
