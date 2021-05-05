@@ -7,6 +7,7 @@
 
 int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter *filter) {
     size_t alignment = volk_get_alignment();
+    printf("alignment is: %zu\n", alignment);
     size_t number_of_aligned = fmax((size_t) 1, (float) alignment / sizeof(float));
     // Make a set of taps at all possible alignments
     float **result = malloc(number_of_aligned * sizeof(float *));
