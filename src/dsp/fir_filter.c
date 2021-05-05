@@ -47,6 +47,7 @@ int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
     } else {
         result->alignment = volk_get_alignment();
     }
+    printf("alignment: %zu\n", result->alignment);
 
     result->decimation = decimation;
     result->num_bytes = num_bytes;
