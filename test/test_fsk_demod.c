@@ -140,6 +140,12 @@ int main(void) {
     // env variable is defined in run_tests.sh, but also here
     // to run this test from IDE
     putenv("VOLK_GENERIC=1");
+    char* gen_env = getenv("VOLK_GENERIC");
+    if( gen_env ) {
+        printf("env variable configured: %s\n", gen_env);
+    } else {
+        printf("env variable NOT configured");
+    }
     int number_failed;
     Suite *s;
     SRunner *sr;
