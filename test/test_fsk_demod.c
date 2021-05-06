@@ -69,8 +69,8 @@ void assert_files(const char *input_filename, const char *expected_filename) {
             // can't make test working across macbook, raspberrypi and travis
             // all of them have different float-precision issues
             // where results slightly different
-            // at least first 800 samples matche before error accumulates
-            if (j == 800) {
+            // at least first 500 samples matche before error accumulates
+            if (j == 500) {
                 break;
             }
             ck_assert_int_eq((int8_t) buffer[i], output[i]);
