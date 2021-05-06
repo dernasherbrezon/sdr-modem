@@ -7,7 +7,6 @@
 
 int create_aligned_taps(const float *original_taps, size_t taps_len, fir_filter *filter) {
     size_t number_of_aligned = fmax((size_t) 1, (float) filter->alignment / sizeof(float));
-    printf("number of aligned: %zu float: %zu\n", number_of_aligned, sizeof(float));
     // Make a set of taps at all possible alignments
     float **result = malloc(number_of_aligned * sizeof(float *));
     if (result == NULL) {
