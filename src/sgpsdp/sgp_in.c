@@ -305,7 +305,7 @@ int Get_Next_Tle_Set(char line[3][80], tle_t * tle)
         else
         {
             /* strip off trailing spaces */
-            while ((chr = line[0][--idx]) == ' ');
+            while (idx >= 0 && (chr = line[0][--idx]) == ' ');
             tle->sat_name[++idx] = '\0';
             break;
         }

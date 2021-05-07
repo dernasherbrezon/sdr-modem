@@ -36,9 +36,9 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
+        fprintf(stderr, "<3>[%d] socket creation to sdr server failed: %d\n", result->id, client_socket);
         free(result->output);
         free(result);
-        fprintf(stderr, "<3>[%d] socket creation to sdr server failed: %d\n", result->id, client_socket);
         return -1;
     }
     result->client_socket = client_socket;

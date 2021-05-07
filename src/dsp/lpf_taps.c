@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <errno.h>
+#include <string.h>
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -61,6 +62,8 @@ int create_low_pass_filter(float gain, uint32_t sampling_freq, uint32_t cutoff_f
 	if (taps == NULL) {
 		return -ENOMEM;
 	}
+	memset(taps, 0, sizeof(float) * ntaps);
+
 	float *w = NULL;
 	code = create_hamming_window(ntaps, &w);
 	if (code != 0) {
