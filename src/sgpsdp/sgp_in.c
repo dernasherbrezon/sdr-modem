@@ -314,6 +314,8 @@ int Get_Next_Tle_Set(char line[3][80], tle_t * tle)
     } while (idx > 0 && line[0][idx] == ' ');
     if (idx == 0) {
         tle->sat_name[0] = '\0';
+    } else if (idx >= 24) {
+        tle->sat_name[24] = '\0';
     } else {
         tle->sat_name[idx + 1] = '\0';
     }
