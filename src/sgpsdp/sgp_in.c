@@ -304,13 +304,19 @@ int Get_Next_Tle_Set(char line[3][80], tle_t * tle)
         }
         else
         {
-            /* strip off trailing spaces */
-            while (idx >= 0 && (chr = line[0][--idx]) == ' ');
-            tle->sat_name[++idx] = '\0';
             break;
         }
     }
 
+    /* strip off trailing spaces */
+    do {
+        idx--;
+    } while (idx > 0 && line[0][idx] == ' ');
+    if (idx == 0) {
+        tle->sat_name[0] = '\0';
+    } else {
+        tle->sat_name[idx + 1] = '\0';
+    }
     /* Read in first line of TLE set */
     strncpy(tle_set, line[1], 70);
 

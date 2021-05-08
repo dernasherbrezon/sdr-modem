@@ -13,16 +13,14 @@ char *read_and_copy_str(const config_setting_t *setting, const char *default_val
     } else {
         value = config_setting_get_string(setting);
     }
-    char *bind_address;
     size_t length = strlen(value);
-    char *str_bind_address = malloc(sizeof(char) * length + 1);
-    if (str_bind_address == NULL) {
+    char *result = malloc(sizeof(char) * length + 1);
+    if (result == NULL) {
         return NULL;
     }
-    strncpy(str_bind_address, value, length);
-    str_bind_address[length] = '\0';
-    bind_address = str_bind_address;
-    return bind_address;
+    strncpy(result, value, length);
+    result[length] = '\0';
+    return result;
 }
 
 int server_config_create(struct server_config **config, const char *path) {

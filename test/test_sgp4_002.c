@@ -72,6 +72,24 @@ char tle_str[3][80];
 sat_t sat;
 FILE *fp = NULL;
 
+START_TEST(test_stipping_spaces2) {
+    char tle_with_spaces[3][80] = {"   ", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
+    sat_t result;
+    int code = Get_Next_Tle_Set(tle_with_spaces, &result.tle);
+    ck_assert_int_eq(code, 1);
+    ck_assert_str_eq("", result.tle.sat_name);
+}
+END_TEST
+
+START_TEST(test_stipping_spaces) {
+    char tle_with_spaces[3][80] = {"01234567890123456789123   ", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
+    sat_t result;
+    int code = Get_Next_Tle_Set(tle_with_spaces, &result.tle);
+    ck_assert_int_eq(code, 1);
+    ck_assert_str_eq("01234567890123456789123", result.tle.sat_name);
+}
+END_TEST
+
 START_TEST(test_normal) {
 
     int i;
@@ -126,6 +144,8 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_stipping_spaces);
+    tcase_add_test(tc_core, test_stipping_spaces2);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
