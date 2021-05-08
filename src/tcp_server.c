@@ -52,7 +52,6 @@ int tcp_worker_convert(struct request *req, struct sdr_worker_rx **result) {
     if (rx == NULL) {
         return -ENOMEM;
     }
-    rx->rx_destination = req->rx_destination;
     rx->rx_sampling_freq = req->rx_sampling_freq;
     rx->rx_center_freq = req->rx_center_freq;
     rx->band_freq = req->rx_sdr_server_band_freq;
@@ -70,8 +69,8 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
         fprintf(stderr, "<3>[%d] missing rx_sampling_freq parameter\n", client_id);
         return -1;
     }
-    if (req->rx_destination != REQUEST_RX_DESTINATION_FILE && req->rx_destination != REQUEST_RX_DESTINATION_SOCKET) {
-        fprintf(stderr, "<3>[%d] unknown rx_destination: %d\n", client_id, req->rx_destination);
+    if (req->rx_dump_file != REQUEST_RX_DUMP_FILE_YES && req->rx_dump_file != REQUEST_RX_DUMP_FILE_NO) {
+        fprintf(stderr, "<3>[%d] unknown rx_dump_file: %d\n", client_id, req->rx_dump_file);
         return -1;
     }
     if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
@@ -100,6 +99,10 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
     }
     if (req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_NO && req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES) {
         fprintf(stderr, "<3>[%d] unknown demod_fsk_use_dc_block: %d\n", client_id, req->demod_fsk_use_dc_block);
+        return -1;
+    }
+    if (req->demod_destination != REQUEST_DEMOD_DESTINATION_FILE && req->demod_destination != REQUEST_DEMOD_DESTINATION_SOCKET && req->demod_destination != REQUEST_DEMOD_DESTINATION_BOTH) {
+        fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
         return -1;
     }
     return 0;
@@ -168,15 +171,6 @@ static void *tcp_worker_callback(void *arg) {
     worker->is_running = false;
     close(worker->client_socket);
     return (void *) 0;
-}
-
-bool tcp_worker_equals_by_id(void *arg, void *data) {
-    uint32_t *id = (uint32_t *) arg;
-    struct tcp_worker *worker = (struct tcp_worker *) data;
-    if (worker->id == *id) {
-        return true;
-    }
-    return false;
 }
 
 bool tcp_worker_is_stopped(void *data) {
@@ -323,9 +317,9 @@ void handle_new_client(int client_socket, tcp_server *server) {
     pthread_mutex_unlock(&server->mutex);
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d rx destination %d\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d demod destination %d\n", tcp_worker->id,
             api_demod_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
-            tcp_worker->req->rx_sampling_freq, tcp_worker->req->rx_destination);
+            tcp_worker->req->rx_sampling_freq, tcp_worker->req->demod_destination);
 
 }
 

@@ -10,7 +10,6 @@ typedef struct sdr_worker_t sdr_worker;
 struct sdr_worker_rx {
     uint32_t rx_center_freq;
     uint32_t rx_sampling_freq;
-    uint8_t rx_destination;
     uint32_t band_freq;
 };
 

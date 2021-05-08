@@ -17,7 +17,9 @@ struct dsp_worker_t {
     doppler *dopp;
     queue *queue;
     pthread_t dsp_thread;
-    FILE *file;
+    FILE *rx_dump_file;
+    FILE *demod_file;
+    uint8_t demod_destination;
 };
 
 bool dsp_worker_find_by_id(void *id, void *data) {
@@ -36,16 +38,6 @@ void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker
 void dsp_worker_shutdown(void *arg, void *data) {
     dsp_worker *worker = (dsp_worker *) data;
     interrupt_waiting_the_data(worker->queue);
-}
-
-int write_to_file(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
-    size_t n_written = fwrite(filter_output, sizeof(int8_t), filter_output_len, worker->file);
-    // if disk is full, then terminate the client
-    if (n_written < filter_output_len) {
-        return -1;
-    } else {
-        return 0;
-    }
 }
 
 int write_to_socket(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
@@ -75,6 +67,15 @@ static void *dsp_worker_callback(void *arg) {
         if (input == NULL) {
             break;
         }
+        if (worker->rx_dump_file != NULL) {
+            size_t n_written = fwrite(input, sizeof(float complex), input_len, worker->rx_dump_file);
+            // if disk is full, then terminate the client
+            if (n_written < input_len) {
+                complete_buffer_processing(worker->queue);
+                fprintf(stderr, "<3>[%d] unable to write sdr data\n", id);
+                break;
+            }
+        }
         if (worker->dopp != NULL) {
             float complex *doppler_output = NULL;
             size_t doppler_output_len = 0;
@@ -86,14 +87,23 @@ static void *dsp_worker_callback(void *arg) {
             fsk_demod_process(input, input_len, &demod_output, &demod_output_len, worker->fsk_demod);
         }
         if (demod_output == NULL) {
+            complete_buffer_processing(worker->queue);
             // shouldn't happen
             // demod type checked on client request
             continue;
         }
+
+        if (worker->demod_file != NULL) {
+            size_t n_written = fwrite(demod_output, sizeof(int8_t), demod_output_len, worker->demod_file);
+            // if disk is full, then terminate the client
+            if (n_written < input_len) {
+                complete_buffer_processing(worker->queue);
+                fprintf(stderr, "<3>[%d] unable to write demod data\n", id);
+                break;
+            }
+        }
         int code;
-        if (worker->file != NULL) {
-            code = write_to_file(worker, demod_output, demod_output_len);
-        } else {
+        if (worker->demod_destination == REQUEST_DEMOD_DESTINATION_SOCKET || worker->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
             code = write_to_socket(worker, demod_output, demod_output_len);
         }
 
@@ -144,12 +154,23 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         return code;
     }
 
-    if (req->rx_destination == REQUEST_RX_DESTINATION_FILE) {
+    if (req->rx_dump_file == REQUEST_RX_DUMP_FILE_YES) {
         char file_path[4096];
         snprintf(file_path, sizeof(file_path), "%s/%d.cf32", server_config->base_path, id);
-        result->file = fopen(file_path, "wb");
-        if (result->file == NULL) {
-            fprintf(stderr, "<3>unable to open file for output: %s\n", file_path);
+        result->rx_dump_file = fopen(file_path, "wb");
+        if (result->rx_dump_file == NULL) {
+            fprintf(stderr, "<3>unable to open file for sdr input: %s\n", file_path);
+            dsp_worker_destroy(result);
+            return -1;
+        }
+    }
+    result->demod_destination = req->demod_destination;
+    if (req->demod_destination == REQUEST_DEMOD_DESTINATION_FILE || req->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
+        char file_path[4096];
+        snprintf(file_path, sizeof(file_path), "%s/%d.s8", server_config->base_path, id);
+        result->demod_file = fopen(file_path, "wb");
+        if (result->demod_file == NULL) {
+            fprintf(stderr, "<3>unable to open file for demod output: %s\n", file_path);
             dsp_worker_destroy(result);
             return -1;
         }
@@ -193,8 +214,11 @@ void dsp_worker_destroy(void *data) {
         destroy_queue(worker->queue);
     }
     // cleanup everything only when thread terminates
-    if (worker->file != NULL) {
-        fclose(worker->file);
+    if (worker->rx_dump_file != NULL) {
+        fclose(worker->rx_dump_file);
+    }
+    if (worker->demod_file != NULL) {
+        fclose(worker->demod_file);
     }
     if (worker->fsk_demod != NULL) {
         fsk_demod_destroy(worker->fsk_demod);

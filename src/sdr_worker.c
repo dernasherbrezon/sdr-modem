@@ -108,7 +108,6 @@ bool sdr_worker_find_closest(void *id, void *data) {
     sdr_worker *worker = (sdr_worker *) data;
     if (worker->rx->rx_center_freq == rx->rx_center_freq &&
         worker->rx->rx_sampling_freq >= rx->rx_sampling_freq &&
-        worker->rx->rx_destination == rx->rx_destination &&
         worker->rx->band_freq == rx->band_freq) {
         return true;
     }
