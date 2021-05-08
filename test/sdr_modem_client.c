@@ -16,26 +16,33 @@ struct sdr_modem_client_t {
 };
 
 int sdr_modem_write_request(struct message_header *header, struct request *req, sdr_modem_client *client) {
-    req->rx_center_freq = htonl(req->rx_center_freq);
-    req->rx_sampling_freq = htonl(req->rx_sampling_freq);
-    req->rx_sdr_server_band_freq = htonl(req->rx_sdr_server_band_freq);
-    req->latitude = htonl(req->latitude);
-    req->longitude = htonl(req->longitude);
-    req->altitude = htonl(req->altitude);
-    req->demod_baud_rate = htonl(req->demod_baud_rate);
-    req->demod_fsk_deviation = htonl(req->demod_fsk_deviation);
-    req->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
+    struct request *req_copy = malloc(sizeof(struct request));
+    if (req_copy == NULL) {
+        return -ENOMEM;
+    }
+    memcpy(req_copy, req, sizeof(struct request));
+    req_copy->rx_center_freq = htonl(req->rx_center_freq);
+    req_copy->rx_sampling_freq = htonl(req->rx_sampling_freq);
+    req_copy->rx_sdr_server_band_freq = htonl(req->rx_sdr_server_band_freq);
+    req_copy->latitude = htonl(req->latitude);
+    req_copy->longitude = htonl(req->longitude);
+    req_copy->altitude = htonl(req->altitude);
+    req_copy->demod_baud_rate = htonl(req->demod_baud_rate);
+    req_copy->demod_fsk_deviation = htonl(req->demod_fsk_deviation);
+    req_copy->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
 
     size_t total_len = sizeof(struct message_header) + sizeof(struct request);
     uint8_t *buffer = malloc(total_len);
     if (buffer == NULL) {
+        free(req_copy);
         return -ENOMEM;
     }
     memcpy(buffer, header, sizeof(struct message_header));
-    memcpy(buffer + sizeof(struct message_header), req, sizeof(struct request));
+    memcpy(buffer + sizeof(struct message_header), req_copy, sizeof(struct request));
 
     int code = tcp_utils_write_data(buffer, total_len, client->client_socket);
     free(buffer);
+    free(req_copy);
     return code;
 }
 

@@ -140,17 +140,6 @@ void sdr_worker_destroy(void *data) {
     fprintf(stdout, "[%d] sdr_worker stopped\n", id);
 }
 
-bool sdr_worker_find_by_dsp_id(void *id, void *data) {
-    sdr_worker *worker = (sdr_worker *) data;
-    pthread_mutex_lock(&worker->mutex);
-    if (worker->dsp_configs == NULL) {
-        return false;
-    }
-    bool result = (linked_list_find(id, &dsp_worker_find_by_id, worker->dsp_configs) != NULL);
-    pthread_mutex_unlock(&worker->mutex);
-    return result;
-}
-
 void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *worker) {
     if (worker == NULL) {
         return;
@@ -164,18 +153,6 @@ void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *worker) {
     if (result) {
         sdr_worker_destroy(worker);
     }
-}
-
-bool sdr_worker_destroy_by_id(void *id, void *data) {
-    sdr_worker *worker = (sdr_worker *) data;
-    pthread_mutex_lock(&worker->mutex);
-    if (worker->dsp_configs == NULL) {
-        return false;
-    }
-    linked_list_destroy_by_id(id, &dsp_worker_find_by_id, &worker->dsp_configs);
-    bool result = (worker->dsp_configs == NULL);
-    pthread_mutex_unlock(&worker->mutex);
-    return result;
 }
 
 int sdr_worker_add_dsp_worker(dsp_worker *worker, sdr_worker *sdr) {
