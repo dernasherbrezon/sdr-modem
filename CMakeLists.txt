@@ -63,5 +63,5 @@ endforeach()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 	add_custom_target("coverage")
-	add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/test_core.dir/test/*.c.o)
+	add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/dsp/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/math/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/sdr/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/sgpsdp/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/test_core.dir/test/*.c.o)
 endif()
