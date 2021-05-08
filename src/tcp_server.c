@@ -61,6 +61,10 @@ int tcp_worker_convert(struct request *req, struct sdr_worker_rx **result) {
 }
 
 int validate_client_request(struct request *req, uint32_t client_id, struct server_config *config) {
+    if (req->rx_type != REQUEST_RX_TYPE_SDR_SERVER) {
+        fprintf(stderr, "<3>[%d] unknown rx_type parameter: %d\n", client_id, req->rx_type);
+        return -1;
+    }
     if (req->rx_center_freq == 0) {
         fprintf(stderr, "<3>[%d] missing rx_center_freq parameter\n", client_id);
         return -1;
@@ -81,7 +85,7 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
         fprintf(stderr, "<3>[%d] unknown correct_doppler: %d\n", client_id, req->correct_doppler);
         return -1;
     }
-    if (req->demod_type != REQUEST_DEMOD_TYPE_FSK) {
+    if (req->demod_type != REQUEST_MODEM_TYPE_FSK) {
         fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
     }

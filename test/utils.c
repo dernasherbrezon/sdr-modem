@@ -6,6 +6,7 @@
 struct request *create_request() {
     struct request *result = malloc(sizeof(struct request));
     ck_assert(result != NULL);
+    result->rx_type = REQUEST_RX_TYPE_SDR_SERVER;
     result->rx_sampling_freq = 48000;
     result->rx_sdr_server_band_freq = 437525000;
     result->rx_center_freq = 437525000;
@@ -17,7 +18,7 @@ struct request *create_request() {
     result->longitude = 47.57F * 10E6;
     result->correct_doppler = REQUEST_CORRECT_DOPPLER_YES;
     result->demod_destination = REQUEST_DEMOD_DESTINATION_SOCKET;
-    result->demod_type = REQUEST_DEMOD_TYPE_FSK;
+    result->demod_type = REQUEST_MODEM_TYPE_FSK;
     result->demod_fsk_use_dc_block = REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES;
     result->demod_fsk_transition_width = 2000;
     result->demod_decimation = 2;

@@ -140,7 +140,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         return code;
     }
 
-    if (req->demod_type == REQUEST_DEMOD_TYPE_FSK) {
+    if (req->demod_type == REQUEST_MODEM_TYPE_FSK) {
         bool use_dc_block = (req->demod_fsk_use_dc_block == REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES);
         code = fsk_demod_create(req->rx_sampling_freq, req->demod_baud_rate,
                                 req->demod_fsk_deviation, req->demod_decimation,
