@@ -102,7 +102,7 @@ static void *dsp_worker_callback(void *arg) {
                 break;
             }
         }
-        int code;
+        int code = 0;
         if (worker->demod_destination == REQUEST_DEMOD_DESTINATION_SOCKET || worker->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
             code = write_to_socket(worker, demod_output, demod_output_len);
         }
