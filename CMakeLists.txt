@@ -27,6 +27,20 @@ pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
 include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
 target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LINK_LIBRARIES})
 
+if (APPLE)
+	find_path(LIBIIO_INCLUDE_DIRS iio.h)
+	include_directories(${LIBIIO_INCLUDE_DIRS})
+
+	# temporary
+	add_compile_options("-F/Library/Frameworks/")
+	link_libraries("-F/Library/Frameworks/")
+	find_library(LIBIIO_LIBRARIES iio)
+	target_link_libraries(sdr_modemLib ${LIBIIO_LIBRARIES})
+else()
+	pkg_check_modules(PC_LIBIIO REQUIRED libiio)
+	include_directories(${PC_LIBIIO_INCLUDE_DIRS})
+endif ()
+
 find_package(Threads REQUIRED)
 target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(sdr_modemLib m)
