@@ -6,7 +6,6 @@
 struct request *create_request() {
     struct request *result = malloc(sizeof(struct request));
     ck_assert(result != NULL);
-    result->rx_type = REQUEST_RX_TYPE_SDR_SERVER;
     result->rx_sampling_freq = 48000;
     result->rx_sdr_server_band_freq = 437525000;
     result->rx_center_freq = 437525000;

@@ -17,8 +17,6 @@ struct message_header {
     uint8_t type;
 } __attribute__((packed));
 
-#define REQUEST_RX_TYPE_SDR_SERVER 0
-
 #define REQUEST_RX_DUMP_FILE_NO 0
 #define REQUEST_RX_DUMP_FILE_YES 1
 
@@ -37,7 +35,6 @@ struct message_header {
 struct request {
 
     //generic RX SDR settings
-    uint8_t rx_type;
     uint32_t rx_center_freq;
     uint32_t rx_sampling_freq;
     uint8_t rx_dump_file;
