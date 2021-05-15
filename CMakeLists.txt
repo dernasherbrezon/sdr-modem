@@ -39,6 +39,8 @@ if (APPLE)
 else()
 	pkg_check_modules(PC_LIBIIO REQUIRED libiio)
 	include_directories(${PC_LIBIIO_INCLUDE_DIRS})
+	# temporary
+	target_link_libraries(sdr_modemLib ${PC_LIBIIO_LINK_LIBRARIES})
 endif ()
 
 find_package(Threads REQUIRED)
