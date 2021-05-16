@@ -18,12 +18,12 @@ struct stream_cfg {
     uint32_t center_freq; // Local oscillator frequency in Hz
     uint8_t gain_control_mode;
     double manual_gain;
-    const char *rfport; // Port name
 };
 
 int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_plugin **result);
 
 void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugin *iio);
+int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio);
 
 void iio_plugin_destroy(iio_plugin *iio);
 

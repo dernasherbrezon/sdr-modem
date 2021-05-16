@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+static char tmpstr[64];
+
 struct iio_plugin_t {
     uint32_t id;
 
@@ -28,6 +30,33 @@ struct iio_plugin_t {
 enum iio_direction {
     RX, TX
 };
+
+static inline float clip(float i) {
+    if (i > 1.0) {
+        i = 1.0;
+    } else if (i < -1.0) {
+        i = -1.0;
+    }
+    return i;
+}
+
+int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio) {
+    ptrdiff_t p_inc = iio_buffer_step(iio->tx_buffer);
+    char *p_end = iio_buffer_end(iio->tx_buffer);
+    size_t cur_index = 0;
+    for (char *p_dat = (char *) iio_buffer_first(iio->tx_buffer, iio->tx0_i); p_dat < p_end && cur_index < input_len; p_dat += p_inc, cur_index++) {
+        float i = clip(crealf(input[cur_index]));
+        float q = clip(cimagf(input[cur_index]));
+        // 12-bit sample needs to be MSB aligned so shift by 4
+        ((int16_t *) p_dat)[0] = (int16_t) (i * 2048) << 4; // Real (I)
+        ((int16_t *) p_dat)[1] = (int16_t) (q * 2048) << 4; // Imag (Q)
+    }
+    ssize_t nbytes_tx = iio_buffer_push(iio->tx_buffer);
+    if (nbytes_tx < 0) {
+        return -1;
+    }
+    return 0;
+}
 
 void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugin *iio) {
     if (iio->rx_buffer == NULL) {
@@ -56,8 +85,6 @@ void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugi
     *output = iio->output;
     *output_len = len;
 }
-
-static char tmpstr[64];
 
 static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enum iio_direction d) {
     switch (d) {
@@ -89,7 +116,7 @@ static struct iio_channel *iio_get_phy_channel(struct iio_context *ctx, enum iio
 
 static int error_check(int v, const char *what) {
     if (v < 0) {
-        fprintf(stderr, "Error %d writing to channel \"%s\"\nvalue may not be supported.\n", v, what);
+        fprintf(stderr, "Error %d writing to channel \"%s\". value may not be supported.\n", v, what);
         return v;
     }
     return 0;
@@ -128,11 +155,7 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
     if (chn == NULL) {
         return -1;
     }
-    int code = wr_ch_str(chn, "rf_port_select", cfg->rfport);
-    if (code != 0) {
-        return code;
-    }
-    code = wr_ch_lli(chn, "rf_bandwidth", cfg->rf_bandwidth);
+    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->rf_bandwidth);
     if (code != 0) {
         return code;
     }
@@ -234,7 +257,6 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
         }
         code = iio_configure_ad9361_streaming_channel(result->ctx, tx_config, TX, 0);
         if (code < 0) {
-            fprintf(stderr, "unable to configure tx channel: %zd\n", code);
             iio_plugin_destroy(result);
             return -1;
         }
@@ -269,7 +291,6 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
         }
         code = iio_configure_ad9361_streaming_channel(result->ctx, rx_config, RX, 0);
         if (code < 0) {
-            fprintf(stderr, "unable to configure rx channel: %zd\n", code);
             iio_plugin_destroy(result);
             return -1;
         }
