@@ -3,6 +3,7 @@
 #include <iio.h>
 #include <stdio.h>
 #include <errno.h>
+#include <volk/volk.h>
 
 static char tmpstr[64];
 
@@ -33,14 +34,18 @@ enum iio_direction {
 
 static inline float clip(float i) {
     if (i > 1.0) {
-        i = 1.0;
+        i = 1.0F;
     } else if (i < -1.0) {
-        i = -1.0;
+        i = -1.0F;
     }
     return i;
 }
 
 int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio) {
+    if (iio->tx_buffer == NULL) {
+        fprintf(stderr, "tx was not initialized\n");
+        return -1;
+    }
     ptrdiff_t p_inc = iio_buffer_step(iio->tx_buffer);
     char *p_end = iio_buffer_end(iio->tx_buffer);
     size_t cur_index = 0;
@@ -72,18 +77,13 @@ void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugi
         return;
     }
 
-    size_t len = 0;
-    ptrdiff_t p_inc = iio_buffer_step(iio->rx_buffer);
     char *p_end = iio_buffer_end(iio->rx_buffer);
-    for (char *p_dat = (char *) iio_buffer_first(iio->rx_buffer, iio->rx0_i); p_dat < p_end; p_dat += p_inc) {
-        const int16_t i = ((int16_t *) p_dat)[0]; // Real (I)
-        const int16_t q = ((int16_t *) p_dat)[1]; // Imag (Q)
-        iio->output[len] = i / 2048.0F + I * (q / 2048.0F);
-        len++;
-    }
-
+    char *p_dat = (char *) iio_buffer_first(iio->rx_buffer, iio->rx0_i);
+    size_t num_points = (p_end - p_dat) / sizeof(int16_t);
+    // ADC is 12bit, thus 2^12 = 2048
+    volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_dat, 2048.0F, num_points);
     *output = iio->output;
-    *output_len = len;
+    *output_len = num_points / 2;
 }
 
 static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enum iio_direction d) {
