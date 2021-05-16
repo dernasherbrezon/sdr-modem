@@ -132,11 +132,37 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
     if (code != 0) {
         return code;
     }
-    code = wr_ch_lli(chn, "rf_bandwidth", cfg->bw_hz);
+    code = wr_ch_lli(chn, "rf_bandwidth", cfg->rf_bandwidth);
     if (code != 0) {
         return code;
     }
-    code = wr_ch_lli(chn, "sampling_frequency", cfg->fs_hz);
+    code = wr_ch_lli(chn, "sampling_frequency", cfg->sampling_freq);
+    if (code != 0) {
+        return code;
+    }
+    switch (cfg->gain_control_mode) {
+        case IIO_GAIN_MODE_MANUAL:
+            if (type == RX) {
+                code = wr_ch_str(chn, "gain_control_mode", "manual");
+            }
+            if (code == 0) {
+                code = error_check(iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain");
+            }
+            break;
+        case IIO_GAIN_MODE_FAST_ATTACK:
+            code = wr_ch_str(chn, "gain_control_mode", "fast_attack");
+            break;
+        case IIO_GAIN_MODE_SLOW_ATTACK:
+            code = wr_ch_str(chn, "gain_control_mode", "slow_attack");
+            break;
+        case IIO_GAIN_MODE_HYBRID:
+            code = wr_ch_str(chn, "gain_control_mode", "hybrid");
+            break;
+        default:
+            fprintf(stderr, "unknown gain mode: %d\n", cfg->gain_control_mode);
+            code = -1;
+            break;
+    }
     if (code != 0) {
         return code;
     }

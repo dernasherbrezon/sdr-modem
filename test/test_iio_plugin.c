@@ -15,8 +15,8 @@ END_TEST
 START_TEST (test_normal) {
     struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
     ck_assert(rx_config != NULL);
-    rx_config->bw_hz = 2000000;
-    rx_config->fs_hz = 2500000;
+    rx_config->rf_bandwidth = 2000000;
+    rx_config->sampling_freq = 2500000;
     rx_config->center_freq = 2500000000;
     rx_config->rfport = "A_BALANCED";
     int code = iio_plugin_create(1, rx_config, NULL, 10000, 2000000, &iio);
