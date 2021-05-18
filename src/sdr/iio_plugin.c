@@ -235,11 +235,11 @@ int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation,
         fprintf(stderr, "sampling freq is too low: %u\n", cfg->sampling_freq);
         return -1;
     } else if (cfg->sampling_freq < MIN_FIR_FILTER_2) {
-        decimation = 4;
-        fir_filter_taps = fir_128_4;
+        *decimation = 4;
+        *fir_filter_taps = fir_128_4;
     } else if (cfg->sampling_freq < MIN_NO_FIR_FILTER) {
-        decimation = 2;
-        fir_filter_taps = fir_128_2;
+        *decimation = 2;
+        *fir_filter_taps = fir_128_2;
     }
     return 0;
 }
@@ -269,9 +269,16 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
     // just to simplify the code below a bit
     if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
         tx_fir_filter_taps = rx_fir_filter_taps;
+        tx_decimation = rx_decimation;
     }
     if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
         rx_fir_filter_taps = tx_fir_filter_taps;
+        rx_decimation = tx_decimation;
+    }
+
+    if (tx_decimation != rx_decimation) {
+        fprintf(stderr, "rx and tx should be in the same sampling freq band. rx: %d, tx: %d\n", rx_decimation, tx_decimation);
+        return -1;
     }
 
     char *buf = malloc(FIR_BUF_SIZE);
