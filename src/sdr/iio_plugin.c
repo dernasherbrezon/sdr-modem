@@ -4,9 +4,27 @@
 #include <stdio.h>
 #include <errno.h>
 #include <volk/volk.h>
+#include <stdbool.h>
+
+#define FIR_BUF_SIZE    8192
 
 static char tmpstr[256];
-static size_t tmpstr_len = 256;
+static const size_t tmpstr_len = 256;
+static const uint32_t MIN_NO_FIR_FILTER = (uint32_t) ((double) 25000000 / 12 + 1);
+static const uint32_t MIN_FIR_FILTER_2 = MIN_NO_FIR_FILTER / 2 + 1;
+static const uint32_t MIN_FIR_FILTER = MIN_NO_FIR_FILTER / 4 + 1;
+static int16_t fir_128_4[] = {
+        -15, -27, -23, -6, 17, 33, 31, 9, -23, -47, -45, -13, 34, 69, 67, 21, -49, -102, -99, -32, 69, 146, 143, 48, -96, -204, -200, -69, 129, 278, 275, 97, -170,
+        -372, -371, -135, 222, 494, 497, 187, -288, -654, -665, -258, 376, 875, 902, 363, -500, -1201, -1265, -530, 699, 1748, 1906, 845, -1089, -2922, -3424,
+        -1697, 2326, 7714, 12821, 15921, 15921, 12821, 7714, 2326, -1697, -3424, -2922, -1089, 845, 1906, 1748, 699, -530, -1265, -1201, -500, 363, 902, 875,
+        376, -258, -665, -654, -288, 187, 497, 494, 222, -135, -371, -372, -170, 97, 275, 278, 129, -69, -200, -204, -96, 48, 143, 146, 69, -32, -99, -102, -49, 21,
+        67, 69, 34, -13, -45, -47, -23, 9, 31, 33, 17, -6, -23, -27, -15};
+
+static int16_t fir_128_2[] = {
+        -0, 0, 1, -0, -2, 0, 3, -0, -5, 0, 8, -0, -11, 0, 17, -0, -24, 0, 33, -0, -45, 0, 61, -0, -80, 0, 104, -0, -134, 0, 169, -0,
+        -213, 0, 264, -0, -327, 0, 401, -0, -489, 0, 595, -0, -724, 0, 880, -0, -1075, 0, 1323, -0, -1652, 0, 2114, -0, -2819, 0, 4056, -0, -6883, 0, 20837, 32767,
+        20837, 0, -6883, -0, 4056, 0, -2819, -0, 2114, 0, -1652, -0, 1323, 0, -1075, -0, 880, 0, -724, -0, 595, 0, -489, -0, 401, 0, -327, -0, 264, 0, -213, -0,
+        169, 0, -134, -0, 104, 0, -80, -0, 61, 0, -45, -0, 33, 0, -24, -0, 17, 0, -11, -0, 8, 0, -5, -0, 3, 0, -2, -0, 1, 0, -0, 0};
 
 struct iio_plugin_t {
     uint32_t id;
@@ -132,6 +150,14 @@ static int wr_ch_lli(struct iio_channel *chn, const char *what, long long val) {
     return error_check(iio_channel_attr_write_longlong(chn, what, val), what);
 }
 
+int ad9361_set_trx_fir_enable(struct iio_device *dev, int enable) {
+    int ret = iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
+    if (ret < 0) {
+        ret = iio_channel_attr_write_bool(iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
+    }
+    return ret;
+}
+
 static struct iio_channel *iio_get_lo_chan(struct iio_context *ctx, enum iio_direction d) {
     switch (d) {
         // LO chan is always output, i.e. true
@@ -199,6 +225,85 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
     return wr_ch_lli(chn, "frequency", cfg->center_freq);
 }
 
+int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
+    if (cfg == NULL) {
+        *decimation = 0;
+        *fir_filter_taps = NULL;
+        return 0;
+    }
+    if (cfg->sampling_freq < MIN_FIR_FILTER) {
+        fprintf(stderr, "sampling freq is too low: %u\n", cfg->sampling_freq);
+        return -1;
+    } else if (cfg->sampling_freq < MIN_FIR_FILTER_2) {
+        decimation = 4;
+        fir_filter_taps = fir_128_4;
+    } else if (cfg->sampling_freq < MIN_NO_FIR_FILTER) {
+        decimation = 2;
+        fir_filter_taps = fir_128_2;
+    }
+    return 0;
+}
+
+int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config) {
+    int rx_decimation = 0;
+    int16_t *rx_fir_filter_taps = NULL;
+    int code = iio_plugin_select_fir_filter_config(rx_config, &rx_decimation, &rx_fir_filter_taps);
+    if (code < 0) {
+        return code;
+    }
+    int tx_decimation = 0;
+    int16_t *tx_fir_filter_taps = NULL;
+    code = iio_plugin_select_fir_filter_config(tx_config, &tx_decimation, &tx_fir_filter_taps);
+    if (code < 0) {
+        return code;
+    }
+
+    struct iio_device *phy_device = iio_context_find_device(ctx, "ad9361-phy");
+
+    // filter is not needed
+    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
+        // filter might be configured prior to execution. disable it to support higher rates
+        return error_check(ad9361_set_trx_fir_enable(phy_device, false), "in_out_voltage_filter_fir_en");
+    }
+
+    // just to simplify the code below a bit
+    if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
+        tx_fir_filter_taps = rx_fir_filter_taps;
+    }
+    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
+        rx_fir_filter_taps = tx_fir_filter_taps;
+    }
+
+    char *buf = malloc(FIR_BUF_SIZE);
+    if (buf == NULL) {
+        return -ENOMEM;
+    }
+    int len = 0;
+    if (rx_decimation > 0) {
+        len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
+    }
+    if (tx_decimation > 0) {
+        len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
+    }
+    for (int i = 0; i < 128; i++) {
+        len += snprintf(buf + len, FIR_BUF_SIZE - len, "%d,%d\n", tx_fir_filter_taps[i], rx_fir_filter_taps[i]);
+    }
+    len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
+
+    code = error_check(iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config");
+    free(buf);
+    if (code < 0) {
+        return code;
+    }
+
+    code = error_check(ad9361_set_trx_fir_enable(phy_device, true), "in_out_voltage_filter_fir_en");
+    if (code < 0) {
+        return code;
+    }
+
+    return 0;
+}
+
 int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_plugin **output) {
     if (rx_config == NULL && tx_config == NULL) {
         fprintf(stderr, "configuration is missing\n");
@@ -246,6 +351,12 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
     code = iio_context_set_timeout(result->ctx, timeout_ms);
     if (code < 0) {
         fprintf(stderr, "unable to setup timeout: %zd\n", code);
+        iio_plugin_destroy(result);
+        return -1;
+    }
+
+    code = iio_plugin_setup_fir_filter(result->ctx, rx_config, tx_config);
+    if (code < 0) {
         iio_plugin_destroy(result);
         return -1;
     }
