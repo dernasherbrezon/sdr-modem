@@ -15,7 +15,6 @@ END_TEST
 START_TEST (test_normal) {
     struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
     ck_assert(rx_config != NULL);
-    rx_config->rf_bandwidth = 2000000;
     rx_config->sampling_freq = (uint32_t) ((double) 25000000 / 12 + 1);
     printf("sampling freq: %u\n", rx_config->sampling_freq);
     rx_config->center_freq = 434236000;
@@ -23,7 +22,6 @@ START_TEST (test_normal) {
 
     struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
     ck_assert(tx_config != NULL);
-    tx_config->rf_bandwidth = rx_config->rf_bandwidth;
     tx_config->sampling_freq = rx_config->sampling_freq;
     tx_config->center_freq = rx_config->center_freq;
 
