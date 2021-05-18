@@ -5,7 +5,8 @@
 #include <errno.h>
 #include <volk/volk.h>
 
-static char tmpstr[64];
+static char tmpstr[256];
+static size_t tmpstr_len = 256;
 
 struct iio_plugin_t {
     uint32_t id;
@@ -116,7 +117,8 @@ static struct iio_channel *iio_get_phy_channel(struct iio_context *ctx, enum iio
 
 static int error_check(int v, const char *what) {
     if (v < 0) {
-        fprintf(stderr, "Error %d writing to channel \"%s\". value may not be supported.\n", v, what);
+        iio_strerror(-v, tmpstr, tmpstr_len);
+        fprintf(stderr, "unable to write value for \"%s\": %s\n", what, tmpstr);
         return v;
     }
     return 0;
