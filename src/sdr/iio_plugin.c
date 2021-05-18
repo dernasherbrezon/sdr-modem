@@ -51,30 +51,20 @@ enum iio_direction {
     RX, TX
 };
 
-static inline float clip(float i) {
-    if (i > 1.0) {
-        i = 1.0F;
-    } else if (i < -1.0) {
-        i = -1.0F;
-    }
-    return i;
-}
-
 int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio) {
     if (iio->tx_buffer == NULL) {
         fprintf(stderr, "tx was not initialized\n");
         return -1;
     }
-    ptrdiff_t p_inc = iio_buffer_step(iio->tx_buffer);
-    char *p_end = iio_buffer_end(iio->tx_buffer);
-    size_t cur_index = 0;
-    for (char *p_dat = (char *) iio_buffer_first(iio->tx_buffer, iio->tx0_i); p_dat < p_end && cur_index < input_len; p_dat += p_inc, cur_index++) {
-        float i = clip(crealf(input[cur_index]));
-        float q = clip(cimagf(input[cur_index]));
-        // 12-bit sample needs to be MSB aligned so shift by 4
-        ((int16_t *) p_dat)[0] = (int16_t) (i * 2048) << 4; // Real (I)
-        ((int16_t *) p_dat)[1] = (int16_t) (q * 2048) << 4; // Imag (Q)
-    }
+
+    char *p_start = (char *) iio_buffer_first(iio->tx_buffer, iio->tx0_i);
+    size_t num_points = input_len * 2;
+
+    // 12-bit sample needs to be MSB aligned so shift by 4
+    // 2048 to put [-1;1] into [-2048;2048] interval
+    // 16 is to shift by 4 to the MSB
+    volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) input, 2048 * 16, num_points);
+
     ssize_t nbytes_tx = iio_buffer_push(iio->tx_buffer);
     if (nbytes_tx < 0) {
         return -1;
@@ -97,10 +87,10 @@ void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugi
     }
 
     char *p_end = iio_buffer_end(iio->rx_buffer);
-    char *p_dat = (char *) iio_buffer_first(iio->rx_buffer, iio->rx0_i);
-    size_t num_points = (p_end - p_dat) / sizeof(int16_t);
+    char *p_start = (char *) iio_buffer_first(iio->rx_buffer, iio->rx0_i);
+    size_t num_points = (p_end - p_start) / sizeof(int16_t);
     // ADC is 12bit, thus 2^12 = 2048
-    volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_dat, 2048.0F, num_points);
+    volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_start, 2048.0F, num_points);
     *output = iio->output;
     *output_len = num_points / 2;
 }
