@@ -183,7 +183,7 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
     if (chn == NULL) {
         return -1;
     }
-    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->rf_bandwidth);
+    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->sampling_freq);
     if (code != 0) {
         return code;
     }

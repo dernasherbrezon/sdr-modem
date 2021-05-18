@@ -13,7 +13,6 @@ typedef struct iio_plugin_t iio_plugin;
 #define IIO_GAIN_MODE_HYBRID 3
 
 struct stream_cfg {
-    uint32_t rf_bandwidth; // Analog bandwidth in Hz
     uint32_t sampling_freq; // Baseband sample rate in Hz
     uint32_t center_freq; // Local oscillator frequency in Hz
     uint8_t gain_control_mode;
