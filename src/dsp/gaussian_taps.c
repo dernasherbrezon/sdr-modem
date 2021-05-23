@@ -7,7 +7,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-int gaussian_taps_create(double gain, double samples_per_symbol, double bt, int taps_len, float **taps) {
+int gaussian_taps_create(double gain, double samples_per_symbol, double bt, size_t taps_len, float **taps) {
     float *result = malloc(sizeof(float) * taps_len);
     if (result == NULL) {
         return -ENOMEM;
