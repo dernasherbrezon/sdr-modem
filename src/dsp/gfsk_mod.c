@@ -2,9 +2,11 @@
 #include "gaussian_taps.h"
 #include <errno.h>
 #include <string.h>
-#include <volk/volk.h>
+#include "interp_fir_filter.h"
 
 struct gfsk_mod_t {
+    interp_fir_filter *filter;
+
     float *temp_input;
     size_t temp_input_len;
 };
@@ -76,6 +78,12 @@ int gfsk_mod_create(float samples_per_symbol, float sensitivity, float bt, uint3
         return code;
     }
 
+    code = interp_fir_filter_create(taps, taps_len, (int) samples_per_symbol, result->temp_input_len, &result->filter);
+    if (code != 0) {
+        free(taps);
+        gfsk_mod_destroy(result);
+        return code;
+    }
 
     *mod = result;
     return 0;
@@ -94,6 +102,12 @@ void gfsk_mod_process(uint8_t *input, size_t input_len, float complex **output, 
             temp_index++;
         }
     }
+
+    float *filtered = NULL;
+    size_t filtered_len = 0;
+    interp_fir_filter_process(mod->temp_input, temp_index, &filtered, &filtered_len, mod->filter);
+
+    //FIXME process freq modulation
 }
 
 void gfsk_mod_destroy(gfsk_mod *mod) {
@@ -102,6 +116,9 @@ void gfsk_mod_destroy(gfsk_mod *mod) {
     }
     if (mod->temp_input != NULL) {
         free(mod->temp_input);
+    }
+    if (mod->filter != NULL) {
+        interp_fir_filter_destroy(mod->filter);
     }
     free(mod);
 }
