@@ -3,9 +3,11 @@
 #include <errno.h>
 #include <string.h>
 #include "interp_fir_filter.h"
+#include "frequency_modulator.h"
 
 struct gfsk_mod_t {
     interp_fir_filter *filter;
+    frequency_modulator *freq_mod;
 
     float *temp_input;
     size_t temp_input_len;
@@ -85,6 +87,12 @@ int gfsk_mod_create(float samples_per_symbol, float sensitivity, float bt, uint3
         return code;
     }
 
+    code = frequency_modulator_create(sensitivity, max_input_buffer_length, &result->freq_mod);
+    if (code != 0) {
+        gfsk_mod_destroy(result);
+        return code;
+    }
+
     *mod = result;
     return 0;
 }
@@ -107,7 +115,12 @@ void gfsk_mod_process(uint8_t *input, size_t input_len, float complex **output, 
     size_t filtered_len = 0;
     interp_fir_filter_process(mod->temp_input, temp_index, &filtered, &filtered_len, mod->filter);
 
-    //FIXME process freq modulation
+    float complex *modulated = NULL;
+    size_t modulated_len = 0;
+    frequency_modulator_process(filtered, filtered_len, &modulated, &modulated_len, mod->freq_mod);
+
+    *output = modulated;
+    *output_len = modulated_len;
 }
 
 void gfsk_mod_destroy(gfsk_mod *mod) {
@@ -119,6 +132,9 @@ void gfsk_mod_destroy(gfsk_mod *mod) {
     }
     if (mod->filter != NULL) {
         interp_fir_filter_destroy(mod->filter);
+    }
+    if (mod->freq_mod != NULL) {
+        frequency_modulator_destroy(mod->freq_mod);
     }
     free(mod);
 }
