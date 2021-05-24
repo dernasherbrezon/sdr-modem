@@ -134,7 +134,20 @@ int interp_fir_filter_create(float *taps, size_t taps_len, uint8_t interpolation
 }
 
 void interp_fir_filter_process(float *input, size_t input_len, float **output, size_t *output_len, interp_fir_filter *filter) {
-    //FIXME
+    size_t result_len = 0;
+    for (size_t i = 0; i < filter->filters_len; i++) {
+        float *cur_output = NULL;
+        size_t cur_output_len = 0;
+        fir_filter_process(input, input_len, (void **)&cur_output, &cur_output_len, filter->filters[i]);
+        result_len = filter->filters_len * cur_output_len;
+        //de-interleave results
+        for (size_t j = i, k = 0; j < result_len && k < cur_output_len; j += filter->filters_len, k++) {
+            filter->output[j] = cur_output[k];
+        }
+    }
+
+    *output_len = result_len;
+    *output = filter->output;
 }
 
 void interp_fir_filter_destroy(interp_fir_filter *filter) {
