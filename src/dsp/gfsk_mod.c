@@ -32,6 +32,7 @@ int gfsk_mod_convolve(float *x, size_t x_len, float *y, size_t y_len, float **ou
         }
         result[i] = sum;
     }
+    free(temp);
 
     *out = result;
     *out_len = result_len;

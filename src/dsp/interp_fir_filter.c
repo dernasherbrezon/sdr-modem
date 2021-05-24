@@ -42,7 +42,7 @@ int interp_fir_filter_roundup_to_interpolation(float *taps, size_t taps_len, uin
 float **interp_fir_filter_create_interleaved_taps(float *taps, size_t taps_len, uint8_t interpolation) {
     // guaranteed to be integer. see interp_fir_filter_roundup_to_interpolation
     int filter_taps_len = taps_len / interpolation;
-    float **interleaved_taps = malloc(sizeof(float) * interpolation);
+    float **interleaved_taps = malloc(sizeof(float *) * interpolation);
     if (interleaved_taps == NULL) {
         return NULL;
     }
