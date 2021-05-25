@@ -3,7 +3,6 @@
 #include "sig_source.h"
 #include <errno.h>
 #include <volk/volk.h>
-#include <sys/time.h>
 
 // km/sec
 float SPEED_OF_LIGHT = 2.99792458E5;
