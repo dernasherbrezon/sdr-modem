@@ -6,16 +6,46 @@ set(CMAKE_C_FLAGS "-std=c99")
 if(CMAKE_BUILD_TYPE MATCHES Debug)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
 endif()
-file(GLOB_RECURSE SOURCES src *.c)
-list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
 
-add_executable(sdr_modem src/main.c)
+add_library(sdr_modemLib
+		${CMAKE_CURRENT_SOURCE_DIR}/src/api_utils.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp_worker.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/linked_list.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/queue.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_worker.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/server_config.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_server.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/clock_recovery_mm.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/doppler.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fsk_demod.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_mod.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf_taps.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sig_source.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/math/fast_atan2f.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_plugin.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_server_client.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp4sdp4.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp_in.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp_math.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp_obs.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp_time.c
+		${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/solar.c
+		)
+
+add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
+target_link_libraries(sdr_modem sdr_modemLib)
 
 install(TARGETS sdr_modem DESTINATION /usr/bin/)
-install(FILES src/resources/config.conf DESTINATION /etc/sdr-modem/)
-
-add_library(sdr_modemLib ${SOURCES})
-target_link_libraries(sdr_modem sdr_modemLib)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
 
 find_package(PkgConfig REQUIRED)
 
@@ -49,12 +79,12 @@ target_link_libraries(sdr_modemLib m)
 
 enable_testing()
 
-file(GLOB TEST_SOURCES test/test_*.c)
-file(GLOB TEST_RESOURCES test/resources/*)
+file(GLOB TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/test_*.c)
+file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
-file(GLOB PERF_SOURCES test/perf_*.c)
+file(GLOB PERF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_*.c)
 
-file(GLOB AUX_TEST_SOURCES test/*.c)
+file(GLOB AUX_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
 list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "test_.*\\.c")
 list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "perf_.*\\.c")
 list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "mock_.*\\.c")
