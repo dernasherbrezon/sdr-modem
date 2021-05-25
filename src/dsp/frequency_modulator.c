@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
+#include <volk/volk.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -10,6 +11,15 @@
 struct frequency_modulator_t {
     float phase;
     float sensitivity;
+
+    float *temp;
+    size_t temp_len;
+
+    float *sin;
+    size_t sin_len;
+
+    float *cos;
+    size_t cos_len;
 
     float complex *output;
     size_t output_len;
@@ -31,6 +41,26 @@ int frequency_modulator_create(float sensitivity, uint32_t max_input_buffer_leng
         frequency_modulator_destroy(result);
         return -ENOMEM;
     }
+    result->sin_len = max_input_buffer_length;
+    result->sin = malloc(sizeof(float) * result->sin_len);
+    if (result->sin == NULL) {
+        frequency_modulator_destroy(result);
+        return -ENOMEM;
+    }
+    result->cos_len = max_input_buffer_length;
+    result->cos = malloc(sizeof(float) * result->cos_len);
+    if (result->cos == NULL) {
+        frequency_modulator_destroy(result);
+        return -ENOMEM;
+    }
+    result->temp_len = max_input_buffer_length;
+    result->temp = malloc(sizeof(float) * result->temp_len);
+    if (result->temp == NULL) {
+        frequency_modulator_destroy(result);
+        return -ENOMEM;
+    }
+
+
     *mod = result;
     return 0;
 }
@@ -44,13 +74,17 @@ void frequency_modulator_process(float *input, size_t input_len, float complex *
     }
     for (size_t i = 0; i < input_len; i++) {
         mod->phase = mod->phase + mod->sensitivity * input[i];
-        mod->phase = fmodf(mod->phase + M_PI, 2.0f * M_PI) - M_PI;
-
-        //FIXME find fastest sincos
-//        int32_t angle = gr::fxpt::float_to_fixed(d_phase);
-//        gr::fxpt::sincos(angle, &oq, &oi);
-//        out[i] = gr_complex(oi, oq);
+        mod->temp[i] = mod->phase;
     }
+
+    volk_32f_sin_32f(mod->sin, mod->temp, (unsigned int) input_len);
+    volk_32f_cos_32f(mod->cos, mod->temp, (unsigned int) input_len);
+    for (size_t i = 0; i < input_len; i++) {
+        mod->output[i] = mod->cos[i] + I * mod->sin[i];
+    }
+
+    *output = mod->output;
+    *output_len = input_len;
 }
 
 void frequency_modulator_destroy(frequency_modulator *mod) {
@@ -59,6 +93,15 @@ void frequency_modulator_destroy(frequency_modulator *mod) {
     }
     if (mod->output != NULL) {
         free(mod->output);
+    }
+    if (mod->temp != NULL) {
+        free(mod->temp);
+    }
+    if (mod->sin != NULL) {
+        free(mod->sin);
+    }
+    if (mod->cos != NULL) {
+        free(mod->cos);
     }
     free(mod);
 }
