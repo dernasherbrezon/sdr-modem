@@ -88,7 +88,7 @@ int gfsk_mod_create(float samples_per_symbol, float sensitivity, float bt, uint3
         return code;
     }
 
-    code = frequency_modulator_create(sensitivity, max_input_buffer_length, &result->freq_mod);
+    code = frequency_modulator_create(sensitivity, (int) samples_per_symbol * result->temp_input_len, &result->freq_mod);
     if (code != 0) {
         gfsk_mod_destroy(result);
         return code;
