@@ -18,6 +18,12 @@
 #include "dsp_worker.h"
 #include "sdr_worker.h"
 #include "tcp_utils.h"
+#include "dsp/gfsk_mod.h"
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 struct tcp_worker {
     struct request *req;
@@ -28,6 +34,10 @@ struct tcp_worker {
     pthread_t client_thread;
     tcp_server *server;
     sdr_worker *sdr;
+
+    uint32_t buffer_size;
+    uint8_t *buffer;
+    gfsk_mod *fsk_mod;
 };
 
 struct tcp_server_t {
@@ -61,52 +71,78 @@ int tcp_worker_convert(struct request *req, struct sdr_worker_rx **result) {
 }
 
 int validate_client_request(struct request *req, uint32_t client_id, struct server_config *config) {
-    if (req->rx_center_freq == 0) {
-        fprintf(stderr, "<3>[%d] missing rx_center_freq parameter\n", client_id);
+    if (req->demod_type != REQUEST_MODEM_TYPE_NONE && req->demod_type != REQUEST_MODEM_TYPE_FSK) {
+        fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
     }
-    if (req->rx_sampling_freq == 0) {
-        fprintf(stderr, "<3>[%d] missing rx_sampling_freq parameter\n", client_id);
-        return -1;
-    }
-    if (req->rx_dump_file != REQUEST_RX_DUMP_FILE_YES && req->rx_dump_file != REQUEST_RX_DUMP_FILE_NO) {
-        fprintf(stderr, "<3>[%d] unknown rx_dump_file: %d\n", client_id, req->rx_dump_file);
-        return -1;
-    }
-    if (config->rx_sdr_type != RX_SDR_TYPE_SDR_SERVER) {
-        fprintf(stderr, "<3>[%d] unknown rx_sdr_type: %d\n", client_id, config->rx_sdr_type);
-    }
-    if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
-        fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
-        return -1;
+    if (req->demod_type != REQUEST_MODEM_TYPE_NONE) {
+        if (req->rx_center_freq == 0) {
+            fprintf(stderr, "<3>[%d] missing rx_center_freq parameter\n", client_id);
+            return -1;
+        }
+        if (req->rx_sampling_freq == 0) {
+            fprintf(stderr, "<3>[%d] missing rx_sampling_freq parameter\n", client_id);
+            return -1;
+        }
+        if (req->rx_dump_file != REQUEST_DUMP_FILE_YES && req->rx_dump_file != REQUEST_DUMP_FILE_NO) {
+            fprintf(stderr, "<3>[%d] unknown rx_dump_file: %d\n", client_id, req->rx_dump_file);
+            return -1;
+        }
+        if (config->rx_sdr_type != RX_SDR_TYPE_SDR_SERVER) {
+            fprintf(stderr, "<3>[%d] unknown rx_sdr_type: %d\n", client_id, config->rx_sdr_type);
+        }
+        if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
+            fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
+            return -1;
+        }
+        if (req->demod_baud_rate == 0) {
+            fprintf(stderr, "<3>[%d] missing demod_baud_rate parameter\n", client_id);
+            return -1;
+        }
     }
     if (req->correct_doppler != REQUEST_CORRECT_DOPPLER_NO && req->correct_doppler != REQUEST_CORRECT_DOPPLER_YES) {
         fprintf(stderr, "<3>[%d] unknown correct_doppler: %d\n", client_id, req->correct_doppler);
         return -1;
     }
-    if (req->demod_type != REQUEST_MODEM_TYPE_FSK) {
-        fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
+    if (req->demod_type == REQUEST_MODEM_TYPE_FSK) {
+        if (req->demod_decimation == 0) {
+            fprintf(stderr, "<3>[%d] missing demod_decimation parameter\n", client_id);
+            return -1;
+        }
+        if (req->demod_fsk_transition_width == 0) {
+            fprintf(stderr, "<3>[%d] missing demod_fsk_transition_width parameter\n", client_id);
+            return -1;
+        }
+        if (req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_NO && req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES) {
+            fprintf(stderr, "<3>[%d] unknown demod_fsk_use_dc_block: %d\n", client_id, req->demod_fsk_use_dc_block);
+            return -1;
+        }
+        if (req->demod_destination != REQUEST_DEMOD_DESTINATION_FILE && req->demod_destination != REQUEST_DEMOD_DESTINATION_SOCKET && req->demod_destination != REQUEST_DEMOD_DESTINATION_BOTH) {
+            fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
+            return -1;
+        }
+    }
+    if (req->mod_type != REQUEST_MODEM_TYPE_NONE && req->mod_type != REQUEST_MODEM_TYPE_FSK) {
+        fprintf(stderr, "<3>[%d] unknown mod_type: %d\n", client_id, req->mod_type);
         return -1;
     }
-    if (req->demod_baud_rate == 0) {
-        fprintf(stderr, "<3>[%d] missing demod_baud_rate parameter\n", client_id);
-        return -1;
-    }
-    if (req->demod_decimation == 0) {
-        fprintf(stderr, "<3>[%d] missing demod_decimation parameter\n", client_id);
-        return -1;
-    }
-    if (req->demod_fsk_transition_width == 0) {
-        fprintf(stderr, "<3>[%d] missing demod_fsk_transition_width parameter\n", client_id);
-        return -1;
-    }
-    if (req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_NO && req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES) {
-        fprintf(stderr, "<3>[%d] unknown demod_fsk_use_dc_block: %d\n", client_id, req->demod_fsk_use_dc_block);
-        return -1;
-    }
-    if (req->demod_destination != REQUEST_DEMOD_DESTINATION_FILE && req->demod_destination != REQUEST_DEMOD_DESTINATION_SOCKET && req->demod_destination != REQUEST_DEMOD_DESTINATION_BOTH) {
-        fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
-        return -1;
+    if (req->mod_type != REQUEST_MODEM_TYPE_NONE) {
+        if (req->tx_center_freq == 0) {
+            fprintf(stderr, "<3>[%d] missing tx_center_freq parameter\n", client_id);
+            return -1;
+        }
+        if (req->tx_sampling_freq == 0) {
+            fprintf(stderr, "<3>[%d] missing tx_sampling_freq parameter\n", client_id);
+            return -1;
+        }
+        if (req->tx_dump_file != REQUEST_DUMP_FILE_YES && req->tx_dump_file != REQUEST_DUMP_FILE_NO) {
+            fprintf(stderr, "<3>[%d] unknown tx_dump_file: %d\n", client_id, req->tx_dump_file);
+            return -1;
+        }
+        if (req->mod_baud_rate == 0) {
+            fprintf(stderr, "<3>[%d] missing mod_baud_rate parameter\n", client_id);
+            return -1;
+        }
     }
     return 0;
 }
@@ -140,6 +176,41 @@ void respond_failure(int client_socket, uint8_t status, uint8_t details) {
     close(client_socket);
 }
 
+void handle_tx_data(struct tcp_worker *worker) {
+    uint32_t len = 0;
+    int code = tcp_utils_read_data(&len, sizeof(uint32_t), worker->client_socket);
+    if (code != 0) {
+        return;
+    }
+    size_t left = len;
+    while (left > 0) {
+        uint32_t batch;
+        if (left < worker->buffer_size) {
+            batch = left;
+        } else {
+            batch = worker->buffer_size;
+        }
+        code = tcp_utils_read_data(worker->buffer, batch, worker->client_socket);
+        if (code != 0) {
+            fprintf(stderr, "<3>[%d] unable to read tx request fully\n", worker->id);
+            return;
+        }
+
+        float complex *output = NULL;
+        size_t output_len = 0;
+        if (worker->fsk_mod != NULL) {
+            gfsk_mod_process(worker->buffer, batch, &output, &output_len, worker->fsk_mod);
+        }
+
+        //FIXME apply doppler correction for TX
+        //FIXME dump file
+        //FIXME transmit
+
+
+        left -= batch;
+    }
+}
+
 static void *tcp_worker_callback(void *arg) {
     struct tcp_worker *worker = (struct tcp_worker *) arg;
     uint32_t id = worker->id;
@@ -160,12 +231,15 @@ static void *tcp_worker_callback(void *arg) {
             fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
             continue;
         }
-        if (header.type != TYPE_SHUTDOWN) {
+        if (header.type == TYPE_SHUTDOWN) {
+            fprintf(stdout, "[%d] client requested disconnect\n", id);
+            break;
+        } else if (header.type == TYPE_TX_DATA) {
+            fprintf(stdout, "[%d] received tx data\n", id);
+            handle_tx_data(worker);
+        } else {
             fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
-            continue;
         }
-        fprintf(stdout, "[%d] client requested disconnect\n", id);
-        break;
     }
     //terminate dsp_worker if any
     //terminate sdr_worker if no more dsp_workers there
@@ -201,6 +275,12 @@ void tcp_worker_destroy(void *data) {
     if (worker->req != NULL) {
         free(worker->req);
     }
+    if (worker->buffer != NULL) {
+        free(worker->buffer);
+    }
+    if (worker->fsk_mod != NULL) {
+        gfsk_mod_destroy(worker->fsk_mod);
+    }
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
@@ -230,6 +310,14 @@ void handle_new_client(int client_socket, tcp_server *server) {
     *req = (struct request) {0};
     tcp_worker->req = req;
 
+    tcp_worker->buffer_size = server->server_config->buffer_size;
+    tcp_worker->buffer = malloc(sizeof(uint8_t) * tcp_worker->buffer_size);
+    if (tcp_worker->buffer == NULL) {
+        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        tcp_worker_destroy(tcp_worker);
+        return;
+    }
+
     if (tcp_utils_read_data(tcp_worker->req, sizeof(struct request), client_socket) < 0) {
         fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
@@ -251,6 +339,15 @@ void handle_new_client(int client_socket, tcp_server *server) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
+    }
+    if (tcp_worker->req->mod_type == REQUEST_MODEM_TYPE_FSK) {
+        code = gfsk_mod_create(tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate, (2 * M_PI * tcp_worker->req->mod_fsk_deviation / tcp_worker->req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
+        if (code != 0) {
+            fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
+            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            tcp_worker_destroy(tcp_worker);
+            return;
+        }
     }
     tcp_worker->is_running = true;
     tcp_worker->client_socket = client_socket;

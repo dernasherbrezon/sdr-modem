@@ -88,8 +88,7 @@ static void *dsp_worker_callback(void *arg) {
         }
         if (demod_output == NULL) {
             complete_buffer_processing(worker->queue);
-            // shouldn't happen
-            // demod type checked on client request
+            // can be NULL if demod_type = NONE
             continue;
         }
 
@@ -154,7 +153,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         return code;
     }
 
-    if (req->rx_dump_file == REQUEST_RX_DUMP_FILE_YES) {
+    if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
         char file_path[4096];
         snprintf(file_path, sizeof(file_path), "%s/%d.cf32", server_config->base_path, id);
         result->rx_dump_file = fopen(file_path, "wb");

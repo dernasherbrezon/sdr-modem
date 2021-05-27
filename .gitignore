@@ -43,7 +43,7 @@
 *.pdb
 
 # Kernel Module Compile Results
-*.mod*
+*.fsk_mod*
 *.cmd
 .tmp_versions/
 modules.order

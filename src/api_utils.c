@@ -20,6 +20,8 @@ void api_network_to_host(struct request *req) {
 const char *api_demod_type_str(int demod_type) {
     if (demod_type == REQUEST_MODEM_TYPE_FSK) {
         return "FSK";
+    } else if (demod_type == REQUEST_MODEM_TYPE_NONE) {
+        return "NONE";
     }
     return "UNKNOWN";
 }

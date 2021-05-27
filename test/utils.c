@@ -9,7 +9,7 @@ struct request *create_request() {
     result->rx_sampling_freq = 48000;
     result->rx_sdr_server_band_freq = 437525000;
     result->rx_center_freq = 437525000;
-    result->rx_dump_file = REQUEST_RX_DUMP_FILE_NO;
+    result->rx_dump_file = REQUEST_DUMP_FILE_NO;
     result->altitude = 0;
     char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
     memcpy(result->tle, tle, sizeof(tle));

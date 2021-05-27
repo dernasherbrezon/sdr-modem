@@ -9,6 +9,7 @@
 #define TYPE_REQUEST 0
 #define TYPE_SHUTDOWN 1
 #define TYPE_PING 3
+#define TYPE_TX_DATA 4
 //server to client
 #define TYPE_RESPONSE 2
 
@@ -17,8 +18,8 @@ struct message_header {
     uint8_t type;
 } __attribute__((packed));
 
-#define REQUEST_RX_DUMP_FILE_NO 0
-#define REQUEST_RX_DUMP_FILE_YES 1
+#define REQUEST_DUMP_FILE_NO 0
+#define REQUEST_DUMP_FILE_YES 1
 
 #define REQUEST_DEMOD_FSK_USE_DC_BLOCK_NO 0
 #define REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES 1
@@ -26,7 +27,8 @@ struct message_header {
 #define REQUEST_CORRECT_DOPPLER_NO 0
 #define REQUEST_CORRECT_DOPPLER_YES 1
 
-#define REQUEST_MODEM_TYPE_FSK 0
+#define REQUEST_MODEM_TYPE_NONE 0
+#define REQUEST_MODEM_TYPE_FSK 1
 
 #define REQUEST_DEMOD_DESTINATION_FILE 0
 #define REQUEST_DEMOD_DESTINATION_SOCKET 1
@@ -60,6 +62,18 @@ struct request {
     uint32_t demod_fsk_transition_width;
     uint8_t demod_fsk_use_dc_block;
 
+    // generic TX sdr settings
+    uint32_t tx_center_freq;
+    uint32_t tx_sampling_freq;
+    uint8_t tx_dump_file;
+
+    //generic modulator settings
+    uint8_t mod_type;
+    uint32_t mod_baud_rate;
+
+    //FSK modulator settings
+    int32_t mod_fsk_deviation;
+
 } __attribute__((packed));
 
 #define RESPONSE_STATUS_SUCCESS 0
@@ -73,5 +87,10 @@ struct response {
     uint8_t details; // on success contains file index, on error contains error code
 } __attribute__((packed));
 
+// not used really, here for the clearness of API
+struct tx_data {
+    uint32_t len;
+    uint8_t *data;
+};
 
 #endif /* API_H_ */
