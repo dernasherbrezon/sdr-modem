@@ -60,12 +60,13 @@ int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *ii
     char *p_start = (char *) iio_buffer_first(iio->tx_buffer, iio->tx0_i);
     size_t num_points = input_len * 2;
 
-    // 12-bit sample needs to be MSB aligned so shift by 4
-    // 2048 to put [-1;1] into [-2048;2048] interval
-    // 16 is to shift by 4 to the MSB
-    volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) input, 2048 * 16, num_points);
+    // put [-1;1] into 16bit interval [-32768;32768]
+    // pluto has 16bit DAC for TX
+    volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) input, 32768, num_points);
 
-    ssize_t nbytes_tx = iio_buffer_push(iio->tx_buffer);
+    // always use push_partial because normal push won't reset buffer to full length
+    // https://github.com/analogdevicesinc/libiio/blob/e65a97863c3481f30c6ea8642bda86125a7ee39d/buffer.c#L154
+    ssize_t nbytes_tx = iio_buffer_push_partial(iio->tx_buffer, input_len);
     if (nbytes_tx < 0) {
         return -1;
     }

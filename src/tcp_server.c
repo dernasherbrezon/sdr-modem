@@ -182,7 +182,7 @@ void handle_tx_data(struct tcp_worker *worker) {
     if (code != 0) {
         return;
     }
-    size_t left = len;
+    uint32_t left = len;
     while (left > 0) {
         uint32_t batch;
         if (left < worker->buffer_size) {
@@ -341,7 +341,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
         return;
     }
     if (tcp_worker->req->mod_type == REQUEST_MODEM_TYPE_FSK) {
-        code = gfsk_mod_create(tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate, (2 * M_PI * tcp_worker->req->mod_fsk_deviation / tcp_worker->req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
+        code = gfsk_mod_create((float) tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate, (2 * M_PI * tcp_worker->req->mod_fsk_deviation / tcp_worker->req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
