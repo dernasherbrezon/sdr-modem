@@ -23,6 +23,12 @@ struct request *create_request() {
     result->demod_decimation = 2;
     result->demod_fsk_deviation = 5000;
     result->demod_baud_rate = 4800;
+    result->tx_center_freq = 437525000;
+    result->tx_sampling_freq = 48000;
+    result->tx_dump_file = REQUEST_DUMP_FILE_NO;
+    result->mod_type = REQUEST_MODEM_TYPE_FSK;
+    result->mod_baud_rate = 4800;
+    result->mod_fsk_deviation = 5000;
     return result;
 }
 

@@ -30,6 +30,10 @@ int sdr_modem_write_request(struct message_header *header, struct request *req, 
     req_copy->demod_baud_rate = htonl(req->demod_baud_rate);
     req_copy->demod_fsk_deviation = htonl(req->demod_fsk_deviation);
     req_copy->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
+    req_copy->tx_center_freq = htonl(req->tx_center_freq);
+    req_copy->tx_sampling_freq = htonl(req->tx_sampling_freq);
+    req_copy->mod_baud_rate = htonl(req->mod_baud_rate);
+    req_copy->mod_fsk_deviation = htonl(req->mod_fsk_deviation);
 
     size_t total_len = sizeof(struct message_header) + sizeof(struct request);
     uint8_t *buffer = malloc(total_len);
