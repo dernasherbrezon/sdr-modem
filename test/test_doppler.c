@@ -12,34 +12,32 @@ uint8_t *input_buffer = NULL;
 FILE *expected_file = NULL;
 uint8_t *expected_buffer = NULL;
 doppler *dopp = NULL;
+char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
+int max_buffer_length = 2000;
 
 START_TEST (test_invalid_arguments) {
-    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
-    int max_buffer_length = 2000;
     int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
     float complex *output = NULL;
     size_t output_len = 0;
-    doppler_process(NULL, 12, &output, &output_len, dopp);
+    doppler_process_rx(NULL, 12, &output, &output_len, dopp);
     ck_assert(output == NULL);
 
     const float buffer[2] = {1, 2};
-    doppler_process((float complex *) buffer, 0, &output, &output_len, dopp);
+    doppler_process_rx((float complex *) buffer, 0, &output, &output_len, dopp);
     ck_assert(output == NULL);
 
     size_t input_buffer_len = max_buffer_length + 1;
     input_buffer = malloc(sizeof(float complex) * input_buffer_len);
     ck_assert(input_buffer != NULL);
-    doppler_process((float complex *) input_buffer, input_buffer_len, &output, &output_len, dopp);
+    doppler_process_rx((float complex *) input_buffer, input_buffer_len, &output, &output_len, dopp);
     ck_assert(output == NULL);
 }
 
 END_TEST
 
-START_TEST (test_success) {
-    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
-    int max_buffer_length = 2000;
+START_TEST (test_success_rx) {
     int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
@@ -59,16 +57,45 @@ START_TEST (test_success) {
         }
         float complex *output = NULL;
         size_t output_len = 0;
-        doppler_process((float complex *) input_buffer, actually_read, &output, &output_len, dopp);
+        doppler_process_rx((float complex *) input_buffer, actually_read, &output, &output_len, dopp);
 
         size_t actually_expected_read = fread(expected_buffer, sizeof(float complex), actually_read, expected_file);
         ck_assert_int_eq(actually_read, actually_expected_read);
 
         assert_complex_array((const float *) expected_buffer, actually_expected_read, output, output_len);
     }
-
 }
+END_TEST
 
+START_TEST (test_success_tx) {
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
+    ck_assert_int_eq(code, 0);
+
+    // use RX inverted input data for test
+    input_file = fopen("lucky7.expected.cf32", "rb");
+    ck_assert(input_file != NULL);
+    expected_file = fopen("lucky7.cf32", "rb");
+    ck_assert(expected_file != NULL);
+
+    input_buffer = malloc(max_buffer_length * sizeof(float complex));
+    ck_assert(input_buffer != NULL);
+    expected_buffer = malloc(max_buffer_length * sizeof(float complex));
+    ck_assert(expected_buffer != NULL);
+    while (true) {
+        size_t actually_read = fread(input_buffer, sizeof(float complex), max_buffer_length, input_file);
+        if (actually_read == 0) {
+            break;
+        }
+        float complex *output = NULL;
+        size_t output_len = 0;
+        doppler_process_tx((float complex *) input_buffer, actually_read, &output, &output_len, dopp);
+
+        size_t actually_expected_read = fread(expected_buffer, sizeof(float complex), actually_read, expected_file);
+        ck_assert_int_eq(actually_read, actually_expected_read);
+
+        assert_complex_array((const float *) expected_buffer, actually_expected_read, output, output_len);
+    }
+}
 END_TEST
 
 void teardown() {
@@ -107,7 +134,8 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-    tcase_add_test(tc_core, test_success);
+    tcase_add_test(tc_core, test_success_rx);
+    tcase_add_test(tc_core, test_success_tx);
     tcase_add_test(tc_core, test_invalid_arguments);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);

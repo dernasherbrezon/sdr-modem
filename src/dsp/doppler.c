@@ -10,7 +10,7 @@ float SPEED_OF_LIGHT = 2.99792458E5;
 struct doppler_t {
     sig_source *source;
     uint32_t sampling_freq;
-    uint32_t center_freq;
+    int32_t center_freq;
     double jul_start_time;
 
     int32_t current_freq_difference;
@@ -29,7 +29,7 @@ struct doppler_t {
     size_t output_len;
 };
 
-int32_t doppler_calculate_shift(doppler *result) {
+int32_t doppler_calculate_shift(doppler *result, int direction) {
     double tsince = (result->satellite->jul_utc - result->satellite->jul_epoch) * xmnpda;
     if (result->satellite->flags & DEEP_SPACE_EPHEM_FLAG) {
         SDP4(result->satellite, tsince);
@@ -39,7 +39,7 @@ int32_t doppler_calculate_shift(doppler *result) {
 
     Convert_Sat_State(&result->satellite->pos, &result->satellite->vel);
     Calculate_Obs(result->satellite->jul_utc, &result->satellite->pos, &result->satellite->vel, result->ground_station, result->obs_set);
-    return result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT;
+    return direction * (result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT);
 }
 
 int doppler_create(float latitude, float longitude, float altitude, uint32_t sampling_freq, uint32_t center_freq, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **d) {
@@ -110,7 +110,7 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
     return 0;
 }
 
-void doppler_process(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result) {
+void doppler_process(float complex *input, size_t input_len, float complex **output, size_t *output_len, int direction, doppler *result) {
     if (input == NULL || input_len == 0) {
         *output = NULL;
         *output_len = 0;
@@ -138,16 +138,16 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
             } else {
                 result->satellite->jul_utc = result->jul_start_time;
             }
-            result->current_freq_difference = doppler_calculate_shift(result);
+            result->current_freq_difference = doppler_calculate_shift(result, direction);
         } else {
             result->current_freq_difference = result->next_freq_difference;
         }
 
         result->satellite->jul_utc = result->jul_start_time + result->next_update_samples / (double) result->sampling_freq / secday;
-        result->next_freq_difference = doppler_calculate_shift(result);
+        result->next_freq_difference = doppler_calculate_shift(result, direction);
         // linear interpolation between next and current doppler shift
         // this is to avoid sudden jumps of frequency between corrections
-        result->freq_difference_per_sample = (result->next_freq_difference - result->current_freq_difference) / result->sampling_freq;
+        result->freq_difference_per_sample = ((float) result->next_freq_difference - result->current_freq_difference) / result->sampling_freq;
     } else {
         result->current_samples += input_len;
         result->current_freq_difference += result->freq_difference_per_sample * input_len;
@@ -162,6 +162,15 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
     *output = result->output;
     *output_len = input_len;
 }
+
+void doppler_process_tx(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result) {
+    doppler_process(input, input_len, output, output_len, -1, result);
+}
+
+void doppler_process_rx(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result) {
+    doppler_process(input, input_len, output, output_len, 1, result);
+}
+
 
 void doppler_destroy(doppler *result) {
     if (result == NULL) {

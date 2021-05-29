@@ -79,7 +79,7 @@ static void *dsp_worker_callback(void *arg) {
         if (worker->dopp != NULL) {
             float complex *doppler_output = NULL;
             size_t doppler_output_len = 0;
-            doppler_process(input, input_len, &doppler_output, &doppler_output_len, worker->dopp);
+            doppler_process_rx(input, input_len, &doppler_output, &doppler_output_len, worker->dopp);
             input = doppler_output;
             input_len = doppler_output_len;
         }
