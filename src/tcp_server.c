@@ -385,10 +385,10 @@ void handle_new_client(int client_socket, tcp_server *server) {
     }
     if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
         char file_path[4096];
-        snprintf(file_path, sizeof(file_path), "%s/tx.%d.cf32", server->server_config->base_path, tcp_worker->id);
+        snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", server->server_config->base_path, tcp_worker->id);
         tcp_worker->tx_dump_file = fopen(file_path, "wb");
         if (tcp_worker->tx_dump_file == NULL) {
-            fprintf(stderr, "<3>unable to open file for tx output: %s\n", file_path);
+            fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
             dsp_worker_destroy(tcp_worker);
             return;
         }

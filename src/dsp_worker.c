@@ -133,7 +133,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
         code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->rx_sampling_freq, req->rx_center_freq, 0, server_config->buffer_size, req->tle, &result->dopp);
         if (code != 0) {
-            fprintf(stderr, "<3>unable to create doppler correction block\n");
+            fprintf(stderr, "<3>[%d] unable to create doppler correction block\n", result->id);
             dsp_worker_destroy(result);
             return code;
         }
@@ -148,17 +148,17 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     }
 
     if (code != 0) {
-        fprintf(stderr, "<3>unable to create demodulator\n");
+        fprintf(stderr, "<3>[%d] unable to create demodulator\n", result->id);
         dsp_worker_destroy(result);
         return code;
     }
 
     if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
         char file_path[4096];
-        snprintf(file_path, sizeof(file_path), "%s/%d.cf32", server_config->base_path, id);
+        snprintf(file_path, sizeof(file_path), "%s/rx.sdr2demod.%d.cf32", server_config->base_path, id);
         result->rx_dump_file = fopen(file_path, "wb");
         if (result->rx_dump_file == NULL) {
-            fprintf(stderr, "<3>unable to open file for sdr input: %s\n", file_path);
+            fprintf(stderr, "<3>[%d] unable to open file for sdr input: %s\n", result->id, file_path);
             dsp_worker_destroy(result);
             return -1;
         }
@@ -166,10 +166,10 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     result->demod_destination = req->demod_destination;
     if (req->demod_destination == REQUEST_DEMOD_DESTINATION_FILE || req->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
         char file_path[4096];
-        snprintf(file_path, sizeof(file_path), "%s/%d.s8", server_config->base_path, id);
+        snprintf(file_path, sizeof(file_path), "%s/rx.demod2client.%d.s8", server_config->base_path, id);
         result->demod_file = fopen(file_path, "wb");
         if (result->demod_file == NULL) {
-            fprintf(stderr, "<3>unable to open file for demod output: %s\n", file_path);
+            fprintf(stderr, "<3>[%d] unable to open file for demod output: %s\n", result->id, file_path);
             dsp_worker_destroy(result);
             return -1;
         }
