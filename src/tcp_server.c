@@ -20,6 +20,7 @@
 #include "tcp_utils.h"
 #include "dsp/gfsk_mod.h"
 #include <math.h>
+#include "dsp/doppler.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -38,6 +39,8 @@ struct tcp_worker {
     uint32_t buffer_size;
     uint8_t *buffer;
     gfsk_mod *fsk_mod;
+    doppler *dopp;
+    FILE *tx_dump_file;
 };
 
 struct tcp_server_t {
@@ -202,8 +205,23 @@ void handle_tx_data(struct tcp_worker *worker) {
             gfsk_mod_process(worker->buffer, batch, &output, &output_len, worker->fsk_mod);
         }
 
-        //FIXME apply doppler correction for TX
-        //FIXME dump file
+        if (worker->dopp != NULL) {
+            float complex *dopp_output = NULL;
+            size_t dopp_output_len = 0;
+            doppler_process_tx(output, output_len, &dopp_output, &dopp_output_len, worker->dopp);
+            output = dopp_output;
+            output_len = dopp_output_len;
+        }
+
+        if (worker->tx_dump_file != NULL) {
+            size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
+            if (n_written < output_len) {
+                fprintf(stderr, "<3>[%d] unable to write tx data\n", worker->id);
+                //ignore full disk
+                //continue transmitting
+            }
+        }
+
         //FIXME transmit
 
 
@@ -281,6 +299,12 @@ void tcp_worker_destroy(void *data) {
     if (worker->fsk_mod != NULL) {
         gfsk_mod_destroy(worker->fsk_mod);
     }
+    if (worker->dopp != NULL) {
+        doppler_destroy(worker->dopp);
+    }
+    if (worker->tx_dump_file != NULL) {
+        fclose(worker->tx_dump_file);
+    }
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
@@ -346,6 +370,26 @@ void handle_new_client(int client_socket, tcp_server *server) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
+            return;
+        }
+    }
+    if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
+        int samples_per_symbol = (int) ((float) tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate);
+        code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->tx_sampling_freq, req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size, req->tle, &tcp_worker->dopp);
+        if (code != 0) {
+            fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
+            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            dsp_worker_destroy(tcp_worker);
+            return;
+        }
+    }
+    if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
+        char file_path[4096];
+        snprintf(file_path, sizeof(file_path), "%s/tx.%d.cf32", server->server_config->base_path, tcp_worker->id);
+        tcp_worker->tx_dump_file = fopen(file_path, "wb");
+        if (tcp_worker->tx_dump_file == NULL) {
+            fprintf(stderr, "<3>unable to open file for tx output: %s\n", file_path);
+            dsp_worker_destroy(tcp_worker);
             return;
         }
     }
