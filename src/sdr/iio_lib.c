@@ -20,7 +20,7 @@ int iio_lib_create(iio_lib **lib) {
 
 #if defined(__APPLE__)
     void *handle = dlopen("iio", RTLD_LAZY);
-#elif
+#else
     void *handle = dlopen("libiio.so", RTLD_LAZY);
 #endif
     if (!handle) {
