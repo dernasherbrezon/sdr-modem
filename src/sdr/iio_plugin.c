@@ -1,5 +1,4 @@
 #include "iio_plugin.h"
-#include <dlfcn.h>
 #include <iio.h>
 #include <stdio.h>
 #include <errno.h>
@@ -45,19 +44,22 @@ struct iio_plugin_t {
 
     struct stream_cfg *rx_config;
     struct stream_cfg *tx_config;
+
+    iio_lib *lib;
 };
 
 enum iio_direction {
     RX, TX
 };
 
-int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio) {
+int iio_plugin_process_tx(float complex *input, size_t input_len, void *plugin) {
+    iio_plugin *iio = (iio_plugin *) plugin;
     if (iio->tx_buffer == NULL) {
         fprintf(stderr, "tx was not initialized\n");
         return -1;
     }
 
-    char *p_start = (char *) iio_buffer_first(iio->tx_buffer, iio->tx0_i);
+    char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
     size_t num_points = input_len * 2;
 
     // put [-1;1] into 16bit interval [-32768;32768]
@@ -66,29 +68,30 @@ int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *ii
 
     // always use push_partial because normal push won't reset buffer to full length
     // https://github.com/analogdevicesinc/libiio/blob/e65a97863c3481f30c6ea8642bda86125a7ee39d/buffer.c#L154
-    ssize_t nbytes_tx = iio_buffer_push_partial(iio->tx_buffer, input_len);
+    ssize_t nbytes_tx = iio->lib->iio_buffer_push_partial(iio->tx_buffer, input_len);
     if (nbytes_tx < 0) {
         return -1;
     }
     return 0;
 }
 
-void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugin *iio) {
+void iio_plugin_process_rx(float complex **output, size_t *output_len, void *plugin) {
+    iio_plugin *iio = (iio_plugin *) plugin;
     if (iio->rx_buffer == NULL) {
         fprintf(stderr, "rx was not initialized\n");
         *output = NULL;
         *output_len = 0;
         return;
     }
-    ssize_t ret = iio_buffer_refill(iio->rx_buffer);
+    ssize_t ret = iio->lib->iio_buffer_refill(iio->rx_buffer);
     if (ret < 0) {
         *output = NULL;
         *output_len = 0;
         return;
     }
 
-    char *p_end = iio_buffer_end(iio->rx_buffer);
-    char *p_start = (char *) iio_buffer_first(iio->rx_buffer, iio->rx0_i);
+    char *p_end = iio->lib->iio_buffer_end(iio->rx_buffer);
+    char *p_start = (char *) iio->lib->iio_buffer_first(iio->rx_buffer, iio->rx0_i);
     size_t num_points = (p_end - p_start) / sizeof(int16_t);
     // ADC is 12bit, thus 2^12 = 2048
     volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_start, 2048.0F, num_points);
@@ -96,12 +99,12 @@ void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugi
     *output_len = num_points / 2;
 }
 
-static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enum iio_direction d) {
+static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enum iio_direction d, iio_plugin *iio) {
     switch (d) {
         case TX:
-            return iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
+            return iio->lib->iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
         case RX:
-            return iio_context_find_device(ctx, "cf-ad9361-lpc");
+            return iio->lib->iio_context_find_device(ctx, "cf-ad9361-lpc");
         default:
             return NULL;
     }
@@ -113,92 +116,92 @@ static char *iio_get_channel_name(const char *type, int id) {
 }
 
 /* finds AD9361 phy IIO configuration channel with id chid */
-static struct iio_channel *iio_get_phy_channel(struct iio_context *ctx, enum iio_direction d, int chid) {
+static struct iio_channel *iio_get_phy_channel(struct iio_context *ctx, enum iio_direction d, int chid, iio_plugin *iio) {
     switch (d) {
         case RX:
-            return iio_device_find_channel(iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), false);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), false);
         case TX:
-            return iio_device_find_channel(iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), true);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), true);
         default:
             return NULL;
     }
 }
 
-static int error_check(int v, const char *what) {
+static int error_check(int v, const char *what, iio_plugin *iio) {
     if (v < 0) {
-        iio_strerror(-v, tmpstr, tmpstr_len);
+        iio->lib->iio_strerror(-v, tmpstr, tmpstr_len);
         fprintf(stderr, "unable to write value for \"%s\": %s\n", what, tmpstr);
         return v;
     }
     return 0;
 }
 
-static int wr_ch_str(struct iio_channel *chn, const char *what, const char *str) {
-    return error_check(iio_channel_attr_write(chn, what, str), what);
+static int wr_ch_str(struct iio_channel *chn, const char *what, const char *str, iio_plugin *iio) {
+    return error_check(iio->lib->iio_channel_attr_write(chn, what, str), what, iio);
 }
 
-static int wr_ch_lli(struct iio_channel *chn, const char *what, long long val) {
-    return error_check(iio_channel_attr_write_longlong(chn, what, val), what);
+static int wr_ch_lli(struct iio_channel *chn, const char *what, long long val, iio_plugin *iio) {
+    return error_check(iio->lib->iio_channel_attr_write_longlong(chn, what, val), what, iio);
 }
 
-int ad9361_set_trx_fir_enable(struct iio_device *dev, int enable) {
-    int ret = iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
+int ad9361_set_trx_fir_enable(struct iio_device *dev, int enable, iio_plugin *iio) {
+    int ret = iio->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
     if (ret < 0) {
-        ret = iio_channel_attr_write_bool(iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
+        ret = iio->lib->iio_channel_attr_write_bool(iio->lib->iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
     }
     return ret;
 }
 
-static struct iio_channel *iio_get_lo_chan(struct iio_context *ctx, enum iio_direction d) {
+static struct iio_channel *iio_get_lo_chan(struct iio_context *ctx, enum iio_direction d, iio_plugin *iio) {
     switch (d) {
         // LO chan is always output, i.e. true
         case RX:
-            return iio_device_find_channel(iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 0), true);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 0), true);
         case TX:
-            return iio_device_find_channel(iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 1), true);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 1), true);
         default:
             return NULL;
     }
 }
 
-static struct iio_channel *iio_get_ad9361_stream_channel(__notused struct iio_context *ctx, enum iio_direction d, struct iio_device *dev, int chid) {
-    struct iio_channel *chn = iio_device_find_channel(dev, iio_get_channel_name("voltage", chid), d == TX);
+static struct iio_channel *iio_get_ad9361_stream_channel(__notused struct iio_context *ctx, enum iio_direction d, struct iio_device *dev, int chid, iio_plugin *iio) {
+    struct iio_channel *chn = iio->lib->iio_device_find_channel(dev, iio_get_channel_name("voltage", chid), d == TX);
     if (chn == NULL) {
-        chn = iio_device_find_channel(dev, iio_get_channel_name("altvoltage", chid), d == TX);
+        chn = iio->lib->iio_device_find_channel(dev, iio_get_channel_name("altvoltage", chid), d == TX);
     }
     return chn;
 }
 
-int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, int chid) {
-    struct iio_channel *chn = iio_get_phy_channel(ctx, type, chid);
+int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, int chid, iio_plugin *iio) {
+    struct iio_channel *chn = iio_get_phy_channel(ctx, type, chid, iio);
     if (chn == NULL) {
         return -1;
     }
-    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->sampling_freq);
+    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->sampling_freq, iio);
     if (code != 0) {
         return code;
     }
-    code = wr_ch_lli(chn, "sampling_frequency", cfg->sampling_freq);
+    code = wr_ch_lli(chn, "sampling_frequency", cfg->sampling_freq, iio);
     if (code != 0) {
         return code;
     }
     switch (cfg->gain_control_mode) {
         case IIO_GAIN_MODE_MANUAL:
             if (type == RX) {
-                code = wr_ch_str(chn, "gain_control_mode", "manual");
+                code = wr_ch_str(chn, "gain_control_mode", "manual", iio);
             }
             if (code == 0) {
-                code = error_check(iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain");
+                code = error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain", iio);
             }
             break;
         case IIO_GAIN_MODE_FAST_ATTACK:
-            code = wr_ch_str(chn, "gain_control_mode", "fast_attack");
+            code = wr_ch_str(chn, "gain_control_mode", "fast_attack", iio);
             break;
         case IIO_GAIN_MODE_SLOW_ATTACK:
-            code = wr_ch_str(chn, "gain_control_mode", "slow_attack");
+            code = wr_ch_str(chn, "gain_control_mode", "slow_attack", iio);
             break;
         case IIO_GAIN_MODE_HYBRID:
-            code = wr_ch_str(chn, "gain_control_mode", "hybrid");
+            code = wr_ch_str(chn, "gain_control_mode", "hybrid", iio);
             break;
         default:
             fprintf(stderr, "unknown gain mode: %d\n", cfg->gain_control_mode);
@@ -209,11 +212,11 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
         return code;
     }
 
-    chn = iio_get_lo_chan(ctx, type);
+    chn = iio_get_lo_chan(ctx, type, iio);
     if (chn == NULL) {
         return -1;
     }
-    return wr_ch_lli(chn, "frequency", cfg->center_freq);
+    return wr_ch_lli(chn, "frequency", cfg->center_freq, iio);
 }
 
 int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
@@ -235,7 +238,7 @@ int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation,
     return 0;
 }
 
-int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config) {
+int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config, iio_plugin *iio) {
     int rx_decimation = 0;
     int16_t *rx_fir_filter_taps = NULL;
     int code = iio_plugin_select_fir_filter_config(rx_config, &rx_decimation, &rx_fir_filter_taps);
@@ -249,12 +252,12 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
         return code;
     }
 
-    struct iio_device *phy_device = iio_context_find_device(ctx, "ad9361-phy");
+    struct iio_device *phy_device = iio->lib->iio_context_find_device(ctx, "ad9361-phy");
 
     // filter is not needed
     if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
         // filter might be configured prior to execution. disable it to support higher rates
-        return error_check(ad9361_set_trx_fir_enable(phy_device, false), "in_out_voltage_filter_fir_en");
+        return error_check(ad9361_set_trx_fir_enable(phy_device, false, iio), "in_out_voltage_filter_fir_en", iio);
     }
 
     // just to simplify the code below a bit
@@ -272,7 +275,7 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
         return -1;
     }
 
-    char *buf = malloc(FIR_BUF_SIZE);
+    char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
     if (buf == NULL) {
         return -ENOMEM;
     }
@@ -288,13 +291,13 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
     }
     len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
 
-    code = error_check(iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config");
+    code = error_check(iio->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", iio);
     free(buf);
     if (code < 0) {
         return code;
     }
 
-    code = error_check(ad9361_set_trx_fir_enable(phy_device, true), "in_out_voltage_filter_fir_en");
+    code = error_check(ad9361_set_trx_fir_enable(phy_device, true, iio), "in_out_voltage_filter_fir_en", iio);
     if (code < 0) {
         return code;
     }
@@ -302,7 +305,7 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
     return 0;
 }
 
-int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_plugin **output) {
+int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
     if (rx_config == NULL && tx_config == NULL) {
         fprintf(stderr, "configuration is missing\n");
         return -1;
@@ -314,78 +317,79 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
     *result = (struct iio_plugin_t) {0};
     result->rx_config = rx_config;
     result->tx_config = tx_config;
+    result->lib = lib;
     result->id = id;
 
-    struct iio_scan_context *scan_ctx = iio_create_scan_context(NULL, 0);
+    struct iio_scan_context *scan_ctx = result->lib->iio_create_scan_context(NULL, 0);
     if (scan_ctx == NULL) {
         perror("unable to scan");
         iio_plugin_destroy(result);
         return -1;
     }
     struct iio_context_info **info = NULL;
-    ssize_t code = iio_scan_context_get_info_list(scan_ctx, &info);
+    ssize_t code = result->lib->iio_scan_context_get_info_list(scan_ctx, &info);
     if (code < 0) {
         fprintf(stderr, "unable to scan contexts: %zd\n", code);
-        iio_scan_context_destroy(scan_ctx);
+        result->lib->iio_scan_context_destroy(scan_ctx);
         iio_plugin_destroy(result);
         return -1;
     }
     if (code == 0) {
-        fprintf(stderr, "no iio contexts found\n");
-        iio_scan_context_destroy(scan_ctx);
+        fprintf(stderr, "no sdr contexts found\n");
+        result->lib->iio_scan_context_destroy(scan_ctx);
         iio_plugin_destroy(result);
         return -1;
     }
-    const char *uri = iio_context_info_get_uri(info[0]);
+    const char *uri = result->lib->iio_context_info_get_uri(info[0]);
     fprintf(stdout, "using context uri: %s\n", uri);
-    result->ctx = iio_create_context_from_uri(uri);
-    iio_context_info_list_free(info);
-    iio_scan_context_destroy(scan_ctx);
+    result->ctx = result->lib->iio_create_context_from_uri(uri);
+    result->lib->iio_context_info_list_free(info);
+    result->lib->iio_scan_context_destroy(scan_ctx);
     if (result->ctx == NULL) {
         perror("unable to setup context");
         iio_plugin_destroy(result);
         return -1;
     }
-    code = iio_context_set_timeout(result->ctx, timeout_ms);
+    code = result->lib->iio_context_set_timeout(result->ctx, timeout_ms);
     if (code < 0) {
         fprintf(stderr, "unable to setup timeout: %zd\n", code);
         iio_plugin_destroy(result);
         return -1;
     }
 
-    code = iio_plugin_setup_fir_filter(result->ctx, rx_config, tx_config);
+    code = iio_plugin_setup_fir_filter(result->ctx, rx_config, tx_config, result);
     if (code < 0) {
         iio_plugin_destroy(result);
         return -1;
     }
 
     if (tx_config != NULL) {
-        result->tx = iio_get_ad9361_stream_dev(result->ctx, TX);
+        result->tx = iio_get_ad9361_stream_dev(result->ctx, TX, result);
         if (result->tx == NULL) {
             fprintf(stderr, "unable to find tx device\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        code = iio_configure_ad9361_streaming_channel(result->ctx, tx_config, TX, 0);
+        code = iio_configure_ad9361_streaming_channel(result->ctx, tx_config, TX, 0, result);
         if (code < 0) {
             iio_plugin_destroy(result);
             return -1;
         }
-        result->tx0_i = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 0);
+        result->tx0_i = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 0, result);
         if (result->tx0_i == NULL) {
             fprintf(stderr, "unable to find tx I channel\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        result->tx0_q = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 1);
+        result->tx0_q = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 1, result);
         if (result->tx0_q == NULL) {
             fprintf(stderr, "unable to find tx Q channel\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        iio_channel_enable(result->tx0_i);
-        iio_channel_enable(result->tx0_q);
-        result->tx_buffer = iio_device_create_buffer(result->tx, max_input_buffer_length, false);
+        result->lib->iio_channel_enable(result->tx0_i);
+        result->lib->iio_channel_enable(result->tx0_q);
+        result->tx_buffer = result->lib->iio_device_create_buffer(result->tx, max_input_buffer_length, false);
         if (result->tx_buffer == NULL) {
             perror("unable to create tx buffer");
             iio_plugin_destroy(result);
@@ -394,32 +398,32 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
     }
 
     if (rx_config != NULL) {
-        result->rx = iio_get_ad9361_stream_dev(result->ctx, RX);
+        result->rx = iio_get_ad9361_stream_dev(result->ctx, RX, result);
         if (result->rx == NULL) {
             fprintf(stderr, "unable to find rx device\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        code = iio_configure_ad9361_streaming_channel(result->ctx, rx_config, RX, 0);
+        code = iio_configure_ad9361_streaming_channel(result->ctx, rx_config, RX, 0, result);
         if (code < 0) {
             iio_plugin_destroy(result);
             return -1;
         }
-        result->rx0_i = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 0);
+        result->rx0_i = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 0, result);
         if (result->rx0_i == NULL) {
             fprintf(stderr, "unable to find rx I channel\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        result->rx0_q = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 1);
+        result->rx0_q = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 1, result);
         if (result->rx0_q == NULL) {
             fprintf(stderr, "unable to find rx Q channel\n");
             iio_plugin_destroy(result);
             return -1;
         }
-        iio_channel_enable(result->rx0_i);
-        iio_channel_enable(result->rx0_q);
-        result->rx_buffer = iio_device_create_buffer(result->rx, max_input_buffer_length, false);
+        result->lib->iio_channel_enable(result->rx0_i);
+        result->lib->iio_channel_enable(result->rx0_q);
+        result->rx_buffer = result->lib->iio_device_create_buffer(result->rx, max_input_buffer_length, false);
         if (result->rx_buffer == NULL) {
             perror("unable to create rx buffer");
             iio_plugin_destroy(result);
@@ -433,37 +437,48 @@ int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_c
         }
     }
 
-    *output = result;
+    struct sdr_device_t *device = malloc(sizeof(struct sdr_device_t));
+    if (device == NULL) {
+        iio_plugin_destroy(result);
+        return -ENOMEM;
+    }
+    device->plugin = result;
+    device->destroy = iio_plugin_destroy;
+    device->sdr_process_rx = iio_plugin_process_rx;
+    device->sdr_process_tx = iio_plugin_process_tx;
+
+    *output = device;
     return 0;
 }
 
-void iio_plugin_destroy(iio_plugin *iio) {
-    if (iio == NULL) {
+void iio_plugin_destroy(void *plugin) {
+    if (plugin == NULL) {
         return;
     }
+    iio_plugin *iio = (iio_plugin *) plugin;
     if (iio->tx_buffer != NULL) {
-        iio_buffer_destroy(iio->tx_buffer);
+        iio->lib->iio_buffer_destroy(iio->tx_buffer);
     }
     if (iio->tx0_i != NULL) {
-        iio_channel_disable(iio->tx0_i);
+        iio->lib->iio_channel_disable(iio->tx0_i);
     }
     if (iio->tx0_q != NULL) {
-        iio_channel_disable(iio->tx0_q);
+        iio->lib->iio_channel_disable(iio->tx0_q);
     }
     if (iio->rx_buffer != NULL) {
-        iio_buffer_destroy(iio->rx_buffer);
+        iio->lib->iio_buffer_destroy(iio->rx_buffer);
     }
     if (iio->rx0_i != NULL) {
-        iio_channel_disable(iio->rx0_i);
+        iio->lib->iio_channel_disable(iio->rx0_i);
     }
     if (iio->rx0_q != NULL) {
-        iio_channel_disable(iio->rx0_q);
+        iio->lib->iio_channel_disable(iio->rx0_q);
     }
     if (iio->output != NULL) {
         free(iio->output);
     }
     if (iio->ctx != NULL) {
-        iio_context_destroy(iio->ctx);
+        iio->lib->iio_context_destroy(iio->ctx);
     }
     if (iio->rx_config != NULL) {
         free(iio->rx_config);

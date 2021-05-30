@@ -4,6 +4,8 @@
 #include <complex.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "sdr_device.h"
+#include "iio_lib.h"
 
 typedef struct iio_plugin_t iio_plugin;
 
@@ -19,11 +21,11 @@ struct stream_cfg {
     double manual_gain;
 };
 
-int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_plugin **result);
+int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
 
-void iio_plugin_process_rx(float complex **output, size_t *output_len, iio_plugin *iio);
-int iio_plugin_process_tx(float complex *input, size_t input_len, iio_plugin *iio);
+void iio_plugin_process_rx(float complex **output, size_t *output_len, void *plugin);
+int iio_plugin_process_tx(float complex *input, size_t input_len, void *plugin);
 
-void iio_plugin_destroy(iio_plugin *iio);
+void iio_plugin_destroy(void *plugin);
 
 #endif //SDR_MODEM_IIO_PLUGIN_H
