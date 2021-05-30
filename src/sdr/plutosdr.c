@@ -1,4 +1,4 @@
-#include "iio_plugin.h"
+#include "plutosdr.h"
 #include <iio.h>
 #include <stdio.h>
 #include <errno.h>
@@ -25,7 +25,7 @@ static int16_t fir_128_2[] = {
         20837, 0, -6883, -0, 4056, 0, -2819, -0, 2114, 0, -1652, -0, 1323, 0, -1075, -0, 880, 0, -724, -0, 595, 0, -489, -0, 401, 0, -327, -0, 264, 0, -213, -0,
         169, 0, -134, -0, 104, 0, -80, -0, 61, 0, -45, -0, 33, 0, -24, -0, 17, 0, -11, -0, 8, 0, -5, -0, 3, 0, -2, -0, 1, 0, -0, 0};
 
-struct iio_plugin_t {
+struct plutosdr_t {
     uint32_t id;
 
     struct iio_context *ctx;
@@ -52,8 +52,8 @@ enum iio_direction {
     RX, TX
 };
 
-int iio_plugin_process_tx(float complex *input, size_t input_len, void *plugin) {
-    iio_plugin *iio = (iio_plugin *) plugin;
+int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
+    plutosdr *iio = (plutosdr *) plugin;
     if (iio->tx_buffer == NULL) {
         fprintf(stderr, "tx was not initialized\n");
         return -1;
@@ -75,8 +75,8 @@ int iio_plugin_process_tx(float complex *input, size_t input_len, void *plugin) 
     return 0;
 }
 
-void iio_plugin_process_rx(float complex **output, size_t *output_len, void *plugin) {
-    iio_plugin *iio = (iio_plugin *) plugin;
+void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin) {
+    plutosdr *iio = (plutosdr *) plugin;
     if (iio->rx_buffer == NULL) {
         fprintf(stderr, "rx was not initialized\n");
         *output = NULL;
@@ -99,7 +99,7 @@ void iio_plugin_process_rx(float complex **output, size_t *output_len, void *plu
     *output_len = num_points / 2;
 }
 
-static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enum iio_direction d, iio_plugin *iio) {
+static struct iio_device *plutosdr_get_device(struct iio_context *ctx, enum iio_direction d, plutosdr *iio) {
     switch (d) {
         case TX:
             return iio->lib->iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
@@ -110,24 +110,24 @@ static struct iio_device *iio_get_ad9361_stream_dev(struct iio_context *ctx, enu
     }
 }
 
-static char *iio_get_channel_name(const char *type, int id) {
+static char *plutosdr_format_channel_name(const char *type, int id) {
     snprintf(tmpstr, sizeof(tmpstr), "%s%d", type, id);
     return tmpstr;
 }
 
 /* finds AD9361 phy IIO configuration channel with id chid */
-static struct iio_channel *iio_get_phy_channel(struct iio_context *ctx, enum iio_direction d, int chid, iio_plugin *iio) {
+static struct iio_channel *plutosdr_get_phy_channel(struct iio_context *ctx, enum iio_direction d, int chid, plutosdr *iio) {
     switch (d) {
         case RX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), false);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("voltage", chid), false);
         case TX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("voltage", chid), true);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("voltage", chid), true);
         default:
             return NULL;
     }
 }
 
-static int error_check(int v, const char *what, iio_plugin *iio) {
+static int plutosdr_error_check(int v, const char *what, plutosdr *iio) {
     if (v < 0) {
         iio->lib->iio_strerror(-v, tmpstr, tmpstr_len);
         fprintf(stderr, "unable to write value for \"%s\": %s\n", what, tmpstr);
@@ -136,72 +136,72 @@ static int error_check(int v, const char *what, iio_plugin *iio) {
     return 0;
 }
 
-static int wr_ch_str(struct iio_channel *chn, const char *what, const char *str, iio_plugin *iio) {
-    return error_check(iio->lib->iio_channel_attr_write(chn, what, str), what, iio);
+static int plutosdr_write_str(struct iio_channel *chn, const char *what, const char *str, plutosdr *iio) {
+    return plutosdr_error_check(iio->lib->iio_channel_attr_write(chn, what, str), what, iio);
 }
 
-static int wr_ch_lli(struct iio_channel *chn, const char *what, long long val, iio_plugin *iio) {
-    return error_check(iio->lib->iio_channel_attr_write_longlong(chn, what, val), what, iio);
+static int plutosdr_write_lli(struct iio_channel *chn, const char *what, long long val, plutosdr *iio) {
+    return plutosdr_error_check(iio->lib->iio_channel_attr_write_longlong(chn, what, val), what, iio);
 }
 
-int ad9361_set_trx_fir_enable(struct iio_device *dev, int enable, iio_plugin *iio) {
-    int ret = iio->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
+int plutosdr_enable_fir_filter(struct iio_device *dev, int enable, plutosdr *pluto) {
+    int ret = pluto->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
     if (ret < 0) {
-        ret = iio->lib->iio_channel_attr_write_bool(iio->lib->iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
+        ret = pluto->lib->iio_channel_attr_write_bool(pluto->lib->iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
     }
     return ret;
 }
 
-static struct iio_channel *iio_get_lo_chan(struct iio_context *ctx, enum iio_direction d, iio_plugin *iio) {
+static struct iio_channel *plutosdr_get_lo_channel(struct iio_context *ctx, enum iio_direction d, plutosdr *pluto) {
     switch (d) {
         // LO chan is always output, i.e. true
         case RX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 0), true);
+            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("altvoltage", 0), true);
         case TX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), iio_get_channel_name("altvoltage", 1), true);
+            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("altvoltage", 1), true);
         default:
             return NULL;
     }
 }
 
-static struct iio_channel *iio_get_ad9361_stream_channel(__notused struct iio_context *ctx, enum iio_direction d, struct iio_device *dev, int chid, iio_plugin *iio) {
-    struct iio_channel *chn = iio->lib->iio_device_find_channel(dev, iio_get_channel_name("voltage", chid), d == TX);
+static struct iio_channel *plutosdr_get_streaming_channel(enum iio_direction d, struct iio_device *dev, int chid, plutosdr *pluto) {
+    struct iio_channel *chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
     if (chn == NULL) {
-        chn = iio->lib->iio_device_find_channel(dev, iio_get_channel_name("altvoltage", chid), d == TX);
+        chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("altvoltage", chid), d == TX);
     }
     return chn;
 }
 
-int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, int chid, iio_plugin *iio) {
-    struct iio_channel *chn = iio_get_phy_channel(ctx, type, chid, iio);
+int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, int chid, plutosdr *iio) {
+    struct iio_channel *chn = plutosdr_get_phy_channel(ctx, type, chid, iio);
     if (chn == NULL) {
         return -1;
     }
-    int code = wr_ch_lli(chn, "rf_bandwidth", cfg->sampling_freq, iio);
+    int code = plutosdr_write_lli(chn, "rf_bandwidth", cfg->sampling_freq, iio);
     if (code != 0) {
         return code;
     }
-    code = wr_ch_lli(chn, "sampling_frequency", cfg->sampling_freq, iio);
+    code = plutosdr_write_lli(chn, "sampling_frequency", cfg->sampling_freq, iio);
     if (code != 0) {
         return code;
     }
     switch (cfg->gain_control_mode) {
         case IIO_GAIN_MODE_MANUAL:
             if (type == RX) {
-                code = wr_ch_str(chn, "gain_control_mode", "manual", iio);
+                code = plutosdr_write_str(chn, "gain_control_mode", "manual", iio);
             }
             if (code == 0) {
-                code = error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain", iio);
+                code = plutosdr_error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain", iio);
             }
             break;
         case IIO_GAIN_MODE_FAST_ATTACK:
-            code = wr_ch_str(chn, "gain_control_mode", "fast_attack", iio);
+            code = plutosdr_write_str(chn, "gain_control_mode", "fast_attack", iio);
             break;
         case IIO_GAIN_MODE_SLOW_ATTACK:
-            code = wr_ch_str(chn, "gain_control_mode", "slow_attack", iio);
+            code = plutosdr_write_str(chn, "gain_control_mode", "slow_attack", iio);
             break;
         case IIO_GAIN_MODE_HYBRID:
-            code = wr_ch_str(chn, "gain_control_mode", "hybrid", iio);
+            code = plutosdr_write_str(chn, "gain_control_mode", "hybrid", iio);
             break;
         default:
             fprintf(stderr, "unknown gain mode: %d\n", cfg->gain_control_mode);
@@ -212,14 +212,14 @@ int iio_configure_ad9361_streaming_channel(struct iio_context *ctx, struct strea
         return code;
     }
 
-    chn = iio_get_lo_chan(ctx, type, iio);
+    chn = plutosdr_get_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
     }
-    return wr_ch_lli(chn, "frequency", cfg->center_freq, iio);
+    return plutosdr_write_lli(chn, "frequency", cfg->center_freq, iio);
 }
 
-int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
+int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
     if (cfg == NULL) {
         *decimation = 0;
         *fir_filter_taps = NULL;
@@ -238,26 +238,26 @@ int iio_plugin_select_fir_filter_config(struct stream_cfg *cfg, int *decimation,
     return 0;
 }
 
-int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config, iio_plugin *iio) {
+int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config, plutosdr *pluto) {
     int rx_decimation = 0;
     int16_t *rx_fir_filter_taps = NULL;
-    int code = iio_plugin_select_fir_filter_config(rx_config, &rx_decimation, &rx_fir_filter_taps);
+    int code = plutosdr_select_fir_filter_config(rx_config, &rx_decimation, &rx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
     int tx_decimation = 0;
     int16_t *tx_fir_filter_taps = NULL;
-    code = iio_plugin_select_fir_filter_config(tx_config, &tx_decimation, &tx_fir_filter_taps);
+    code = plutosdr_select_fir_filter_config(tx_config, &tx_decimation, &tx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
 
-    struct iio_device *phy_device = iio->lib->iio_context_find_device(ctx, "ad9361-phy");
+    struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
 
     // filter is not needed
     if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
         // filter might be configured prior to execution. disable it to support higher rates
-        return error_check(ad9361_set_trx_fir_enable(phy_device, false, iio), "in_out_voltage_filter_fir_en", iio);
+        return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
     }
 
     // just to simplify the code below a bit
@@ -291,13 +291,13 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
     }
     len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
 
-    code = error_check(iio->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", iio);
+    code = plutosdr_error_check(pluto->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", pluto);
     free(buf);
     if (code < 0) {
         return code;
     }
 
-    code = error_check(ad9361_set_trx_fir_enable(phy_device, true, iio), "in_out_voltage_filter_fir_en", iio);
+    code = plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, true, pluto), "in_out_voltage_filter_fir_en", pluto);
     if (code < 0) {
         return code;
     }
@@ -305,186 +305,186 @@ int iio_plugin_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_c
     return 0;
 }
 
-int iio_plugin_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
+int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
     if (rx_config == NULL && tx_config == NULL) {
         fprintf(stderr, "configuration is missing\n");
         return -1;
     }
-    struct iio_plugin_t *result = malloc(sizeof(struct iio_plugin_t));
-    if (result == NULL) {
+    struct plutosdr_t *pluto = malloc(sizeof(struct plutosdr_t));
+    if (pluto == NULL) {
         return -ENOMEM;
     }
-    *result = (struct iio_plugin_t) {0};
-    result->rx_config = rx_config;
-    result->tx_config = tx_config;
-    result->lib = lib;
-    result->id = id;
+    *pluto = (struct plutosdr_t) {0};
+    pluto->rx_config = rx_config;
+    pluto->tx_config = tx_config;
+    pluto->lib = lib;
+    pluto->id = id;
 
-    struct iio_scan_context *scan_ctx = result->lib->iio_create_scan_context(NULL, 0);
+    struct iio_scan_context *scan_ctx = pluto->lib->iio_create_scan_context(NULL, 0);
     if (scan_ctx == NULL) {
         perror("unable to scan");
-        iio_plugin_destroy(result);
+        plutosdr_destroy(pluto);
         return -1;
     }
     struct iio_context_info **info = NULL;
-    ssize_t code = result->lib->iio_scan_context_get_info_list(scan_ctx, &info);
+    ssize_t code = pluto->lib->iio_scan_context_get_info_list(scan_ctx, &info);
     if (code < 0) {
         fprintf(stderr, "unable to scan contexts: %zd\n", code);
-        result->lib->iio_scan_context_destroy(scan_ctx);
-        iio_plugin_destroy(result);
+        pluto->lib->iio_scan_context_destroy(scan_ctx);
+        plutosdr_destroy(pluto);
         return -1;
     }
     if (code == 0) {
         fprintf(stderr, "no sdr contexts found\n");
-        result->lib->iio_scan_context_destroy(scan_ctx);
-        iio_plugin_destroy(result);
+        pluto->lib->iio_scan_context_destroy(scan_ctx);
+        plutosdr_destroy(pluto);
         return -1;
     }
-    const char *uri = result->lib->iio_context_info_get_uri(info[0]);
+    const char *uri = pluto->lib->iio_context_info_get_uri(info[0]);
     fprintf(stdout, "using context uri: %s\n", uri);
-    result->ctx = result->lib->iio_create_context_from_uri(uri);
-    result->lib->iio_context_info_list_free(info);
-    result->lib->iio_scan_context_destroy(scan_ctx);
-    if (result->ctx == NULL) {
+    pluto->ctx = pluto->lib->iio_create_context_from_uri(uri);
+    pluto->lib->iio_context_info_list_free(info);
+    pluto->lib->iio_scan_context_destroy(scan_ctx);
+    if (pluto->ctx == NULL) {
         perror("unable to setup context");
-        iio_plugin_destroy(result);
+        plutosdr_destroy(pluto);
         return -1;
     }
-    code = result->lib->iio_context_set_timeout(result->ctx, timeout_ms);
+    code = pluto->lib->iio_context_set_timeout(pluto->ctx, timeout_ms);
     if (code < 0) {
         fprintf(stderr, "unable to setup timeout: %zd\n", code);
-        iio_plugin_destroy(result);
+        plutosdr_destroy(pluto);
         return -1;
     }
 
-    code = iio_plugin_setup_fir_filter(result->ctx, rx_config, tx_config, result);
+    code = plutosdr_setup_fir_filter(pluto->ctx, rx_config, tx_config, pluto);
     if (code < 0) {
-        iio_plugin_destroy(result);
+        plutosdr_destroy(pluto);
         return -1;
     }
 
     if (tx_config != NULL) {
-        result->tx = iio_get_ad9361_stream_dev(result->ctx, TX, result);
-        if (result->tx == NULL) {
-            fprintf(stderr, "unable to find tx device\n");
-            iio_plugin_destroy(result);
+        pluto->tx = plutosdr_get_device(pluto->ctx, TX, pluto);
+        if (pluto->tx == NULL) {
+            fprintf(stderr, "unable to find tx result\n");
+            plutosdr_destroy(pluto);
             return -1;
         }
-        code = iio_configure_ad9361_streaming_channel(result->ctx, tx_config, TX, 0, result);
+        code = plutosdr_configure_streaming_channel(pluto->ctx, tx_config, TX, 0, pluto);
         if (code < 0) {
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->tx0_i = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 0, result);
-        if (result->tx0_i == NULL) {
+        pluto->tx0_i = plutosdr_get_streaming_channel(TX, pluto->tx, 0, pluto);
+        if (pluto->tx0_i == NULL) {
             fprintf(stderr, "unable to find tx I channel\n");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->tx0_q = iio_get_ad9361_stream_channel(result->ctx, TX, result->tx, 1, result);
-        if (result->tx0_q == NULL) {
+        pluto->tx0_q = plutosdr_get_streaming_channel(TX, pluto->tx, 1, pluto);
+        if (pluto->tx0_q == NULL) {
             fprintf(stderr, "unable to find tx Q channel\n");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->lib->iio_channel_enable(result->tx0_i);
-        result->lib->iio_channel_enable(result->tx0_q);
-        result->tx_buffer = result->lib->iio_device_create_buffer(result->tx, max_input_buffer_length, false);
-        if (result->tx_buffer == NULL) {
+        pluto->lib->iio_channel_enable(pluto->tx0_i);
+        pluto->lib->iio_channel_enable(pluto->tx0_q);
+        pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, max_input_buffer_length, false);
+        if (pluto->tx_buffer == NULL) {
             perror("unable to create tx buffer");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
     }
 
     if (rx_config != NULL) {
-        result->rx = iio_get_ad9361_stream_dev(result->ctx, RX, result);
-        if (result->rx == NULL) {
-            fprintf(stderr, "unable to find rx device\n");
-            iio_plugin_destroy(result);
+        pluto->rx = plutosdr_get_device(pluto->ctx, RX, pluto);
+        if (pluto->rx == NULL) {
+            fprintf(stderr, "unable to find rx result\n");
+            plutosdr_destroy(pluto);
             return -1;
         }
-        code = iio_configure_ad9361_streaming_channel(result->ctx, rx_config, RX, 0, result);
+        code = plutosdr_configure_streaming_channel(pluto->ctx, rx_config, RX, 0, pluto);
         if (code < 0) {
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->rx0_i = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 0, result);
-        if (result->rx0_i == NULL) {
+        pluto->rx0_i = plutosdr_get_streaming_channel(RX, pluto->rx, 0, pluto);
+        if (pluto->rx0_i == NULL) {
             fprintf(stderr, "unable to find rx I channel\n");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->rx0_q = iio_get_ad9361_stream_channel(result->ctx, RX, result->rx, 1, result);
-        if (result->rx0_q == NULL) {
+        pluto->rx0_q = plutosdr_get_streaming_channel(RX, pluto->rx, 1, pluto);
+        if (pluto->rx0_q == NULL) {
             fprintf(stderr, "unable to find rx Q channel\n");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->lib->iio_channel_enable(result->rx0_i);
-        result->lib->iio_channel_enable(result->rx0_q);
-        result->rx_buffer = result->lib->iio_device_create_buffer(result->rx, max_input_buffer_length, false);
-        if (result->rx_buffer == NULL) {
+        pluto->lib->iio_channel_enable(pluto->rx0_i);
+        pluto->lib->iio_channel_enable(pluto->rx0_q);
+        pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, max_input_buffer_length, false);
+        if (pluto->rx_buffer == NULL) {
             perror("unable to create rx buffer");
-            iio_plugin_destroy(result);
+            plutosdr_destroy(pluto);
             return -1;
         }
-        result->output_len = max_input_buffer_length;
-        result->output = malloc(sizeof(float complex) * result->output_len);
-        if (result->output == NULL) {
-            iio_plugin_destroy(result);
+        pluto->output_len = max_input_buffer_length;
+        pluto->output = malloc(sizeof(float complex) * pluto->output_len);
+        if (pluto->output == NULL) {
+            plutosdr_destroy(pluto);
             return -ENOMEM;
         }
     }
 
-    struct sdr_device_t *device = malloc(sizeof(struct sdr_device_t));
-    if (device == NULL) {
-        iio_plugin_destroy(result);
+    struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
+    if (result == NULL) {
+        plutosdr_destroy(pluto);
         return -ENOMEM;
     }
-    device->plugin = result;
-    device->destroy = iio_plugin_destroy;
-    device->sdr_process_rx = iio_plugin_process_rx;
-    device->sdr_process_tx = iio_plugin_process_tx;
+    result->plugin = pluto;
+    result->destroy = plutosdr_destroy;
+    result->sdr_process_rx = plutosdr_process_rx;
+    result->sdr_process_tx = plutosdr_process_tx;
 
-    *output = device;
+    *output = result;
     return 0;
 }
 
-void iio_plugin_destroy(void *plugin) {
+void plutosdr_destroy(void *plugin) {
     if (plugin == NULL) {
         return;
     }
-    iio_plugin *iio = (iio_plugin *) plugin;
-    if (iio->tx_buffer != NULL) {
-        iio->lib->iio_buffer_destroy(iio->tx_buffer);
+    plutosdr *pluto = (plutosdr *) plugin;
+    if (pluto->tx_buffer != NULL) {
+        pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
     }
-    if (iio->tx0_i != NULL) {
-        iio->lib->iio_channel_disable(iio->tx0_i);
+    if (pluto->tx0_i != NULL) {
+        pluto->lib->iio_channel_disable(pluto->tx0_i);
     }
-    if (iio->tx0_q != NULL) {
-        iio->lib->iio_channel_disable(iio->tx0_q);
+    if (pluto->tx0_q != NULL) {
+        pluto->lib->iio_channel_disable(pluto->tx0_q);
     }
-    if (iio->rx_buffer != NULL) {
-        iio->lib->iio_buffer_destroy(iio->rx_buffer);
+    if (pluto->rx_buffer != NULL) {
+        pluto->lib->iio_buffer_destroy(pluto->rx_buffer);
     }
-    if (iio->rx0_i != NULL) {
-        iio->lib->iio_channel_disable(iio->rx0_i);
+    if (pluto->rx0_i != NULL) {
+        pluto->lib->iio_channel_disable(pluto->rx0_i);
     }
-    if (iio->rx0_q != NULL) {
-        iio->lib->iio_channel_disable(iio->rx0_q);
+    if (pluto->rx0_q != NULL) {
+        pluto->lib->iio_channel_disable(pluto->rx0_q);
     }
-    if (iio->output != NULL) {
-        free(iio->output);
+    if (pluto->output != NULL) {
+        free(pluto->output);
     }
-    if (iio->ctx != NULL) {
-        iio->lib->iio_context_destroy(iio->ctx);
+    if (pluto->ctx != NULL) {
+        pluto->lib->iio_context_destroy(pluto->ctx);
     }
-    if (iio->rx_config != NULL) {
-        free(iio->rx_config);
+    if (pluto->rx_config != NULL) {
+        free(pluto->rx_config);
     }
-    if (iio->tx_config != NULL) {
-        free(iio->tx_config);
+    if (pluto->tx_config != NULL) {
+        free(pluto->tx_config);
     }
-    free(iio);
+    free(pluto);
 }

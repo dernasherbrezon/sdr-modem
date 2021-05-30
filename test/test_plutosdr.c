@@ -3,7 +3,7 @@
 #include <check.h>
 #include "../src/sdr/sdr_device.h"
 #include "../src/sdr/iio_lib.h"
-#include "../src/sdr/iio_plugin.h"
+#include "../src/sdr/plutosdr.h"
 #include "../src/dsp/gfsk_mod.h"
 #include <math.h>
 
@@ -29,7 +29,7 @@ void setup_byte_data(uint8_t **input, size_t input_offset, size_t len) {
 START_TEST (test_no_configs) {
     int code = iio_lib_create(&lib);
     ck_assert_int_eq(code, 0);
-    code = iio_plugin_create(1, NULL, NULL, 10000, 2000000, lib, &sdr);
+    code = plutosdr_create(1, NULL, NULL, 10000, 2000000, lib, &sdr);
     ck_assert_int_eq(code, -1);
 }
 END_TEST
@@ -53,7 +53,7 @@ START_TEST (test_normal) {
 //    printf("tx sampling freq: %u\n", tx_config->sampling_freq);
 //
 //    int code;
-//    code = iio_plugin_create(1, rx_config, tx_config, 10000, tx_config->sampling_freq, &sdr);
+//    code = plutosdr_create(1, rx_config, tx_config, 10000, tx_config->sampling_freq, &sdr);
 //    ck_assert_int_eq(code, 0);
 //
 //    float samples_per_symbol = sample_rate / baud_rate;
@@ -76,7 +76,7 @@ START_TEST (test_normal) {
 //        } else {
 //            batch = tx_config->sampling_freq;
 //        }
-//        code = iio_plugin_process_tx(output + processed, batch, sdr);
+//        code = plutosdr_process_tx(output + processed, batch, sdr);
 //        if (code < 0) {
 //            break;
 //        }
@@ -87,7 +87,7 @@ START_TEST (test_normal) {
 //    printf("%zu\n", output_len);
 //    size_t total_len = 0;
 //    while (total_len < output_len) {
-//        code = iio_plugin_process_tx(output + total_len, tx_config->sampling_freq, sdr);
+//        code = plutosdr_process_tx(output + total_len, tx_config->sampling_freq, sdr);
 //        ck_assert_int_eq(code, 0);
 //        total_len += tx_config->sampling_freq;
 //    }
@@ -96,20 +96,20 @@ START_TEST (test_normal) {
 //    fwrite(output, sizeof(float complex), output_len, fp);
 //    fclose(fp);
 
-//    iio_plugin_process_rx(&output, &output_len, sdr);
+//    plutosdr_process_rx(&output, &output_len, sdr);
 //    printf("got udpate: %zu\n", output_len);
 
     size_t total_len = 0;
 //    while (total_len < 5 * rx_config->sampling_freq) {
 //        float complex *output = NULL;
 //        size_t output_len = 0;
-//    code = iio_plugin_process_tx(output, output_len, sdr);
+//    code = plutosdr_process_tx(output, output_len, sdr);
 //        if (code < 0) {
 //            break;
 //        }
 //    total_len += output_len;
 //    sleep(1000);
-//        code = iio_plugin_process_tx(output, output_len, sdr);
+//        code = plutosdr_process_tx(output, output_len, sdr);
 //        if (code < 0) {
 //            break;
 //        }
@@ -121,10 +121,6 @@ START_TEST (test_normal) {
 END_TEST
 
 void teardown() {
-    if (lib != NULL) {
-        iio_lib_destroy(lib);
-        lib = NULL;
-    }
     if (sdr != NULL) {
         sdr->destroy(sdr->plugin);
         sdr = NULL;
@@ -138,6 +134,10 @@ void teardown() {
         free(data);
         data = NULL;
     }
+    if (lib != NULL) {
+        iio_lib_destroy(lib);
+        lib = NULL;
+    }
 }
 
 void setup() {
@@ -148,7 +148,7 @@ Suite *common_suite(void) {
     Suite *s;
     TCase *tc_core;
 
-    s = suite_create("iio_plugin");
+    s = suite_create("plutosdr");
 
     /* Core test case */
     tc_core = tcase_create("Core");
