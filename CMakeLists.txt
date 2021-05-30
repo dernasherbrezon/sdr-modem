@@ -68,7 +68,7 @@ endif ()
 
 find_package(Threads REQUIRED)
 target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(sdr_modemLib m)
+target_link_libraries(sdr_modemLib m dl)
 
 enable_testing()
 
