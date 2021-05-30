@@ -18,7 +18,11 @@ int iio_lib_create(iio_lib **lib) {
     }
     *result = (struct iio_lib_t) {0};
 
+#if defined(__APPLE__)
     void *handle = dlopen("iio", RTLD_LAZY);
+#elif
+    void *handle = dlopen("libiio.so", RTLD_LAZY);
+#endif
     if (!handle) {
         fprintf(stderr, "unable to load libiio: %s\n", dlerror());
         iio_lib_destroy(result);

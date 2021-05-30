@@ -9,7 +9,7 @@
 
 static char tmpstr[256];
 static const size_t tmpstr_len = 256;
-static const uint32_t MIN_NO_FIR_FILTER = (uint32_t) ((double) 25000000 / 12 + 1);
+#define MIN_NO_FIR_FILTER ((double) 25000000 / 12 + 1)
 static const uint32_t MIN_FIR_FILTER_2 = MIN_NO_FIR_FILTER / 2 + 1;
 static const uint32_t MIN_FIR_FILTER = MIN_NO_FIR_FILTER / 4 + 1;
 static int16_t fir_128_4[] = {
