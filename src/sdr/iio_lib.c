@@ -18,8 +18,7 @@ int iio_lib_create(iio_lib **lib) {
     }
     *result = (struct iio_lib_t) {0};
 
-    //FIXME path is temporarily
-    void *handle = dlopen("/Library/Frameworks/iio.framework/iio", RTLD_LAZY);
+    void *handle = dlopen("iio", RTLD_LAZY);
     if (!handle) {
         fprintf(stderr, "unable to load libiio: %s\n", dlerror());
         iio_lib_destroy(result);
