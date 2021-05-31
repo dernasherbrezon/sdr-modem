@@ -148,6 +148,34 @@ int server_config_create(struct server_config **config, const char *path) {
         fprintf(stdout, "sdr server used: %s:%d\n", result->rx_sdr_server_address, result->rx_sdr_server_port);
     }
 
+    setting = config_lookup(&libconfig, "tx_sdr_type");
+    uint8_t tx_sdr_type;
+    if (setting == NULL) {
+        tx_sdr_type = TX_SDR_TYPE_NONE;
+    } else {
+        const char *tx_sdr_type_str = config_setting_get_string(setting);
+        if (strcmp(tx_sdr_type_str, "plutosdr") == 0) {
+            tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
+        } else if (strcmp(tx_sdr_type_str, "none") == 0) {
+            tx_sdr_type = TX_SDR_TYPE_NONE;
+        } else {
+            config_destroy(&libconfig);
+            server_config_destroy(result);
+            fprintf(stderr, "<3>unsupported tx_sdr_type: %s\n", tx_sdr_type_str);
+            return -1;
+        }
+        fprintf(stdout, "tx sdr: %s\n", tx_sdr_type_str);
+    }
+    result->tx_sdr_type = tx_sdr_type;
+    if (result->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+        code = iio_lib_create(&result->iio);
+        if (code != 0) {
+            config_destroy(&libconfig);
+            server_config_destroy(result);
+            return -1;
+        }
+    }
+
     config_destroy(&libconfig);
 
     *config = result;
@@ -166,6 +194,9 @@ void server_config_destroy(struct server_config *config) {
     }
     if (config->rx_sdr_server_address != NULL) {
         free(config->rx_sdr_server_address);
+    }
+    if (config->iio != NULL) {
+        iio_lib_destroy(config->iio);
     }
     free(config);
 }

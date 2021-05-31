@@ -21,6 +21,8 @@
 #include "dsp/gfsk_mod.h"
 #include <math.h>
 #include "dsp/doppler.h"
+#include "sdr/sdr_device.h"
+#include "sdr/plutosdr.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -41,6 +43,7 @@ struct tcp_worker {
     gfsk_mod *fsk_mod;
     doppler *dopp;
     FILE *tx_dump_file;
+    sdr_device *device;
 };
 
 struct tcp_server_t {
@@ -222,8 +225,13 @@ void handle_tx_data(struct tcp_worker *worker) {
             }
         }
 
-        //FIXME transmit
-
+        if (worker->device != NULL) {
+            code = worker->device->sdr_process_tx(output, output_len, worker->device->plugin);
+            if (code != 0) {
+                fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
+                return;
+            }
+        }
 
         left -= batch;
     }
@@ -305,6 +313,10 @@ void tcp_worker_destroy(void *data) {
     if (worker->tx_dump_file != NULL) {
         fclose(worker->tx_dump_file);
     }
+    if (worker->device != NULL) {
+        worker->device->destroy(worker->device->plugin);
+        free(worker->device);
+    }
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
@@ -373,24 +385,47 @@ void handle_new_client(int client_socket, tcp_server *server) {
             return;
         }
     }
-    if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
-        int samples_per_symbol = (int) ((float) tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate);
-        code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->tx_sampling_freq, req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size, req->tle, &tcp_worker->dopp);
-        if (code != 0) {
-            fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-            dsp_worker_destroy(tcp_worker);
-            return;
+    if (tcp_worker->req->mod_type != REQUEST_MODEM_TYPE_NONE) {
+        if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
+            int samples_per_symbol = (int) ((float) tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate);
+            code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->tx_sampling_freq, req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size, req->tle, &tcp_worker->dopp);
+            if (code != 0) {
+                fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
+                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+                dsp_worker_destroy(tcp_worker);
+                return;
+            }
         }
-    }
-    if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
-        char file_path[4096];
-        snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", server->server_config->base_path, tcp_worker->id);
-        tcp_worker->tx_dump_file = fopen(file_path, "wb");
-        if (tcp_worker->tx_dump_file == NULL) {
-            fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
-            dsp_worker_destroy(tcp_worker);
-            return;
+        if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
+            char file_path[4096];
+            snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", server->server_config->base_path, tcp_worker->id);
+            tcp_worker->tx_dump_file = fopen(file_path, "wb");
+            if (tcp_worker->tx_dump_file == NULL) {
+                fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
+                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+                dsp_worker_destroy(tcp_worker);
+                return;
+            }
+        }
+        if (server->server_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+            struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
+            if (tx_config == NULL) {
+                fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
+                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+                dsp_worker_destroy(tcp_worker);
+                return;
+            }
+            tx_config->sampling_freq = tcp_worker->req->tx_sampling_freq;
+            tx_config->center_freq = tcp_worker->req->tx_center_freq;
+            //FIXME tx_config gain
+            //FIXME tx timeout millis
+            code = plutosdr_create(tcp_worker->id, NULL, tx_config, 10000, server->server_config->buffer_size, server->server_config->iio, &tcp_worker->device);
+            if (code != 0) {
+                fprintf(stderr, "<3>[%d] unable to init pluto tx\n", tcp_worker->id);
+                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+                dsp_worker_destroy(tcp_worker);
+                return;
+            }
         }
     }
     tcp_worker->is_running = true;

@@ -3,8 +3,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "sdr/iio_lib.h"
 
 #define RX_SDR_TYPE_SDR_SERVER 0
+
+#define TX_SDR_TYPE_NONE 0
+#define TX_SDR_TYPE_PLUTOSDR 1
 
 struct server_config {
 	// socket settings
@@ -21,6 +25,9 @@ struct server_config {
 
 	// output settings
 	char *base_path;
+
+	uint8_t tx_sdr_type;
+	iio_lib *iio;
 };
 
 int server_config_create(struct server_config **config, const char *path);
