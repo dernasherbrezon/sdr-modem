@@ -40,6 +40,15 @@ START_TEST (test_minimal_config) {
 
 END_TEST
 
+START_TEST (test_pluto_enabled) {
+    int code = server_config_create(&config, "pluto_enabled.conf");
+    ck_assert_int_eq(code, 0);
+    ck_assert_int_eq(config->tx_sdr_type, TX_SDR_TYPE_PLUTOSDR);
+    ck_assert(config->iio != NULL);
+    ck_assert(fabsl(10.0 - config->tx_plutosdr_gain) < 0.001);
+    ck_assert_int_eq(config->tx_plutosdr_timeout_millis, 20000);
+}
+
 START_TEST (test_success) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
@@ -51,6 +60,7 @@ START_TEST (test_success) {
     ck_assert_str_eq(config->base_path, "/tmp/");
     ck_assert_int_eq(config->queue_size, 64);
     ck_assert_int_eq(config->tx_sdr_type, TX_SDR_TYPE_NONE);
+    ck_assert(config->iio == NULL);
     ck_assert(fabsl(0.0 - config->tx_plutosdr_gain) < 0.001);
     ck_assert_int_eq(config->tx_plutosdr_timeout_millis, 10000);
 }
@@ -81,6 +91,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_invalid_format);
     tcase_add_test(tc_core, test_missing_file);
     tcase_add_test(tc_core, test_unknown_tx_sdr_type);
+    tcase_add_test(tc_core, test_pluto_enabled);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
