@@ -27,6 +27,8 @@ struct server_config {
 	char *base_path;
 
 	uint8_t tx_sdr_type;
+    double tx_plutosdr_gain;
+    unsigned int tx_plutosdr_timeout_millis;
 	iio_lib *iio;
 };
 

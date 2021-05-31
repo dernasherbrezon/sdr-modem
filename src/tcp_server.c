@@ -417,9 +417,8 @@ void handle_new_client(int client_socket, tcp_server *server) {
             }
             tx_config->sampling_freq = tcp_worker->req->tx_sampling_freq;
             tx_config->center_freq = tcp_worker->req->tx_center_freq;
-            //FIXME tx_config gain
-            //FIXME tx timeout millis
-            code = plutosdr_create(tcp_worker->id, NULL, tx_config, 10000, server->server_config->buffer_size, server->server_config->iio, &tcp_worker->device);
+            tx_config->manual_gain = server->server_config->tx_plutosdr_gain;
+            code = plutosdr_create(tcp_worker->id, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &tcp_worker->device);
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to init pluto tx\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);

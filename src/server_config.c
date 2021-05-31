@@ -176,6 +176,31 @@ int server_config_create(struct server_config **config, const char *path) {
         }
     }
 
+    setting = config_lookup(&libconfig, "tx_plutosdr_gain");
+    double tx_plutosdr_gain;
+    if (setting == NULL) {
+        tx_plutosdr_gain = 0.0;
+    } else {
+        tx_plutosdr_gain = config_setting_get_float(setting);
+    }
+    result->tx_plutosdr_gain = tx_plutosdr_gain;
+    // log parameter only if it is relevant
+    if (result->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+        fprintf(stdout, "tx plutosdr gain %f\n", result->tx_plutosdr_gain);
+    }
+    setting = config_lookup(&libconfig, "tx_plutosdr_timeout_millis");
+    unsigned int tx_plutosdr_timeout_millis;
+    if (setting == NULL) {
+        tx_plutosdr_timeout_millis = 10000;
+    } else {
+        tx_plutosdr_timeout_millis = config_setting_get_int(setting);
+    }
+    result->tx_plutosdr_timeout_millis = tx_plutosdr_timeout_millis;
+    // log parameter only if it is relevant
+    if (result->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+        fprintf(stdout, "tx timeout millis %d\n", result->tx_plutosdr_timeout_millis);
+    }
+
     config_destroy(&libconfig);
 
     *config = result;
