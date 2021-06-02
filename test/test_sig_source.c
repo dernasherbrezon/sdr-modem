@@ -6,7 +6,7 @@
 sig_source *source = NULL;
 
 START_TEST (test_success) {
-    int code = sig_source_create(1.0, 4, 4, &source);
+    int code = sig_source_create(1.0F, 4, 4, &source);
     ck_assert_int_eq(code, 0);
 
     float complex *output = NULL;

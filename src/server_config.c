@@ -77,9 +77,9 @@ int server_config_create(struct server_config **config, const char *path) {
     } else {
         read_timeout_seconds = config_setting_get_int(setting);
         if (read_timeout_seconds <= 0) {
+            fprintf(stderr, "<3>read timeout should be positive: %d\n", read_timeout_seconds);
             config_destroy(&libconfig);
             server_config_destroy(result);
-            fprintf(stderr, "<3>read timeout should be positive: %d\n", read_timeout_seconds);
             return -1;
         }
     }
@@ -120,9 +120,9 @@ int server_config_create(struct server_config **config, const char *path) {
         if (strcmp(rx_sdr_type_str, "sdr-server") == 0) {
             rx_sdr_type = RX_SDR_TYPE_SDR_SERVER;
         } else {
+            fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
             config_destroy(&libconfig);
             server_config_destroy(result);
-            fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
             return -1;
         }
         fprintf(stdout, "rx sdr: %s\n", rx_sdr_type_str);
@@ -159,9 +159,9 @@ int server_config_create(struct server_config **config, const char *path) {
         } else if (strcmp(tx_sdr_type_str, "none") == 0) {
             tx_sdr_type = TX_SDR_TYPE_NONE;
         } else {
+            fprintf(stderr, "<3>unsupported tx_sdr_type: %s\n", tx_sdr_type_str);
             config_destroy(&libconfig);
             server_config_destroy(result);
-            fprintf(stderr, "<3>unsupported tx_sdr_type: %s\n", tx_sdr_type_str);
             return -1;
         }
         fprintf(stdout, "tx sdr: %s\n", tx_sdr_type_str);
