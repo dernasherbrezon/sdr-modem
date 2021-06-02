@@ -382,6 +382,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
+            free(rx);
             return;
         }
     }
@@ -393,6 +394,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 dsp_worker_destroy(tcp_worker);
+                free(rx);
                 return;
             }
         }
@@ -404,6 +406,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 dsp_worker_destroy(tcp_worker);
+                free(rx);
                 return;
             }
         }
@@ -413,6 +416,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 dsp_worker_destroy(tcp_worker);
+                free(rx);
                 return;
             }
             tx_config->sampling_freq = tcp_worker->req->tx_sampling_freq;
@@ -423,6 +427,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to init pluto tx\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 dsp_worker_destroy(tcp_worker);
+                free(rx);
                 return;
             }
         }
@@ -465,6 +470,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             tcp_worker_destroy(tcp_worker);
             dsp_worker_destroy(dsp_worker);
             pthread_mutex_unlock(&server->mutex);
+            free(rx);
             return;
         }
         tcp_worker->sdr = sdr;

@@ -54,7 +54,6 @@ float **interp_fir_filter_create_interleaved_taps(float *taps, size_t taps_len, 
         interleaved_taps[i] = malloc(sizeof(float) * filter_taps_len);
         if (interleaved_taps[i] == NULL) {
             result_code = -ENOMEM;
-            break;
         }
     }
     if (result_code != 0) {
@@ -103,6 +102,10 @@ int interp_fir_filter_create(float *taps, size_t taps_len, uint8_t interpolation
     result->filters_len = interpolation;
     result->filters = malloc(sizeof(fir_filter *) * result->filters_len);
     if (result->filters == NULL) {
+        for (uint8_t i = 0; i < interpolation; i++) {
+            free(interleaved_taps[i]);
+        }
+        free(interleaved_taps);
         interp_fir_filter_destroy(result);
         return -ENOMEM;
     }
@@ -138,7 +141,7 @@ void interp_fir_filter_process(float *input, size_t input_len, float **output, s
     for (size_t i = 0; i < filter->filters_len; i++) {
         float *cur_output = NULL;
         size_t cur_output_len = 0;
-        fir_filter_process(input, input_len, (void **)&cur_output, &cur_output_len, filter->filters[i]);
+        fir_filter_process(input, input_len, (void **) &cur_output, &cur_output_len, filter->filters[i]);
         result_len = filter->filters_len * cur_output_len;
         //de-interleave results
         for (size_t j = i, k = 0; j < result_len && k < cur_output_len; j += filter->filters_len, k++) {

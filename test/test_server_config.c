@@ -30,7 +30,12 @@ START_TEST (test_unknown_tx_sdr_type) {
     int code = server_config_create(&config, "invalid.tx_sdr_type.conf");
     ck_assert_int_eq(code, -1);
 }
+END_TEST
 
+START_TEST (test_unknown_rx_sdr_type) {
+    int code = server_config_create(&config, "invalid.rx_sdr_type.conf");
+    ck_assert_int_eq(code, -1);
+}
 END_TEST
 
 START_TEST (test_minimal_config) {
@@ -92,6 +97,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_invalid_format);
     tcase_add_test(tc_core, test_missing_file);
     tcase_add_test(tc_core, test_unknown_tx_sdr_type);
+    tcase_add_test(tc_core, test_unknown_rx_sdr_type);
     tcase_add_test(tc_core, test_pluto_enabled);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
