@@ -48,6 +48,7 @@ START_TEST (test_pluto_enabled) {
     ck_assert(fabsl(10.0 - config->tx_plutosdr_gain) < 0.001);
     ck_assert_int_eq(config->tx_plutosdr_timeout_millis, 20000);
 }
+END_TEST
 
 START_TEST (test_success) {
     int code = server_config_create(&config, "full.conf");
