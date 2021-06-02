@@ -44,7 +44,7 @@ int write_to_socket(dsp_worker *worker, int8_t *filter_output, size_t filter_out
     size_t total_len = filter_output_len * sizeof(int8_t);
     size_t left = total_len;
     while (left > 0) {
-        int written = write(worker->client_socket, (char *) filter_output + (total_len - left), left);
+        ssize_t written = write(worker->client_socket, (char *) filter_output + (total_len - left), left);
         if (written < 0) {
             return -1;
         }

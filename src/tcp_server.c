@@ -470,7 +470,6 @@ void handle_new_client(int client_socket, tcp_server *server) {
             tcp_worker_destroy(tcp_worker);
             dsp_worker_destroy(dsp_worker);
             pthread_mutex_unlock(&server->mutex);
-            free(rx);
             return;
         }
         tcp_worker->sdr = sdr;
