@@ -125,13 +125,12 @@ static char *plutosdr_format_channel_name(const char *type, int id) {
     return tmpstr;
 }
 
-/* finds AD9361 phy IIO configuration channel with id chid */
-static struct iio_channel *plutosdr_get_phy_channel(struct iio_context *ctx, enum iio_direction d, int chid, plutosdr *iio) {
+static struct iio_channel *plutosdr_get_phy_channel(struct iio_context *ctx, enum iio_direction d, const char *channel_name, plutosdr *iio) {
     switch (d) {
         case RX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("voltage", chid), false);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), channel_name, false);
         case TX:
-            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("voltage", chid), true);
+            return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), channel_name, true);
         default:
             return NULL;
     }
@@ -166,9 +165,9 @@ static struct iio_channel *plutosdr_get_lo_channel(struct iio_context *ctx, enum
     switch (d) {
         // LO chan is always output, i.e. true
         case RX:
-            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("altvoltage", 0), true);
+            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), "altvoltage0", true);
         case TX:
-            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), plutosdr_format_channel_name("altvoltage", 1), true);
+            return pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(ctx, "ad9361-phy"), "altvoltage1", true);
         default:
             return NULL;
     }
@@ -182,8 +181,8 @@ static struct iio_channel *plutosdr_get_streaming_channel(enum iio_direction d, 
     return chn;
 }
 
-int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, int chid, plutosdr *iio) {
-    struct iio_channel *chn = plutosdr_get_phy_channel(ctx, type, chid, iio);
+int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
+    struct iio_channel *chn = plutosdr_get_phy_channel(ctx, type, channel_name, iio);
     if (chn == NULL) {
         return -1;
     }
@@ -380,7 +379,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(pluto->ctx, tx_config, TX, 0, pluto);
+        code = plutosdr_configure_streaming_channel(pluto->ctx, tx_config, TX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -417,7 +416,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(pluto->ctx, rx_config, RX, 0, pluto);
+        code = plutosdr_configure_streaming_channel(pluto->ctx, rx_config, RX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
