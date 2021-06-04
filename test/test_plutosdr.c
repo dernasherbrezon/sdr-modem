@@ -257,8 +257,8 @@ END_TEST
 void teardown() {
     if (sdr != NULL) {
         sdr->destroy(sdr->plugin);
-        sdr = NULL;
         free(sdr);
+        sdr = NULL;
     }
     if (mod != NULL) {
         gfsk_mod_destroy(mod);
