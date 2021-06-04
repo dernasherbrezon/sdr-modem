@@ -7,8 +7,8 @@
 
 #define FIR_BUF_SIZE    8192
 
-static char tmpstr[256];
-static const size_t tmpstr_len = 256;
+static char plutosdr_tmpstr[256];
+static const size_t plutosdr_tmpstr_len = 256;
 #define MIN_NO_FIR_FILTER ((double) 25000000 / 12 + 1)
 static const uint32_t MIN_FIR_FILTER_2 = MIN_NO_FIR_FILTER / 2 + 1;
 static const uint32_t MIN_FIR_FILTER = MIN_NO_FIR_FILTER / 4 + 1;
@@ -109,7 +109,7 @@ void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugi
     *output_len = num_points / 2;
 }
 
-static struct iio_device *plutosdr_get_device(struct iio_context *ctx, enum iio_direction d, plutosdr *iio) {
+static struct iio_device *plutosdr_find_device(struct iio_context *ctx, enum iio_direction d, plutosdr *iio) {
     switch (d) {
         case TX:
             return iio->lib->iio_context_find_device(ctx, "cf-ad9361-dds-core-lpc");
@@ -121,11 +121,11 @@ static struct iio_device *plutosdr_get_device(struct iio_context *ctx, enum iio_
 }
 
 static char *plutosdr_format_channel_name(const char *type, int id) {
-    snprintf(tmpstr, sizeof(tmpstr), "%s%d", type, id);
-    return tmpstr;
+    snprintf(plutosdr_tmpstr, sizeof(plutosdr_tmpstr), "%s%d", type, id);
+    return plutosdr_tmpstr;
 }
 
-static struct iio_channel *plutosdr_get_phy_channel(struct iio_context *ctx, enum iio_direction d, const char *channel_name, plutosdr *iio) {
+static struct iio_channel *plutosdr_find_phy_channel(struct iio_context *ctx, enum iio_direction d, const char *channel_name, plutosdr *iio) {
     switch (d) {
         case RX:
             return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), channel_name, false);
@@ -138,8 +138,8 @@ static struct iio_channel *plutosdr_get_phy_channel(struct iio_context *ctx, enu
 
 static int plutosdr_error_check(int v, const char *what, plutosdr *iio) {
     if (v < 0) {
-        iio->lib->iio_strerror(-v, tmpstr, tmpstr_len);
-        fprintf(stderr, "unable to write value for \"%s\": %s\n", what, tmpstr);
+        iio->lib->iio_strerror(-v, plutosdr_tmpstr, plutosdr_tmpstr_len);
+        fprintf(stderr, "unable to write value for \"%s\": %s\n", what, plutosdr_tmpstr);
         return v;
     }
     return 0;
@@ -161,7 +161,7 @@ int plutosdr_enable_fir_filter(struct iio_device *dev, int enable, plutosdr *plu
     return ret;
 }
 
-static struct iio_channel *plutosdr_get_lo_channel(struct iio_context *ctx, enum iio_direction d, plutosdr *pluto) {
+static struct iio_channel *plutosdr_find_lo_channel(struct iio_context *ctx, enum iio_direction d, plutosdr *pluto) {
     switch (d) {
         // LO chan is always output, i.e. true
         case RX:
@@ -173,7 +173,7 @@ static struct iio_channel *plutosdr_get_lo_channel(struct iio_context *ctx, enum
     }
 }
 
-static struct iio_channel *plutosdr_get_streaming_channel(enum iio_direction d, struct iio_device *dev, int chid, plutosdr *pluto) {
+static struct iio_channel *plutosdr_find_streaming_channel(enum iio_direction d, struct iio_device *dev, int chid, plutosdr *pluto) {
     struct iio_channel *chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
     if (chn == NULL) {
         chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("altvoltage", chid), d == TX);
@@ -182,7 +182,7 @@ static struct iio_channel *plutosdr_get_streaming_channel(enum iio_direction d, 
 }
 
 int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
-    struct iio_channel *chn = plutosdr_get_phy_channel(ctx, type, channel_name, iio);
+    struct iio_channel *chn = plutosdr_find_phy_channel(ctx, type, channel_name, iio);
     if (chn == NULL) {
         return -1;
     }
@@ -221,7 +221,7 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_
         return code;
     }
 
-    chn = plutosdr_get_lo_channel(ctx, type, iio);
+    chn = plutosdr_find_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
     }
@@ -373,7 +373,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     }
 
     if (tx_config != NULL) {
-        pluto->tx = plutosdr_get_device(pluto->ctx, TX, pluto);
+        pluto->tx = plutosdr_find_device(pluto->ctx, TX, pluto);
         if (pluto->tx == NULL) {
             fprintf(stderr, "unable to find tx result\n");
             plutosdr_destroy(pluto);
@@ -384,13 +384,13 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        pluto->tx0_i = plutosdr_get_streaming_channel(TX, pluto->tx, 0, pluto);
+        pluto->tx0_i = plutosdr_find_streaming_channel(TX, pluto->tx, 0, pluto);
         if (pluto->tx0_i == NULL) {
             fprintf(stderr, "unable to find tx I channel\n");
             plutosdr_destroy(pluto);
             return -1;
         }
-        pluto->tx0_q = plutosdr_get_streaming_channel(TX, pluto->tx, 1, pluto);
+        pluto->tx0_q = plutosdr_find_streaming_channel(TX, pluto->tx, 1, pluto);
         if (pluto->tx0_q == NULL) {
             fprintf(stderr, "unable to find tx Q channel\n");
             plutosdr_destroy(pluto);
@@ -410,7 +410,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     //used for incoming argument validation
     pluto->output_len = max_input_buffer_length;
     if (rx_config != NULL) {
-        pluto->rx = plutosdr_get_device(pluto->ctx, RX, pluto);
+        pluto->rx = plutosdr_find_device(pluto->ctx, RX, pluto);
         if (pluto->rx == NULL) {
             fprintf(stderr, "unable to find rx result\n");
             plutosdr_destroy(pluto);
@@ -421,13 +421,13 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        pluto->rx0_i = plutosdr_get_streaming_channel(RX, pluto->rx, 0, pluto);
+        pluto->rx0_i = plutosdr_find_streaming_channel(RX, pluto->rx, 0, pluto);
         if (pluto->rx0_i == NULL) {
             fprintf(stderr, "unable to find rx I channel\n");
             plutosdr_destroy(pluto);
             return -1;
         }
-        pluto->rx0_q = plutosdr_get_streaming_channel(RX, pluto->rx, 1, pluto);
+        pluto->rx0_q = plutosdr_find_streaming_channel(RX, pluto->rx, 1, pluto);
         if (pluto->rx0_q == NULL) {
             fprintf(stderr, "unable to find rx Q channel\n");
             plutosdr_destroy(pluto);
