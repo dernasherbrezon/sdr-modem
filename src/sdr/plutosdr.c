@@ -9,7 +9,7 @@
 
 static char plutosdr_tmpstr[256];
 static const size_t plutosdr_tmpstr_len = 256;
-#define MIN_NO_FIR_FILTER ((double) 25000000 / 12 + 1)
+static const uint32_t MIN_NO_FIR_FILTER = 2083334; // ((double) 25000000 / 12 + 1)
 static const uint32_t MIN_FIR_FILTER_2 = MIN_NO_FIR_FILTER / 2 + 1;
 static const uint32_t MIN_FIR_FILTER = MIN_NO_FIR_FILTER / 4 + 1;
 static int16_t fir_128_4[] = {
@@ -234,6 +234,7 @@ int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, i
         *fir_filter_taps = NULL;
         return 0;
     }
+
     if (cfg->sampling_freq < MIN_FIR_FILTER) {
         fprintf(stderr, "sampling freq is too low: %u\n", cfg->sampling_freq);
         return -1;
@@ -243,6 +244,8 @@ int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, i
     } else if (cfg->sampling_freq < MIN_NO_FIR_FILTER) {
         *decimation = 2;
         *fir_filter_taps = fir_128_2;
+    } else {
+        *decimation = 1;
     }
     return 0;
 }
@@ -264,17 +267,17 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
     struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
 
     // filter is not needed
-    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
+    if (rx_decimation == 1 && tx_decimation == 1) {
         // filter might be configured prior to execution. disable it to support higher rates
         return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
     }
 
     // just to simplify the code below a bit
-    if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
+    if (rx_decimation > 0 && tx_decimation == 0) {
         tx_fir_filter_taps = rx_fir_filter_taps;
         tx_decimation = rx_decimation;
     }
-    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
+    if (rx_decimation == 0 && tx_decimation != 0) {
         rx_fir_filter_taps = tx_fir_filter_taps;
         rx_decimation = tx_decimation;
     }
@@ -289,10 +292,10 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
         return -ENOMEM;
     }
     int len = 0;
-    if (rx_decimation > 0) {
+    if (rx_decimation > 1) {
         len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
     }
-    if (tx_decimation > 0) {
+    if (tx_decimation > 1) {
         len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
     }
     for (int i = 0; i < 128; i++) {

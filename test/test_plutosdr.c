@@ -49,16 +49,6 @@ struct iio_context *empty_iio_create_context_from_uri(const char *uri) {
     return NULL;
 }
 
-void setup_byte_data(uint8_t **input, size_t input_offset, size_t len) {
-    uint8_t *result = malloc(sizeof(uint8_t) * len);
-    ck_assert(result != NULL);
-    for (size_t i = 0; i < len; i++) {
-        // don't care about the loss of data
-        result[i] = (uint8_t) (input_offset + i);
-    }
-    *input = result;
-}
-
 void init_rx_data(size_t expected_rx_len, size_t expected_tx_len) {
     if (expected_rx_len > 0) {
         expected_rx = malloc(sizeof(int16_t) * expected_rx_len);
@@ -302,6 +292,30 @@ START_TEST(test_invalid_find_device) {
 }
 END_TEST
 
+START_TEST(test_invalid_rx_config) {
+    init_rx_data(10, 10);
+
+    struct stream_cfg *rx_config = create_rx_config();
+    //unknown mode
+    rx_config->gain_control_mode = 255;
+    int code = plutosdr_create(1, rx_config, NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    rx_config = create_rx_config();
+    rx_config->sampling_freq = 100000;
+    code = plutosdr_create(1, rx_config, NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    rx_config = create_rx_config();
+    struct stream_cfg *tx_config = create_tx_config();
+    rx_config->sampling_freq = 528000;
+    tx_config->sampling_freq = 2500000;
+    code = plutosdr_create(1, rx_config, tx_config, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+}
+END_TEST
+
 
 void teardown() {
     if (sdr != NULL) {
@@ -351,6 +365,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_unable_create_buffer);
     tcase_add_test(tc_core, test_invalid_find_channel);
     tcase_add_test(tc_core, test_invalid_find_device);
+    tcase_add_test(tc_core, test_invalid_rx_config);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
