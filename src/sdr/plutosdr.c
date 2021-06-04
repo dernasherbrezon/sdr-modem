@@ -264,6 +264,11 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
         return code;
     }
 
+    if (tx_decimation != rx_decimation) {
+        fprintf(stderr, "rx and tx should be in the same sampling freq band. rx: %d, tx: %d\n", rx_decimation, tx_decimation);
+        return -1;
+    }
+
     struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
 
     // filter is not needed
@@ -272,19 +277,17 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
         return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
     }
 
-    // just to simplify the code below a bit
-    if (rx_decimation > 0 && tx_decimation == 0) {
-        tx_fir_filter_taps = rx_fir_filter_taps;
-        tx_decimation = rx_decimation;
-    }
-    if (rx_decimation == 0 && tx_decimation != 0) {
-        rx_fir_filter_taps = tx_fir_filter_taps;
-        rx_decimation = tx_decimation;
+    //safe check
+    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
+        return -1;
     }
 
-    if (tx_decimation != rx_decimation) {
-        fprintf(stderr, "rx and tx should be in the same sampling freq band. rx: %d, tx: %d\n", rx_decimation, tx_decimation);
-        return -1;
+    // just to simplify the code below a bit
+    if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
+        tx_fir_filter_taps = rx_fir_filter_taps;
+    }
+    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
+        rx_fir_filter_taps = tx_fir_filter_taps;
     }
 
     char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
