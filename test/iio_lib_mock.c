@@ -7,6 +7,10 @@ size_t iio_lib_mock_rx_len = 0;
 int16_t *iio_lib_mock_tx = NULL;
 size_t iio_lib_mock_tx_len = 0;
 
+struct iio_device *ad9361_phy = NULL;
+struct iio_channel *iio_lib_mock_tx_channel = NULL;
+struct iio_channel *iio_lib_mock_rx_channel = NULL;
+
 struct iio_scan_context {
     uint8_t dummy;
 };
@@ -58,11 +62,24 @@ ssize_t iio_buffer_refill(struct iio_buffer *buf) {
 }
 
 struct iio_device *iio_context_find_device(const struct iio_context *ctx, const char *name) {
-    return malloc(sizeof(struct iio_device));
+    if (ad9361_phy == NULL) {
+        ad9361_phy = malloc(sizeof(struct iio_device));
+    }
+    return ad9361_phy;
 }
 
 struct iio_channel *iio_device_find_channel(const struct iio_device *dev, const char *name, bool output) {
-    return malloc(sizeof(struct iio_channel));
+    if (output) {
+        if (iio_lib_mock_tx_channel == NULL) {
+            iio_lib_mock_tx_channel = malloc(sizeof(struct iio_channel));
+        }
+        return iio_lib_mock_tx_channel;
+    } else {
+        if (iio_lib_mock_rx_channel == NULL) {
+            iio_lib_mock_rx_channel = malloc(sizeof(struct iio_channel));
+        }
+        return iio_lib_mock_rx_channel;
+    }
 }
 
 void iio_strerror(int err, char *dst, size_t len) {
@@ -151,6 +168,18 @@ void iio_context_destroy(struct iio_context *ctx) {
         return;
     }
     free(ctx);
+    if (ad9361_phy != NULL) {
+        free(ad9361_phy);
+        ad9361_phy = NULL;
+    }
+    if (iio_lib_mock_tx_channel != NULL) {
+        free(iio_lib_mock_tx_channel);
+        iio_lib_mock_tx_channel = NULL;
+    }
+    if (iio_lib_mock_rx_channel != NULL) {
+        free(iio_lib_mock_rx_channel);
+        iio_lib_mock_rx_channel = NULL;
+    }
 }
 
 int iio_lib_mock_create(int16_t *expected_rx, size_t expected_rx_len, int16_t *expected_tx, iio_lib **lib) {
