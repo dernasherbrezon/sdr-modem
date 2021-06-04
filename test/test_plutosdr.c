@@ -4,7 +4,6 @@
 #include "../src/sdr/sdr_device.h"
 #include "../src/sdr/iio_lib.h"
 #include "../src/sdr/plutosdr.h"
-#include "../src/dsp/gfsk_mod.h"
 #include "iio_lib_mock.h"
 #include <math.h>
 #include "utils.h"
@@ -14,11 +13,21 @@
 #endif
 
 sdr_device *sdr = NULL;
-gfsk_mod *mod = NULL;
-uint8_t *data = NULL;
 iio_lib *lib = NULL;
 int16_t *expected_rx = NULL;
 int16_t *expected_tx = NULL;
+
+struct iio_device *empty_iio_context_find_device(const struct iio_context *ctx, const char *name) {
+    return NULL;
+}
+
+struct iio_channel *empty_iio_device_find_channel(const struct iio_device *dev, const char *name, bool output) {
+    return NULL;
+}
+
+struct iio_buffer *empty_iio_device_create_buffer(const struct iio_device *dev, size_t samples_count, bool cyclic) {
+    return NULL;
+}
 
 int invalid_iio_context_set_timeout(struct iio_context *ctx, unsigned int timeout_ms) {
     return -1;
@@ -254,19 +263,51 @@ START_TEST(test_invalid_settimeout) {
 
 END_TEST
 
+START_TEST(test_unable_create_buffer) {
+    init_rx_data(10, 10);
+    lib->iio_device_create_buffer = empty_iio_device_create_buffer;
+
+    int code = plutosdr_create(1, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    code = plutosdr_create(1, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+}
+
+END_TEST
+
+START_TEST(test_invalid_find_channel) {
+    init_rx_data(10, 10);
+    lib->iio_device_find_channel = empty_iio_device_find_channel;
+
+    int code = plutosdr_create(1, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    code = plutosdr_create(1, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST(test_invalid_find_device) {
+    init_rx_data(10, 10);
+    lib->iio_context_find_device = empty_iio_context_find_device;
+
+    int code = plutosdr_create(1, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    code = plutosdr_create(1, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
+
 void teardown() {
     if (sdr != NULL) {
         sdr->destroy(sdr->plugin);
         free(sdr);
         sdr = NULL;
-    }
-    if (mod != NULL) {
-        gfsk_mod_destroy(mod);
-        mod = NULL;
-    }
-    if (data != NULL) {
-        free(data);
-        data = NULL;
     }
     if (lib != NULL) {
         iio_lib_destroy(lib);
@@ -307,6 +348,9 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_invalid_info_list);
     tcase_add_test(tc_core, test_invalid_ctx);
     tcase_add_test(tc_core, test_invalid_settimeout);
+    tcase_add_test(tc_core, test_unable_create_buffer);
+    tcase_add_test(tc_core, test_invalid_find_channel);
+    tcase_add_test(tc_core, test_invalid_find_device);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
