@@ -1,5 +1,6 @@
 #include "api_utils.h"
 #include <stdlib.h>
+#include <arpa/inet.h>
 
 void api_network_to_host(struct request *req) {
     if (req == NULL) {

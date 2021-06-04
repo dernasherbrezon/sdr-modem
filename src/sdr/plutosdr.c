@@ -58,6 +58,10 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
         fprintf(stderr, "tx was not initialized\n");
         return -1;
     }
+    if (input_len * 2 > iio->output_len) {
+        fprintf(stderr, "<3>input buffer %zu is more than max: %zu\n", input_len * 2, iio->output_len);
+        return -1;
+    }
 
     char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
     size_t num_points = input_len * 2;
@@ -93,6 +97,12 @@ void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugi
     char *p_end = iio->lib->iio_buffer_end(iio->rx_buffer);
     char *p_start = (char *) iio->lib->iio_buffer_first(iio->rx_buffer, iio->rx0_i);
     size_t num_points = (p_end - p_start) / sizeof(int16_t);
+    if (num_points / 2 > iio->output_len) {
+        fprintf(stderr, "<3>input buffer %zu is more than max: %zu\n", num_points / 2, iio->output_len);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     // ADC is 12bit, thus 2^12 = 2048
     volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_start, 2048.0F, num_points);
     *output = iio->output;
@@ -397,6 +407,9 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         }
     }
 
+    //always set this field
+    //used for incoming argument validation
+    pluto->output_len = max_input_buffer_length;
     if (rx_config != NULL) {
         pluto->rx = plutosdr_get_device(pluto->ctx, RX, pluto);
         if (pluto->rx == NULL) {
@@ -429,7 +442,6 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        pluto->output_len = max_input_buffer_length;
         pluto->output = malloc(sizeof(float complex) * pluto->output_len);
         if (pluto->output == NULL) {
             plutosdr_destroy(pluto);

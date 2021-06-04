@@ -5,7 +5,9 @@
 #include "../src/sdr/iio_lib.h"
 #include "../src/sdr/plutosdr.h"
 #include "../src/dsp/gfsk_mod.h"
+#include "iio_lib_mock.h"
 #include <math.h>
+#include "utils.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -15,6 +17,28 @@ sdr_device *sdr = NULL;
 gfsk_mod *mod = NULL;
 uint8_t *data = NULL;
 iio_lib *lib = NULL;
+int16_t *expected_rx = NULL;
+int16_t *expected_tx = NULL;
+
+int invalid_iio_context_set_timeout(struct iio_context *ctx, unsigned int timeout_ms) {
+    return -1;
+}
+
+struct iio_scan_context *empty_iio_create_scan_context(const char *backend, unsigned int flags) {
+    return NULL;
+}
+
+ssize_t invalid_iio_scan_context_get_info_list(struct iio_scan_context *ctx, struct iio_context_info ***info) {
+    return -1;
+}
+
+ssize_t empty_iio_scan_context_get_info_list(struct iio_scan_context *ctx, struct iio_context_info ***info) {
+    return 0;
+}
+
+struct iio_context *empty_iio_create_context_from_uri(const char *uri) {
+    return NULL;
+}
 
 void setup_byte_data(uint8_t **input, size_t input_offset, size_t len) {
     uint8_t *result = malloc(sizeof(uint8_t) * len);
@@ -26,96 +50,206 @@ void setup_byte_data(uint8_t **input, size_t input_offset, size_t len) {
     *input = result;
 }
 
+void init_rx_data(size_t expected_rx_len, size_t expected_tx_len) {
+    if (expected_rx_len > 0) {
+        expected_rx = malloc(sizeof(int16_t) * expected_rx_len);
+        ck_assert(expected_rx != NULL);
+        for (size_t i = 0; i < expected_rx_len; i++) {
+            expected_rx[i] = (int16_t) i;
+        }
+    }
+    if (expected_tx_len > 0) {
+        expected_tx = malloc(sizeof(int16_t) * expected_tx_len);
+        ck_assert(expected_tx != NULL);
+    }
+
+    int code = iio_lib_mock_create(expected_rx, expected_rx_len, expected_tx, &lib);
+    ck_assert_int_eq(code, 0);
+}
+
+struct stream_cfg *create_rx_config() {
+    struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
+    ck_assert(rx_config != NULL);
+    rx_config->sampling_freq = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
+    rx_config->center_freq = 434236000;
+    rx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
+    return rx_config;
+}
+
+struct stream_cfg *create_tx_config() {
+    float baud_rate = 9600;
+    uint32_t sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
+
+    struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
+    ck_assert(tx_config != NULL);
+    tx_config->sampling_freq = sample_rate;
+    tx_config->center_freq = 434236000;
+    tx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
+    return tx_config;
+}
+
 START_TEST (test_no_configs) {
     int code = iio_lib_create(&lib);
     ck_assert_int_eq(code, 0);
     code = plutosdr_create(1, NULL, NULL, 10000, 2000000, lib, &sdr);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
-START_TEST (test_normal) {
-//    struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
-//    ck_assert(rx_config != NULL);
-//    rx_config->sampling_freq = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
-//    printf("sampling freq: %u\n", rx_config->sampling_freq);
-//    rx_config->center_freq = 434236000;
-//    rx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
-//
-//    float deviation = 5000.0f;
-//    float baud_rate = 9600;
-//    float sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
-//
-//    struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
-//    ck_assert(tx_config != NULL);
-//    tx_config->sampling_freq = sample_rate;
-//    tx_config->center_freq = rx_config->center_freq;
-//    printf("tx sampling freq: %u\n", tx_config->sampling_freq);
-//
-//    int code;
-//    code = plutosdr_create(1, rx_config, tx_config, 10000, tx_config->sampling_freq, &sdr);
-//    ck_assert_int_eq(code, 0);
-//
-//    float samples_per_symbol = sample_rate / baud_rate;
-//    code = gfsk_mod_create(samples_per_symbol, (2 * M_PI * deviation / sample_rate), 0.5F, baud_rate, &mod);
-//    ck_assert_int_eq(code, 0);
-//
-//    // 2 seconds of data
-//    size_t data_len = baud_rate * 2 / 8;
-//    setup_byte_data(&data, 0, data_len);
-//
-//    float complex *output = NULL;
-//    size_t output_len = 0;
-//    gfsk_mod_process(data, data_len, &output, &output_len, mod);
-//    size_t remaining = output_len;
-//    size_t processed = 0;
-//    while (remaining > 0) {
-//        size_t batch;
-//        if (remaining < tx_config->sampling_freq) {
-//            batch = remaining;
-//        } else {
-//            batch = tx_config->sampling_freq;
-//        }
-//        code = plutosdr_process_tx(output + processed, batch, sdr);
-//        if (code < 0) {
-//            break;
-//        }
-//        processed += batch;
-//        remaining -= batch;
-//    }
+START_TEST (test_no_device) {
+    int code = iio_lib_create(&lib);
+    ck_assert_int_eq(code, 0);
 
-//    printf("%zu\n", output_len);
-//    size_t total_len = 0;
-//    while (total_len < output_len) {
-//        code = plutosdr_process_tx(output + total_len, tx_config->sampling_freq, sdr);
-//        ck_assert_int_eq(code, 0);
-//        total_len += tx_config->sampling_freq;
-//    }
+    code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
 
-//    FILE *fp = fopen("/Users/dernasherbrezon/Downloads/output.cf32", "wb");
-//    fwrite(output, sizeof(float complex), output_len, fp);
-//    fclose(fp);
+END_TEST
 
-//    plutosdr_process_rx(&output, &output_len, sdr);
-//    printf("got udpate: %zu\n", output_len);
+START_TEST (test_exceeded_rx_input) {
+    init_rx_data(50, 0);
 
-    size_t total_len = 0;
-//    while (total_len < 5 * rx_config->sampling_freq) {
-//        float complex *output = NULL;
-//        size_t output_len = 0;
-//    code = plutosdr_process_tx(output, output_len, sdr);
-//        if (code < 0) {
-//            break;
-//        }
-//    total_len += output_len;
-//    sleep(1000);
-//        code = plutosdr_process_tx(output, output_len, sdr);
-//        if (code < 0) {
-//            break;
-//        }
-//        total_len += output_len;
-//    }
-//    fclose(fp);
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 20, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float complex *actual = NULL;
+    size_t actual_len = 0;
+    sdr->sdr_process_rx(&actual, &actual_len, sdr->plugin);
+    ck_assert_int_eq(actual_len, 0);
+}
+
+END_TEST
+
+START_TEST (test_no_rx_config) {
+    init_rx_data(50, 0);
+
+    int code = plutosdr_create(1, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float complex *actual = NULL;
+    size_t actual_len = 0;
+    sdr->sdr_process_rx(&actual, &actual_len, sdr->plugin);
+    ck_assert_int_eq(actual_len, 0);
+}
+
+END_TEST
+
+START_TEST (test_rx) {
+    init_rx_data(50, 0);
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float complex *actual = NULL;
+    size_t actual_len = 0;
+    sdr->sdr_process_rx(&actual, &actual_len, sdr->plugin);
+
+    const float expected[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
+                                0.011719F, 0.012207F, 0.012695F, 0.013184F, 0.013672F, 0.014160F, 0.014648F, 0.015137F, 0.015625F, 0.016113F, 0.016602F, 0.017090F, 0.017578F, 0.018066F, 0.018555F, 0.019043F, 0.019531F, 0.020020F, 0.020508F, 0.020996F, 0.021484F, 0.021973F, 0.022461F, 0.022949F,
+                                0.023438F, 0.023926F};
+    assert_complex_array(expected, 50 / 2, actual, actual_len);
+}
+
+END_TEST
+
+START_TEST (test_exceeded_tx_input) {
+    init_rx_data(0, 100);
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 20, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
+                       0.011719F, 0.012207F, 0.012695F, 0.013184F, 0.013672F, 0.014160F, 0.014648F, 0.015137F, 0.015625F, 0.016113F, 0.016602F, 0.017090F, 0.017578F, 0.018066F, 0.018555F, 0.019043F, 0.019531F, 0.020020F, 0.020508F, 0.020996F, 0.021484F, 0.021973F, 0.022461F, 0.022949F,
+                       0.023438F, 0.023926F};
+    size_t input_len = 50 / 2;
+    code = sdr->sdr_process_tx((float complex *) &input, input_len, sdr->plugin);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST (test_no_tx_config) {
+    init_rx_data(0, 50);
+
+    int code = plutosdr_create(1, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
+                       0.011719F, 0.012207F, 0.012695F, 0.013184F, 0.013672F, 0.014160F, 0.014648F, 0.015137F, 0.015625F, 0.016113F, 0.016602F, 0.017090F, 0.017578F, 0.018066F, 0.018555F, 0.019043F, 0.019531F, 0.020020F, 0.020508F, 0.020996F, 0.021484F, 0.021973F, 0.022461F, 0.022949F,
+                       0.023438F, 0.023926F};
+    size_t input_len = 50 / 2;
+    code = sdr->sdr_process_tx((float complex *) &input, input_len, sdr->plugin);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST (test_tx) {
+    init_rx_data(0, 50);
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, 0);
+
+    float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
+                       0.011719F, 0.012207F, 0.012695F, 0.013184F, 0.013672F, 0.014160F, 0.014648F, 0.015137F, 0.015625F, 0.016113F, 0.016602F, 0.017090F, 0.017578F, 0.018066F, 0.018555F, 0.019043F, 0.019531F, 0.020020F, 0.020508F, 0.020996F, 0.021484F, 0.021973F, 0.022461F, 0.022949F,
+                       0.023438F, 0.023926F};
+    size_t input_len = 50 / 2;
+    code = sdr->sdr_process_tx((float complex *) &input, input_len, sdr->plugin);
+    ck_assert_int_eq(code, 0);
+
+    int16_t *actual = NULL;
+    size_t actual_len = 0;
+    iio_lib_mock_get_tx(&actual, &actual_len);
+
+    const int16_t expected[50] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512, 528, 544, 560, 576, 592, 608, 624, 640, 656, 672, 688, 704, 720, 736, 752, 768, 784};
+
+    assert_int16_array(expected, 25, actual, actual_len);
+}
+
+END_TEST
+
+START_TEST(test_invalid_scan_context) {
+    init_rx_data(10, 10);
+    lib->iio_create_scan_context = empty_iio_create_scan_context;
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST(test_invalid_info_list) {
+    init_rx_data(10, 10);
+    lib->iio_scan_context_get_info_list = invalid_iio_scan_context_get_info_list;
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+
+    lib->iio_scan_context_get_info_list = empty_iio_scan_context_get_info_list;
+
+    code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST(test_invalid_ctx) {
+    init_rx_data(10, 10);
+    lib->iio_create_context_from_uri = empty_iio_create_context_from_uri;
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST(test_invalid_settimeout) {
+    init_rx_data(10, 10);
+    lib->iio_context_set_timeout = invalid_iio_context_set_timeout;
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
 }
 
 END_TEST
@@ -138,6 +272,14 @@ void teardown() {
         iio_lib_destroy(lib);
         lib = NULL;
     }
+    if (expected_rx != NULL) {
+        free(expected_rx);
+        expected_rx = NULL;
+    }
+    if (expected_tx != NULL) {
+        free(expected_tx);
+        expected_tx = NULL;
+    }
 }
 
 void setup() {
@@ -153,8 +295,18 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-//    tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_no_device);
     tcase_add_test(tc_core, test_no_configs);
+    tcase_add_test(tc_core, test_rx);
+    tcase_add_test(tc_core, test_no_rx_config);
+    tcase_add_test(tc_core, test_exceeded_rx_input);
+    tcase_add_test(tc_core, test_tx);
+    tcase_add_test(tc_core, test_no_tx_config);
+    tcase_add_test(tc_core, test_exceeded_tx_input);
+    tcase_add_test(tc_core, test_invalid_scan_context);
+    tcase_add_test(tc_core, test_invalid_info_list);
+    tcase_add_test(tc_core, test_invalid_ctx);
+    tcase_add_test(tc_core, test_invalid_settimeout);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
