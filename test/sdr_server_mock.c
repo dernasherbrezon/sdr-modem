@@ -24,6 +24,10 @@ struct sdr_server_mock_t {
 
     float complex *input;
     size_t input_len;
+
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    int client_socket;
 };
 
 void mock_response_success(int client_socket, sdr_server_mock *server) {
@@ -68,11 +72,28 @@ static void *acceptor_worker(void *arg) {
             continue;
         }
 
-        server->handler(client_socket, server);
+        //doesn't support multiple clients actually
+        //no needed for tests
+        pthread_mutex_lock(&server->mutex);
+        if (server->handler != NULL) {
+            server->handler(client_socket, server);
+        }
+        server->client_socket = client_socket;
+        pthread_cond_broadcast(&server->condition);
+        pthread_mutex_unlock(&server->mutex);
     }
 
     printf("sdr server mock stopped\n");
     return (void *) 0;
+}
+
+int sdr_server_mock_send(float complex *input, size_t input_len, sdr_server_mock *server) {
+    pthread_mutex_lock(&server->mutex);
+    while (server->client_socket < 0) {
+        pthread_cond_wait(&server->condition, &server->mutex);
+    }
+    pthread_mutex_unlock(&server->mutex);
+    return tcp_utils_write_data((uint8_t *)input, sizeof(float complex) * input_len, server->client_socket);
 }
 
 int sdr_server_mock_create(const char *addr, int port, void (*handler)(int client_socket, sdr_server_mock *server), uint32_t max_output_buffer_length, sdr_server_mock **server) {
@@ -93,6 +114,12 @@ int sdr_server_mock_create(const char *addr, int port, void (*handler)(int clien
     result->handler = handler;
     result->input_len = max_output_buffer_length;
     result->input = malloc(sizeof(float complex) * result->input_len);
+    if (result->input == NULL) {
+        return -ENOMEM;
+    }
+    result->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
+    result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    result->client_socket = -1;
 
     int opt = 1;
     if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {

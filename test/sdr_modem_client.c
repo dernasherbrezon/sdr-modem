@@ -15,7 +15,7 @@ struct sdr_modem_client_t {
     size_t output_len;
 };
 
-int sdr_modem_write_request(struct message_header *header, struct request *req, sdr_modem_client *client) {
+int sdr_modem_client_write_request(struct message_header *header, struct request *req, sdr_modem_client *client) {
     struct request *req_copy = malloc(sizeof(struct request));
     if (req_copy == NULL) {
         return -ENOMEM;
@@ -50,7 +50,7 @@ int sdr_modem_write_request(struct message_header *header, struct request *req, 
     return code;
 }
 
-int sdr_modem_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client) {
+int sdr_modem_client_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client) {
     struct message_header *header = malloc(sizeof(struct message_header));
     if (header == NULL) {
         return -ENOMEM;
@@ -76,8 +76,8 @@ int sdr_modem_read_response(struct message_header **response_header, struct resp
     return 0;
 }
 
-int sdr_modem_read_stream(int8_t **output, size_t *output_len, sdr_modem_client *client) {
-    int code = tcp_utils_read_data(client->output, sizeof(int8_t) * client->output_len, client->client_socket);
+int sdr_modem_client_read_stream(int8_t **output, size_t *output_len, size_t expected_read, sdr_modem_client *client) {
+    int code = tcp_utils_read_data(client->output, sizeof(int8_t) * expected_read, client->client_socket);
     if (code != 0) {
         return code;
     }

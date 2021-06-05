@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <check.h>
 #include "../src/dsp/fsk_demod.h"
+#include "utils.h"
 
 fsk_demod *demod = NULL;
 uint8_t *buffer = NULL;
@@ -17,32 +18,6 @@ FILE *expected = NULL;
 // this small precision issue can propagate further and cause small differences in the output.
 // i.e. instead of -31, it can produce -30
 uint32_t max_buffer_length = 4096;
-
-int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
-    size_t left = len;
-
-    int result = 0;
-    while (left > 0) {
-        int received = fread(output, sizeof(uint8_t), left, file);
-        if (received < 0) {
-            if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                return -errno;
-            }
-            if (errno == EINTR) {
-                continue;
-            }
-            result = -1;
-            break;
-        }
-        if (received == 0) {
-            result = -1;
-            break;
-        }
-        left -= received;
-    }
-    *output_len = len - left;
-    return result;
-}
 
 void assert_files(const char *input_filename, const char *expected_filename) {
     input = fopen(input_filename, "rb");

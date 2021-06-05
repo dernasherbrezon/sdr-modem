@@ -1,7 +1,7 @@
 #include "utils.h"
 #include <check.h>
 #include <volk/volk.h>
-#include <stdio.h>
+#include <errno.h>
 
 struct request *create_request() {
     struct request *result = malloc(sizeof(struct request));
@@ -82,4 +82,30 @@ void assert_float_array(const float expected[], size_t expected_size, float *act
     for (size_t i = 0; i < expected_size; i++) {
         ck_assert(fabsl(expected[i] - actual[i]) < 0.001);
     }
+}
+
+int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
+    size_t left = len;
+
+    int result = 0;
+    while (left > 0) {
+        int received = fread(output, sizeof(uint8_t), left, file);
+        if (received < 0) {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                return -errno;
+            }
+            if (errno == EINTR) {
+                continue;
+            }
+            result = -1;
+            break;
+        }
+        if (received == 0) {
+            result = -1;
+            break;
+        }
+        left -= received;
+    }
+    *output_len = len - left;
+    return result;
 }
