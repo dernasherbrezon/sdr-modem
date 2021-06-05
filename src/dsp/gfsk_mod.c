@@ -28,7 +28,7 @@ int gfsk_mod_convolve(float *x, size_t x_len, float *y, size_t y_len, float **ou
     memcpy(temp, x, sizeof(float) * x_len);
     for (size_t i = 0; i < result_len; i++) {
         float sum = 0.0F;
-        for (ssize_t j = 0, k = i; j < y_len && k >= 0; j++, k--) {
+        for (int j = 0, k = i; j < y_len && k >= 0; j++, k--) {
             sum += y[j] * temp[k];
         }
         result[i] = sum;
