@@ -91,7 +91,7 @@ END_TEST
 
 void teardown() {
     if (mod != NULL) {
-        free(mod);
+        gfsk_mod_destroy(mod);
         mod = NULL;
     }
     if (result != NULL) {
