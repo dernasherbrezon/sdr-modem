@@ -4,6 +4,10 @@
 #include "utils.h"
 #include <stdio.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 gfsk_mod *mod = NULL;
 float *result = NULL;
 uint8_t *mod_input = NULL;
