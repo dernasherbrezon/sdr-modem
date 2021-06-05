@@ -305,14 +305,6 @@ START_TEST(test_invalid_rx_config) {
     rx_config->sampling_freq = 100000;
     code = plutosdr_create(1, rx_config, NULL, 10000, 2000000, lib, &sdr);
     ck_assert_int_eq(code, -1);
-
-    rx_config = create_rx_config();
-    struct stream_cfg *tx_config = create_tx_config();
-    rx_config->sampling_freq = 528000;
-    tx_config->sampling_freq = 2500000;
-    code = plutosdr_create(1, rx_config, tx_config, 10000, 2000000, lib, &sdr);
-    ck_assert_int_eq(code, -1);
-
 }
 END_TEST
 

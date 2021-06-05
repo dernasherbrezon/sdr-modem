@@ -244,8 +244,6 @@ int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, i
     } else if (cfg->sampling_freq < MIN_NO_FIR_FILTER) {
         *decimation = 2;
         *fir_filter_taps = fir_128_2;
-    } else {
-        *decimation = 1;
     }
     return 0;
 }
@@ -264,22 +262,12 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
         return code;
     }
 
-    if (tx_decimation != rx_decimation) {
-        fprintf(stderr, "rx and tx should be in the same sampling freq band. rx: %d, tx: %d\n", rx_decimation, tx_decimation);
-        return -1;
-    }
-
     struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
 
     // filter is not needed
-    if (rx_decimation == 1 && tx_decimation == 1) {
+    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
         // filter might be configured prior to execution. disable it to support higher rates
         return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
-    }
-
-    //safe check
-    if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
-        return -1;
     }
 
     // just to simplify the code below a bit
@@ -295,10 +283,10 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
         return -ENOMEM;
     }
     int len = 0;
-    if (rx_decimation > 1) {
+    if (rx_decimation > 0) {
         len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
     }
-    if (tx_decimation > 1) {
+    if (tx_decimation > 0) {
         len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
     }
     for (int i = 0; i < 128; i++) {

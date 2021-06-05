@@ -8,6 +8,19 @@
 frequency_modulator *mod = NULL;
 float *float_input = NULL;
 
+START_TEST (test_input_exceeded) {
+    int code = frequency_modulator_create(1.2F, 100, &mod);
+    ck_assert_int_eq(code, 0);
+
+    setup_input_data(&float_input, 0, 200);
+
+    float complex *output = NULL;
+    size_t output_len = 0;
+    frequency_modulator_process(float_input, 200, &output, &output_len, mod);
+    ck_assert_int_eq(code, 0);
+}
+END_TEST
+
 START_TEST (test_normal) {
     int code = frequency_modulator_create(1.2F, 1000, &mod);
     ck_assert_int_eq(code, 0);
@@ -66,6 +79,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_input_exceeded);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
