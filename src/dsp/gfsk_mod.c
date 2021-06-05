@@ -2,6 +2,7 @@
 #include "gaussian_taps.h"
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 #include "interp_fir_filter.h"
 #include "frequency_modulator.h"
 
@@ -26,8 +27,8 @@ int gfsk_mod_convolve(float *x, size_t x_len, float *y, size_t y_len, float **ou
     memset(temp, 0, sizeof(float) * result_len);
     memcpy(temp, x, sizeof(float) * x_len);
     for (size_t i = 0; i < result_len; i++) {
-        float sum = 0.0;
-        for (int j = 0, k = i; j < y_len && k >= 0; j++, k--) {
+        float sum = 0.0F;
+        for (ssize_t j = 0, k = i; j < y_len && k >= 0; j++, k--) {
             sum += y[j] * temp[k];
         }
         result[i] = sum;
@@ -99,6 +100,12 @@ int gfsk_mod_create(float samples_per_symbol, float sensitivity, float bt, uint3
 }
 
 void gfsk_mod_process(uint8_t *input, size_t input_len, float complex **output, size_t *output_len, gfsk_mod *mod) {
+    if (input_len > mod->temp_input_len / 8) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, mod->temp_input_len / 8);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
     size_t temp_index = 0;
     for (size_t i = 0; i < input_len; i++) {
         for (int j = 0; j < 8; j++) {
