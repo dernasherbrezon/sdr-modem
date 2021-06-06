@@ -159,8 +159,9 @@ START_TEST (test_read_data) {
         assert_byte_array((const int8_t *) buffer, actual_read, output, actual_read);
         total_read += actual_read;
         // there is not enough data in the sdr input
-        // if 9000 numbers matched, then I consider test passed
-        if (total_read > 9000) {
+        // if 500 numbers matched, then I consider test passed
+        // see test_fsp_demod for this number
+        if (total_read > 500) {
             break;
         }
     }
