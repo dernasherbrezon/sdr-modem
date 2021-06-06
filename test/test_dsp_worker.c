@@ -8,6 +8,30 @@ dsp_worker *worker = NULL;
 struct server_config *config = NULL;
 struct request *req = NULL;
 
+START_TEST (test_invalid_basepath) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    const char *invalid_basepath = "/invalidpath/";
+    size_t length = strlen(invalid_basepath);
+    char *result = malloc(sizeof(char) * length + 1);
+    ck_assert(result != NULL);
+    strncpy(result, invalid_basepath, length);
+    result[length] = '\0';
+    config->base_path = result;
+    req = create_request();
+    req->rx_dump_file = REQUEST_DUMP_FILE_YES;
+    code = dsp_worker_create(1, 0, config, req, &worker);
+    ck_assert_int_eq(code, -1);
+
+    req->rx_dump_file = REQUEST_DUMP_FILE_NO;
+    req->demod_destination = REQUEST_DEMOD_DESTINATION_FILE;
+    code = dsp_worker_create(1, 0, config, req, &worker);
+    ck_assert_int_eq(code, -1);
+
+}
+
+END_TEST
+
 START_TEST (test_invalid_queue_size) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
@@ -16,6 +40,7 @@ START_TEST (test_invalid_queue_size) {
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
 START_TEST (test_invalid_doppler_configuration) {
@@ -27,6 +52,7 @@ START_TEST (test_invalid_doppler_configuration) {
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
 START_TEST (test_invalid_fsk_configuration) {
@@ -37,6 +63,7 @@ START_TEST (test_invalid_fsk_configuration) {
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
 START_TEST (test_create_delete) {
@@ -50,6 +77,7 @@ START_TEST (test_create_delete) {
     bool result = dsp_worker_find_by_id(&id, worker);
     ck_assert_int_eq(result, 1);
 }
+
 END_TEST
 
 void teardown() {
@@ -84,6 +112,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_invalid_fsk_configuration);
     tcase_add_test(tc_core, test_invalid_doppler_configuration);
     tcase_add_test(tc_core, test_invalid_queue_size);
+    tcase_add_test(tc_core, test_invalid_basepath);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
