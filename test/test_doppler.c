@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include "../src/dsp/doppler.h"
 #include "utils.h"
-#include "../src/sgpsdp/sgp4sdp4.h"
 #include <time.h>
 
 FILE *input_file = NULL;

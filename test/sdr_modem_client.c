@@ -76,17 +76,20 @@ int sdr_modem_client_read_response(struct message_header **response_header, stru
     return 0;
 }
 
-int sdr_modem_client_read_stream(int8_t **output, size_t *output_len, size_t expected_read, sdr_modem_client *client) {
+int sdr_modem_client_read_stream(int8_t **output, size_t expected_read, sdr_modem_client *client) {
+    if (expected_read > client->output_len) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", expected_read, client->output_len);
+        return -1;
+    }
     int code = tcp_utils_read_data(client->output, sizeof(int8_t) * expected_read, client->client_socket);
     if (code != 0) {
         return code;
     }
     *output = client->output;
-    *output_len = client->output_len;
     return 0;
 }
 
-int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_length, sdr_modem_client **client) {
+int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_length, int read_timeout_seconds, sdr_modem_client **client) {
     struct sdr_modem_client_t *result = malloc(sizeof(struct sdr_modem_client_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -107,6 +110,15 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
         return -1;
     }
     result->client_socket = client_socket;
+
+    struct timeval tv;
+    tv.tv_sec = read_timeout_seconds;
+    tv.tv_usec = 0;
+    if (setsockopt(result->client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
+        perror("setsockopt - SO_RCVTIMEO");
+        sdr_modem_client_destroy(result);
+        return -1;
+    }
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;

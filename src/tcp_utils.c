@@ -9,7 +9,6 @@ int tcp_utils_write_data(uint8_t *buffer, size_t total_len_bytes, int client_soc
     while (left > 0) {
         ssize_t written = write(client_socket, buffer + (total_len_bytes - left), left);
         if (written < 0) {
-            perror("<3>unable to write the message");
             return -1;
         }
         left -= written;

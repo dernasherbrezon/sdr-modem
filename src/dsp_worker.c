@@ -9,6 +9,7 @@
 #include <string.h>
 #include <complex.h>
 #include <unistd.h>
+#include "tcp_utils.h"
 
 struct dsp_worker_t {
     uint32_t id;
@@ -38,19 +39,6 @@ void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker
 void dsp_worker_shutdown(void *arg, void *data) {
     dsp_worker *worker = (dsp_worker *) data;
     interrupt_waiting_the_data(worker->queue);
-}
-
-int write_to_socket(dsp_worker *worker, int8_t *filter_output, size_t filter_output_len) {
-    size_t total_len = filter_output_len * sizeof(int8_t);
-    size_t left = total_len;
-    while (left > 0) {
-        ssize_t written = write(worker->client_socket, (char *) filter_output + (total_len - left), left);
-        if (written < 0) {
-            return -1;
-        }
-        left -= written;
-    }
-    return 0;
 }
 
 static void *dsp_worker_callback(void *arg) {
@@ -103,7 +91,7 @@ static void *dsp_worker_callback(void *arg) {
         }
         int code = 0;
         if (worker->demod_destination == REQUEST_DEMOD_DESTINATION_SOCKET || worker->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
-            code = write_to_socket(worker, demod_output, demod_output_len);
+            code = tcp_utils_write_data((uint8_t *) demod_output, demod_output_len, worker->client_socket);
         }
 
         complete_buffer_processing(worker->queue);

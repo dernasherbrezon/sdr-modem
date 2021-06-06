@@ -34,6 +34,10 @@ static void *sdr_worker_callback(void *arg) {
     struct array_t output;
     while (true) {
         int code = sdr_server_client_read_stream(&output.output, &output.output_len, worker->client);
+        if (code < -1) {
+            // read timeout happened. it's ok.
+            continue;
+        }
         if (code != 0) {
             break;
         }

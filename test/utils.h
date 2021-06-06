@@ -20,5 +20,7 @@ void assert_complex_array(const float expected[], size_t expected_size, float co
 
 void assert_int16_array(const int16_t expected[], size_t expected_size, int16_t *actual, size_t actual_size);
 
+void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size);
+
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file);
 #endif //SDR_MODEM_UTILS_H

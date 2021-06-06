@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <check.h>
 #include "../src/tcp_server.h"
@@ -51,7 +53,7 @@ START_TEST(test_unable_to_connect_to_sdr_server) {
     ck_assert_int_eq(code, 0);
 
     uint32_t batch_size = 256;
-    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
@@ -70,21 +72,21 @@ START_TEST (test_multiple_clients) {
     ck_assert_int_eq(code, 0);
 
     uint32_t batch_size = 256;
-    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 
     req = create_request();
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
 
     // same freq, different baud rate
-    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client1);
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client1);
     ck_assert_int_eq(code, 0);
     req->demod_decimation = 1;
     req->demod_baud_rate = 9600;
     assert_response_with_request(client1, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 1, req);
 
     // different frequency
-    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client2);
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client2);
     ck_assert_int_eq(code, 0);
     req->rx_center_freq = 437525000 + 20000;
     assert_response_with_request(client2, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 2, req);
@@ -98,6 +100,7 @@ START_TEST (test_read_data) {
     ck_assert_int_eq(code, 0);
     // speed up test a bit
     config->read_timeout_seconds = 2;
+    config->buffer_size = 4096;
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
@@ -105,21 +108,28 @@ START_TEST (test_read_data) {
 
     //connect client
     uint32_t batch_size = 256;
-    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, &client0);
+    code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
     req = create_request();
+    // do not correct doppler - this will make test unstable and dependant on the
+    // current satellite position
+    req->correct_doppler = REQUEST_CORRECT_DOPPLER_NO;
     req->rx_dump_file = REQUEST_DUMP_FILE_YES;
     req->demod_destination = REQUEST_DEMOD_DESTINATION_BOTH;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
 
     //send input data
+    //lucky7.expected.cf32 - is already doppler-corrected data
     input_file = fopen("lucky7.expected.cf32", "rb");
     ck_assert(input_file != NULL);
-    buffer = malloc(sizeof(uint8_t) * config->buffer_size);
+    // this is important. sdr server client will wait until incoming buffer is fully read
+    // in real world, this is normal, but in test it will never happen (test data can be less than max buffer size)
+    size_t buffer_len = sizeof(float complex) * config->buffer_size;
+    buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(input_file != NULL);
     while (true) {
         size_t actual_read = 0;
-        code = read_data(buffer, &actual_read, config->buffer_size, input_file);
+        code = read_data(buffer, &actual_read, buffer_len, input_file);
         if (code != 0 && actual_read == 0) {
             break;
         }
@@ -127,22 +137,33 @@ START_TEST (test_read_data) {
         ck_assert_int_eq(code, 0);
     }
 
-//    output_file = fopen("lucky7.expected.s8", "rb");
-//    ck_assert(output_file != NULL);
-//    while (true) {
-//        size_t actual_read = 0;
-//        int code = read_data(buffer, &actual_read, config->buffer_size, output_file);
-//        if (code != 0 && actual_read == 0) {
-//            break;
-//        }
-//        int8_t *output = NULL;
-//        size_t output_len = 0;
-//        code = sdr_modem_client_read_stream(&output, &output_len, actual_read, client0);
-//        printf("read: %zu\n", output_len);
-//        ck_assert_int_eq(code, 0);
-//        //FIXME compare buffer and output
-//    }
-
+    output_file = fopen("lucky7.expected.s8", "rb");
+    ck_assert(output_file != NULL);
+    size_t total_read = 0;
+    while (true) {
+        size_t actual_read = 0;
+        code = read_data(buffer, &actual_read, batch_size, output_file);
+        if (code != 0 && actual_read == 0) {
+            break;
+        }
+        int8_t *output = NULL;
+        while (true) {
+            code = sdr_modem_client_read_stream(&output, actual_read, client0);
+            if (code < -1) {
+                //read timeout. server is not ready to send data
+                continue;
+            }
+            break;
+        }
+        ck_assert_int_eq(code, 0);
+        assert_byte_array((const int8_t *) buffer, actual_read, output, actual_read);
+        total_read += actual_read;
+        // there is not enough data in the sdr input
+        // if 9000 numbers matched, then I consider test passed
+        if (total_read > 9000) {
+            break;
+        }
+    }
 }
 
 END_TEST
@@ -214,6 +235,12 @@ Suite *common_suite(void) {
 }
 
 int main(void) {
+    // this is especially important here
+    // env variable is defined in run_tests.sh, but also here
+    // to run this test from IDE
+    setenv("VOLK_GENERIC", "1", 1);
+    setenv("VOLK_ALIGNMENT", "16", 1);
+
     int number_failed;
     Suite *s;
     SRunner *sr;
