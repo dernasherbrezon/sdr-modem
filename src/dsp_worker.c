@@ -59,8 +59,6 @@ static void *dsp_worker_callback(void *arg) {
     fprintf(stdout, "[%d] dsp_worker is starting\n", id);
     float complex *input = NULL;
     size_t input_len = 0;
-    int8_t *demod_output = NULL;
-    size_t demod_output_len = 0;
     while (true) {
         take_buffer_for_processing(&input, &input_len, worker->queue);
         // poison pill received
@@ -83,6 +81,8 @@ static void *dsp_worker_callback(void *arg) {
             input = doppler_output;
             input_len = doppler_output_len;
         }
+        int8_t *demod_output = NULL;
+        size_t demod_output_len = 0;
         if (worker->fsk_demod != NULL) {
             fsk_demod_process(input, input_len, &demod_output, &demod_output_len, worker->fsk_demod);
         }
@@ -95,7 +95,7 @@ static void *dsp_worker_callback(void *arg) {
         if (worker->demod_file != NULL) {
             size_t n_written = fwrite(demod_output, sizeof(int8_t), demod_output_len, worker->demod_file);
             // if disk is full, then terminate the client
-            if (n_written < input_len) {
+            if (n_written < demod_output_len) {
                 complete_buffer_processing(worker->queue);
                 fprintf(stderr, "<3>[%d] unable to write demod data\n", id);
                 break;

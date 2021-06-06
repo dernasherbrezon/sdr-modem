@@ -398,7 +398,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 return;
             }
         }
-        if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
+        if (req->tx_dump_file == REQUEST_DUMP_FILE_YES) {
             char file_path[4096];
             snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", server->server_config->base_path, tcp_worker->id);
             tcp_worker->tx_dump_file = fopen(file_path, "wb");

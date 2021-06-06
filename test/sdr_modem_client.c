@@ -118,7 +118,7 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
         fprintf(stderr, "<3>connection with the server failed: %d\n", code);
         return -1;
     }
-    fprintf(stdout, "connected to the server..\n");
+    fprintf(stdout, "connected to sdr-modem..\n");
 
     *client = result;
     return 0;
