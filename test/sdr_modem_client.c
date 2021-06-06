@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/time.h>
 
 struct sdr_modem_client_t {
     int client_socket;
