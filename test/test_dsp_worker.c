@@ -17,6 +17,7 @@ START_TEST (test_invalid_basepath) {
     ck_assert(result != NULL);
     strncpy(result, invalid_basepath, length);
     result[length] = '\0';
+    free(config->base_path);
     config->base_path = result;
     req = create_request();
     req->rx_dump_file = REQUEST_DUMP_FILE_YES;
