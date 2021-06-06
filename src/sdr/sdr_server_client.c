@@ -142,7 +142,7 @@ int sdr_server_client_request(struct sdr_server_request request, struct sdr_serv
     return sdr_server_client_read_response(response, client);
 }
 
-void sdr_server_client_destroy(sdr_server_client *client) {
+void sdr_server_client_stop(sdr_server_client *client) {
     if (client == NULL) {
         return;
     }
@@ -150,7 +150,7 @@ void sdr_server_client_destroy(sdr_server_client *client) {
         struct sdr_server_message_header header;
         header.type = SDR_SERVER_TYPE_SHUTDOWN;
         header.protocol_version = SDR_SERVER_PROTOCOL_VERSION;
-        int code = tcp_utils_write_data((uint8_t *)&header, sizeof(struct sdr_server_message_header), client->client_socket);
+        int code = tcp_utils_write_data((uint8_t *) &header, sizeof(struct sdr_server_message_header), client->client_socket);
         // sdr server was already disconnected
         if (code != 0) {
             break;
@@ -163,6 +163,12 @@ void sdr_server_client_destroy(sdr_server_client *client) {
     }
     fprintf(stdout, "[%d] disconnected from sdr server..\n", client->id);
     close(client->client_socket);
+}
+
+void sdr_server_client_destroy(sdr_server_client *client) {
+    if (client == NULL) {
+        return;
+    }
     if (client->output != NULL) {
         free(client->output);
     }

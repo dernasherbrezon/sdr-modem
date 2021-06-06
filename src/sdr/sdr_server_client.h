@@ -13,6 +13,8 @@ int sdr_server_client_read_stream(float complex **output, size_t *output_len, sd
 
 int sdr_server_client_request(struct sdr_server_request request, struct sdr_server_response **response, sdr_server_client *client);
 
+void sdr_server_client_stop(sdr_server_client *client);
+
 void sdr_server_client_destroy(sdr_server_client *client);
 
 #endif /* SDR_SERVER_CLIENT_H_ */

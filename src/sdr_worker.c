@@ -125,9 +125,13 @@ void sdr_worker_destroy(void *data) {
     sdr_worker *worker = (sdr_worker *) data;
     // terminate reading from sdr server first
     if (worker->client != NULL) {
-        sdr_server_client_destroy(worker->client);
+        sdr_server_client_stop(worker->client);
     }
     pthread_join(worker->sdr_thread, NULL);
+
+    if (worker->client != NULL) {
+        sdr_server_client_destroy(worker->client);
+    }
 
     pthread_mutex_lock(&worker->mutex);
     if (worker->dsp_configs != NULL) {
