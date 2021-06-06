@@ -38,7 +38,8 @@ static void *sdr_worker_callback(void *arg) {
             // read timeout happened. it's ok.
             continue;
         }
-        if (code != 0) {
+        // terminate only when fully read from socket
+        if (code != 0 && output.output_len == 0) {
             break;
         }
         pthread_mutex_lock(&worker->mutex);

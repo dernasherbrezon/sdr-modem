@@ -116,3 +116,28 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
     *output_len = len - left;
     return result;
 }
+
+void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual) {
+    ck_assert(expected != NULL);
+    ck_assert(actual != NULL);
+    size_t total_read = 0;
+    while (true) {
+        size_t expected_read = 0;
+        int code = read_data(expected_buffer, &expected_read, batch, expected);
+        if (code != 0 && expected_read == 0) {
+            break;
+        }
+        size_t actual_read = 0;
+        code = read_data(actual_buffer, &actual_read, expected_read, actual);
+        if (code != 0 && actual_read == 0) {
+            //the very last batch of file can return code=-1 and some partial batch
+            ck_assert_int_eq(code, 0);
+        }
+        assert_byte_array((const int8_t *) expected_buffer, expected_read, (int8_t *) actual_buffer, actual_read);
+
+        total_read += expected_read;
+        if (expected_total != 0 && total_read > expected_total) {
+            break;
+        }
+    }
+}

@@ -17,9 +17,12 @@ sdr_modem_client *client2 = NULL;
 sdr_server_mock *mock_server = NULL;
 
 FILE *input_file = NULL;
-uint8_t *buffer = NULL;
+uint8_t *expected_buffer = NULL;
+uint8_t *actual_buffer = NULL;
 
 FILE *output_file = NULL;
+FILE *demod_file = NULL;
+FILE *sdr_file = NULL;
 
 void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct request *req) {
     struct message_header header;
@@ -122,18 +125,19 @@ START_TEST (test_read_data) {
     //lucky7.expected.cf32 - is already doppler-corrected data
     input_file = fopen("lucky7.expected.cf32", "rb");
     ck_assert(input_file != NULL);
-    // this is important. sdr server client will wait until incoming buffer is fully read
-    // in real world, this is normal, but in test it will never happen (test data can be less than max buffer size)
+    // this is important. sdr server client will wait until incoming expected_buffer is fully read
+    // in real world, this is normal, but in test it will never happen (test data can be less than max expected_buffer size)
     size_t buffer_len = sizeof(float complex) * config->buffer_size;
-    buffer = malloc(sizeof(uint8_t) * buffer_len);
+    expected_buffer = malloc(sizeof(uint8_t) * buffer_len);
+    actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(input_file != NULL);
     while (true) {
         size_t actual_read = 0;
-        code = read_data(buffer, &actual_read, buffer_len, input_file);
+        code = read_data(expected_buffer, &actual_read, buffer_len, input_file);
         if (code != 0 && actual_read == 0) {
             break;
         }
-        code = sdr_server_mock_send((float complex *) buffer, actual_read / sizeof(float complex), mock_server);
+        code = sdr_server_mock_send((float complex *) expected_buffer, actual_read / sizeof(float complex), mock_server);
         ck_assert_int_eq(code, 0);
     }
 
@@ -142,7 +146,7 @@ START_TEST (test_read_data) {
     size_t total_read = 0;
     while (true) {
         size_t actual_read = 0;
-        code = read_data(buffer, &actual_read, batch_size, output_file);
+        code = read_data(expected_buffer, &actual_read, batch_size, output_file);
         if (code != 0 && actual_read == 0) {
             break;
         }
@@ -156,7 +160,7 @@ START_TEST (test_read_data) {
             break;
         }
         ck_assert_int_eq(code, 0);
-        assert_byte_array((const int8_t *) buffer, actual_read, output, actual_read);
+        assert_byte_array((const int8_t *) expected_buffer, actual_read, output, actual_read);
         total_read += actual_read;
         // there is not enough data in the sdr input
         // if 500 numbers matched, then I consider test passed
@@ -165,6 +169,26 @@ START_TEST (test_read_data) {
             break;
         }
     }
+
+    //this will trigger flush of files
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_SHUTDOWN;
+    sdr_modem_client_write_request(&header, req, client0);
+    sdr_modem_client_destroy_gracefully(client0);
+    client0 = NULL;
+
+    fseek(output_file, 0, SEEK_SET);
+    char file_path[4096];
+    snprintf(file_path, sizeof(file_path), "%s/rx.demod2client.%d.s8", config->base_path, 0);
+    demod_file = fopen(file_path, "rb");
+    assert_files(output_file, 500, expected_buffer, actual_buffer, batch_size, demod_file);
+
+    fseek(input_file, 0, SEEK_SET);
+    snprintf(file_path, sizeof(file_path), "%s/rx.sdr2demod.%d.cf32", config->base_path, 0);
+    sdr_file = fopen(file_path, "rb");
+    assert_files(input_file, 76000, expected_buffer, actual_buffer, batch_size, sdr_file);
+
 }
 
 END_TEST
@@ -202,13 +226,25 @@ void teardown() {
         fclose(input_file);
         input_file = NULL;
     }
-    if (buffer != NULL) {
-        free(buffer);
-        buffer = NULL;
+    if (expected_buffer != NULL) {
+        free(expected_buffer);
+        expected_buffer = NULL;
+    }
+    if (actual_buffer != NULL) {
+        free(actual_buffer);
+        actual_buffer = NULL;
     }
     if (output_file != NULL) {
         fclose(output_file);
         output_file = NULL;
+    }
+    if (demod_file != NULL) {
+        fclose(demod_file);
+        demod_file = NULL;
+    }
+    if (sdr_file != NULL) {
+        fclose(sdr_file);
+        sdr_file = NULL;
     }
 }
 
@@ -225,8 +261,8 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-//    tcase_add_test(tc_core, test_multiple_clients);
-//    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
+    tcase_add_test(tc_core, test_multiple_clients);
+    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
     tcase_add_test(tc_core, test_read_data);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);

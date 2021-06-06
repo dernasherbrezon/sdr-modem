@@ -19,7 +19,7 @@ FILE *expected = NULL;
 // i.e. instead of -31, it can produce -30
 uint32_t max_buffer_length = 4096;
 
-void assert_files(const char *input_filename, const char *expected_filename) {
+void assert_files_and_demod(const char *input_filename, const char *expected_filename) {
     input = fopen(input_filename, "rb");
     ck_assert(input != NULL);
     expected = fopen(expected_filename, "rb");
@@ -56,7 +56,7 @@ void assert_files(const char *input_filename, const char *expected_filename) {
 START_TEST(test_normal) {
     int code = fsk_demod_create(192000, 40000, 5000, 1, 2000, true, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
-    assert_files("nusat.cf32", "processed.s8");
+    assert_files_and_demod("nusat.cf32", "processed.s8");
 }
 
 END_TEST
@@ -64,7 +64,7 @@ END_TEST
 START_TEST(test_handle_lucky7) {
     int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, true, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
-    assert_files("lucky7.expected.cf32", "lucky7.expected.s8");
+    assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.s8");
 }
 
 END_TEST
@@ -72,7 +72,7 @@ END_TEST
 START_TEST(test_no_dc) {
     int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, false, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
-    assert_files("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
+    assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
 }
 
 END_TEST

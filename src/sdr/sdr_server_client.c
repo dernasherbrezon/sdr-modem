@@ -107,13 +107,16 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
 }
 
 int sdr_server_client_read_stream(float complex **output, size_t *output_len, sdr_server_client *client) {
-    int code = tcp_utils_read_data(client->output, sizeof(float complex) * client->output_len, client->client_socket);
-    if (code != 0) {
-        return code;
+    size_t actually_read = 0;
+    int code = tcp_utils_read_data_partially(client->output, sizeof(float complex) * client->output_len, &actually_read, client->client_socket);
+    if (actually_read != 0) {
+        *output = client->output;
+        *output_len = actually_read / sizeof(float complex);
+    } else {
+        *output = NULL;
+        *output_len = 0;
     }
-    *output = client->output;
-    *output_len = client->output_len;
-    return 0;
+    return code;
 }
 
 int sdr_server_client_request(struct sdr_server_request request, struct sdr_server_response **response, sdr_server_client *client) {
