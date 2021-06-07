@@ -24,6 +24,17 @@ FILE *output_file = NULL;
 FILE *demod_file = NULL;
 FILE *sdr_file = NULL;
 
+void reconnect_client() {
+    sdr_modem_client_destroy(client0);
+    client0 = NULL;
+    if (req != NULL) {
+        free(req);
+        req = NULL;
+    }
+    int code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, config->read_timeout_seconds, &client0);
+    ck_assert_int_eq(code, 0);
+}
+
 void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct request *req) {
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
@@ -42,10 +53,33 @@ void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_
     free(response_header);
 }
 
-void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details) {
+START_TEST (test_invalid_requests) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
+    code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+    ck_assert_int_eq(code, 0);
+
+    reconnect_client();
     req = create_request();
-    assert_response_with_request(client, type, status, details, req);
+    req->demod_type = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->rx_center_freq = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->rx_sampling_freq = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
 }
+
+END_TEST
+
 
 START_TEST(test_unable_to_connect_to_sdr_server) {
     int code = server_config_create(&config, "full.conf");
@@ -59,7 +93,8 @@ START_TEST(test_unable_to_connect_to_sdr_server) {
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 
-    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+    req = create_request();
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
 }
 
 END_TEST
@@ -93,7 +128,6 @@ START_TEST (test_multiple_clients) {
     ck_assert_int_eq(code, 0);
     req->rx_center_freq = 437525000 + 20000;
     assert_response_with_request(client2, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 2, req);
-
 }
 
 END_TEST
@@ -261,9 +295,10 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-    tcase_add_test(tc_core, test_multiple_clients);
-    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
-    tcase_add_test(tc_core, test_read_data);
+//    tcase_add_test(tc_core, test_multiple_clients);
+//    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
+//    tcase_add_test(tc_core, test_read_data);
+    tcase_add_test(tc_core, test_invalid_requests);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
