@@ -51,6 +51,10 @@ int sdr_modem_client_write_request(struct message_header *header, struct request
     return code;
 }
 
+int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_client *client) {
+    return tcp_utils_write_data(buffer, buffer_len, client->client_socket);
+}
+
 int sdr_modem_client_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client) {
     struct message_header *header = malloc(sizeof(struct message_header));
     if (header == NULL) {

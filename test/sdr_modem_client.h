@@ -8,6 +8,8 @@ typedef struct sdr_modem_client_t sdr_modem_client;
 
 int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_length, int read_timeout_seconds, sdr_modem_client **client);
 
+int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_client *client);
+
 int sdr_modem_client_write_request(struct message_header *header, struct request *req, sdr_modem_client *client);
 
 int sdr_modem_client_read_stream(int8_t **output, size_t expected_read, sdr_modem_client *client);

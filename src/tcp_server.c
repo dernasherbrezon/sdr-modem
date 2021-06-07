@@ -94,9 +94,6 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
             fprintf(stderr, "<3>[%d] unknown rx_dump_file: %d\n", client_id, req->rx_dump_file);
             return -1;
         }
-        if (config->rx_sdr_type != RX_SDR_TYPE_SDR_SERVER) {
-            fprintf(stderr, "<3>[%d] unknown rx_sdr_type: %d\n", client_id, config->rx_sdr_type);
-        }
         if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
             fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
             return -1;
