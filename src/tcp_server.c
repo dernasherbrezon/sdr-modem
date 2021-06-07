@@ -179,7 +179,7 @@ int write_message(int socket, uint8_t status, uint8_t details) {
 
 void respond_failure(int client_socket, uint8_t status, uint8_t details) {
     write_message(client_socket, status, details);
-    shutdown(client_socket, SHUT_RDWR);
+    close(client_socket);
 }
 
 void handle_tx_data(struct tcp_worker *worker) {
@@ -296,8 +296,7 @@ void tcp_worker_destroy(void *data) {
     struct tcp_worker *worker = (struct tcp_worker *) data;
     fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->id);
     worker->is_running = false;
-    // graceful shutdown
-    shutdown(worker->client_socket, SHUT_RDWR);
+    close(worker->client_socket);
     pthread_join(worker->client_thread, NULL);
     if (worker->req != NULL) {
         free(worker->req);
@@ -337,6 +336,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
     }
     *tcp_worker = (struct tcp_worker) {0};
     tcp_worker->id = server->client_counter;
+    tcp_worker->client_socket = client_socket;
 
     struct request *req = malloc(sizeof(struct request));
     if (req == NULL) {
@@ -434,7 +434,6 @@ void handle_new_client(int client_socket, tcp_server *server) {
         }
     }
     tcp_worker->is_running = true;
-    tcp_worker->client_socket = client_socket;
     tcp_worker->server = server;
 
     cleanup_terminated_threads(server);

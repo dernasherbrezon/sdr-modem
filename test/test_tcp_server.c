@@ -76,6 +76,75 @@ START_TEST (test_invalid_requests) {
     req->rx_sampling_freq = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
+    reconnect_client();
+    req = create_request();
+    req->rx_dump_file = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->rx_sdr_server_band_freq = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->demod_baud_rate = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->correct_doppler = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->demod_decimation = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->demod_fsk_transition_width = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->demod_fsk_use_dc_block = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->demod_destination = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_center_freq = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_sampling_freq = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_dump_file = 255;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->mod_baud_rate = 0;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
 }
 
 END_TEST
@@ -295,9 +364,9 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-//    tcase_add_test(tc_core, test_multiple_clients);
-//    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
-//    tcase_add_test(tc_core, test_read_data);
+    tcase_add_test(tc_core, test_multiple_clients);
+    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
+    tcase_add_test(tc_core, test_read_data);
     tcase_add_test(tc_core, test_invalid_requests);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
