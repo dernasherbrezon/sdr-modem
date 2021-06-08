@@ -11,14 +11,8 @@ struct request *req = NULL;
 START_TEST (test_invalid_basepath) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
-    const char *invalid_basepath = "/invalidpath/";
-    size_t length = strlen(invalid_basepath);
-    char *result = malloc(sizeof(char) * length + 1);
-    ck_assert(result != NULL);
-    strncpy(result, invalid_basepath, length);
-    result[length] = '\0';
     free(config->base_path);
-    config->base_path = result;
+    config->base_path = utils_read_and_copy_str("/invalidpath/");
     req = create_request();
     req->rx_dump_file = REQUEST_DUMP_FILE_YES;
     code = dsp_worker_create(1, 0, config, req, &worker);

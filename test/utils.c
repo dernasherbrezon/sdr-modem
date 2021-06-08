@@ -141,3 +141,14 @@ void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffe
         }
     }
 }
+
+char *utils_read_and_copy_str(const char *value) {
+    size_t length = strlen(value);
+    char *result = malloc(sizeof(char) * length + 1);
+    if (result == NULL) {
+        return NULL;
+    }
+    strncpy(result, value, length);
+    result[length] = '\0';
+    return result;
+}

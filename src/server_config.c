@@ -61,11 +61,11 @@ int server_config_create(struct server_config **config, const char *path) {
     }
     result->bind_address = bind_address;
     setting = config_lookup(&libconfig, "port");
-    int port;
+    uint16_t port;
     if (setting == NULL) {
         port = 8091;
     } else {
-        port = config_setting_get_int(setting);
+        port = (uint16_t) config_setting_get_int(setting);
     }
     result->port = port;
     fprintf(stdout, "start listening on %s:%d\n", result->bind_address, result->port);

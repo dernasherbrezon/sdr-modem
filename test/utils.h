@@ -25,4 +25,6 @@ void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *ac
 void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual);
 
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file);
+
+char *utils_read_and_copy_str(const char *value);
 #endif //SDR_MODEM_UTILS_H

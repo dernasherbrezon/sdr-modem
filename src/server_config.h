@@ -13,7 +13,7 @@
 struct server_config {
 	// socket settings
 	char* bind_address;
-	int port;
+    uint16_t port;
 	int read_timeout_seconds;
 
 	uint32_t buffer_size;

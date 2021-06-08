@@ -65,13 +65,42 @@ void sdr_modem_client_send_header(sdr_modem_client *client, uint8_t protocol_ver
     struct message_header header;
     header.protocol_version = protocol_version;
     header.type = request_type;
-    int code = sdr_modem_client_write_raw((uint8_t *)&header, sizeof(header), client);
+    int code = sdr_modem_client_write_raw((uint8_t *) &header, sizeof(header), client);
     ck_assert_int_eq(code, 0);
 }
 
 void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct request *req) {
     assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_REQUEST, type, status, details, req);
 }
+
+START_TEST (test_invalid_config) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    free(config->bind_address);
+    config->bind_address = utils_read_and_copy_str("invalid.ip");
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, -1);
+
+    free(config->bind_address);
+    config->bind_address = utils_read_and_copy_str("255.255.255.255");
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
+START_TEST (test_ping) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
+    code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, config->read_timeout_seconds, &client0);
+    ck_assert_int_eq(code, 0);
+    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, TYPE_PING);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
+}
+
+END_TEST
 
 START_TEST (test_invalid_requests) {
     int code = server_config_create(&config, "full.conf");
@@ -410,6 +439,8 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
+    tcase_add_test(tc_core, test_invalid_config);
+    tcase_add_test(tc_core, test_ping);
     tcase_add_test(tc_core, test_multiple_clients);
     tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
     tcase_add_test(tc_core, test_read_data);
