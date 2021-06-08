@@ -82,7 +82,8 @@ START_TEST (test_invalid_config) {
     ck_assert_int_eq(code, -1);
 
     free(config->bind_address);
-    config->bind_address = utils_read_and_copy_str("255.255.255.255");
+    // can't bind on google's ip address
+    config->bind_address = utils_read_and_copy_str("142.250.187.206");
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, -1);
 }

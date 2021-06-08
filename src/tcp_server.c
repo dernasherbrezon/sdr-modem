@@ -600,7 +600,7 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
     address.sin_family = AF_INET;
     if (inet_pton(AF_INET, config->bind_address, &address.sin_addr) <= 0) {
         free(result);
-        perror("invalid address");
+        fprintf(stderr, "invalid address: %s\n", config->bind_address);
         return -1;
     }
     address.sin_port = htons(config->port);
