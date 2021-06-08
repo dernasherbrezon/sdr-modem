@@ -76,6 +76,7 @@ int sdr_modem_client_read_response(struct message_header **response_header, stru
         free(result);
         return code;
     }
+    result->details = ntohl(result->details);
     *response_header = header;
     *resp = result;
     return 0;

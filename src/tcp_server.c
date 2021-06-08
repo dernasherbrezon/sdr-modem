@@ -150,13 +150,13 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
     return 0;
 }
 
-int write_message(int socket, uint8_t status, uint8_t details) {
+int write_message(int socket, uint8_t status, uint32_t details) {
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
     header.type = TYPE_RESPONSE;
     struct response resp;
     resp.status = status;
-    resp.details = details;
+    resp.details = htonl(details);
 
     // it is possible to directly populate *buffer with the fields,
     // however populating structs and then serializing them into byte array
@@ -174,7 +174,7 @@ int write_message(int socket, uint8_t status, uint8_t details) {
     return code;
 }
 
-void respond_failure(int client_socket, uint8_t status, uint8_t details) {
+void respond_failure(int client_socket, uint8_t status, uint32_t details) {
     write_message(client_socket, status, details);
     close(client_socket);
 }
