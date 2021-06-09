@@ -269,7 +269,6 @@ static void *tcp_worker_callback(void *arg) {
     sdr_worker_destroy_by_dsp_worker_id(worker->id, worker->sdr);
 
     worker->is_running = false;
-    close(worker->client_socket);
     return (void *) 0;
 }
 

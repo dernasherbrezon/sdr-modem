@@ -30,15 +30,14 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout
     result->output_len = max_output_buffer_length;
     result->output = malloc(sizeof(float complex) * result->output_len);
     if (result->output == NULL) {
-        free(result);
+        sdr_server_client_destroy(result);
         return -ENOMEM;
     }
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
         fprintf(stderr, "<3>[%d] socket creation to sdr server failed: %d\n", result->id, client_socket);
-        free(result->output);
-        free(result);
+        sdr_server_client_destroy(result);
         return -1;
     }
     result->client_socket = client_socket;
@@ -49,8 +48,7 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout
     if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
         close(client_socket);
         perror("setsockopt - SO_RCVTIMEO");
-        free(result->output);
-        free(result);
+        sdr_server_client_destroy(result);
         return -1;
     }
 
@@ -60,9 +58,9 @@ int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout
     address.sin_port = htons(port);
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
+        close(client_socket);
         fprintf(stderr, "<3>[%d] connection with sdr server failed: %d\n", result->id, code);
-        free(result->output);
-        free(result);
+        sdr_server_client_destroy(result);
         return -1;
     }
     fprintf(stdout, "[%d] connected to sdr server..\n", result->id);

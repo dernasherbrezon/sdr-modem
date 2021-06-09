@@ -114,14 +114,15 @@ START_TEST (test_invalid_requests) {
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
     ck_assert_int_eq(code, 0);
 
-    //FIXME this test is somehow failing
-//    reconnect_client();
-//    req = create_request();
-//    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
-//    //do not assert anything here, just make sure request are coming through
-//    sdr_modem_client_send_header(client0, 255, TYPE_SHUTDOWN);
-//    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, 255);
-//    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, TYPE_SHUTDOWN);
+    reconnect_client();
+    req = create_request();
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+    //do not assert anything here, just make sure request are coming through
+    sdr_modem_client_send_header(client0, 255, TYPE_SHUTDOWN);
+    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, 255);
+    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, TYPE_SHUTDOWN);
+    sdr_modem_client_destroy_gracefully(client0);
+    client0 = NULL;
 
     reconnect_client();
     req = create_request();

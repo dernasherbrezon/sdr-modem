@@ -32,6 +32,29 @@ struct sdr_server_mock_t {
 
 void mock_response_success(int client_socket, sdr_server_mock *server) {
     struct sdr_server_message_header header;
+    int code = -2;
+    while (code < -1) {
+        code = tcp_utils_read_data(&header, sizeof(struct sdr_server_message_header), client_socket);
+    }
+    if (code != 0) {
+        fprintf(stderr, "unable to read header from sdr-modem\n");
+        return;
+    }
+    if (header.protocol_version != SDR_SERVER_PROTOCOL_VERSION) {
+        fprintf(stderr, "invalid protocol version: %d\n", header.protocol_version);
+        return;
+    }
+    if (header.type != SDR_SERVER_TYPE_REQUEST) {
+        fprintf(stderr, "expected type = request. got: %d\n", header.type);
+        return;
+    }
+    struct sdr_server_request request;
+    code = tcp_utils_read_data(&request, sizeof(struct sdr_server_request), client_socket);
+    if (code != 0) {
+        fprintf(stderr, "unable to read request from sdr-modem\n");
+        return;
+    }
+
     header.type = SDR_SERVER_TYPE_RESPONSE;
     header.protocol_version = SDR_SERVER_PROTOCOL_VERSION;
 
@@ -84,6 +107,7 @@ static void *acceptor_worker(void *arg) {
     }
 
     printf("sdr server mock stopped\n");
+    close(server->client_socket);
     return (void *) 0;
 }
 
@@ -93,7 +117,7 @@ int sdr_server_mock_send(float complex *input, size_t input_len, sdr_server_mock
         pthread_cond_wait(&server->condition, &server->mutex);
     }
     pthread_mutex_unlock(&server->mutex);
-    return tcp_utils_write_data((uint8_t *)input, sizeof(float complex) * input_len, server->client_socket);
+    return tcp_utils_write_data((uint8_t *) input, sizeof(float complex) * input_len, server->client_socket);
 }
 
 int sdr_server_mock_create(const char *addr, int port, void (*handler)(int client_socket, sdr_server_mock *server), uint32_t max_output_buffer_length, sdr_server_mock **server) {
