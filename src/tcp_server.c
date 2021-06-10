@@ -422,6 +422,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             }
             tx_config->sampling_freq = tcp_worker->req->tx_sampling_freq;
             tx_config->center_freq = tcp_worker->req->tx_center_freq;
+            tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
             tx_config->manual_gain = server->server_config->tx_plutosdr_gain;
             code = plutosdr_create(tcp_worker->id, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &tcp_worker->device);
             if (code != 0) {
