@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "sdr_server_mock.h"
 #include <stdio.h>
+#include "iio_lib_mock.h"
 
 tcp_server *server = NULL;
 struct server_config *config = NULL;
@@ -19,6 +20,7 @@ sdr_server_mock *mock_server = NULL;
 FILE *input_file = NULL;
 uint8_t *expected_buffer = NULL;
 uint8_t *actual_buffer = NULL;
+int16_t *expected_tx = NULL;
 
 FILE *output_file = NULL;
 FILE *demod_file = NULL;
@@ -73,6 +75,34 @@ void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_
     assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_REQUEST, type, status, details, req);
 }
 
+START_TEST (test_plutosdr_init_tx) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+
+    iio_lib_destroy(config->iio);
+    //FIXME size
+    size_t expected_tx_len = 100;
+    expected_tx = malloc(sizeof(int16_t) * expected_tx_len);
+    ck_assert(expected_tx != NULL);
+    code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
+    ck_assert_int_eq(code, 0);
+
+    // speed up test a bit
+    config->read_timeout_seconds = 2;
+    config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
+    code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+    ck_assert_int_eq(code, 0);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+}
+
+END_TEST
+
 START_TEST (test_invalid_config) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
@@ -109,6 +139,7 @@ START_TEST (test_invalid_requests) {
     //make server timeout a bit less than client's
     //this will allow to read response for partial requests
     config->read_timeout_seconds = 2;
+    config->tx_sdr_type = TX_SDR_TYPE_NONE;
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
@@ -183,6 +214,18 @@ START_TEST (test_invalid_requests) {
     req = create_request();
     req->mod_type = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+
+    //re-create server with plutosdr support
+    tcp_server_destroy(server);
+    server = NULL;
+    config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
 
     reconnect_client();
     req = create_request();
@@ -447,6 +490,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
     tcase_add_test(tc_core, test_read_data);
     tcase_add_test(tc_core, test_invalid_requests);
+    tcase_add_test(tc_core, test_plutosdr_init_tx);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

@@ -130,6 +130,10 @@ int validate_client_request(struct request *req, uint32_t client_id, struct serv
         return -1;
     }
     if (req->mod_type != REQUEST_MODEM_TYPE_NONE) {
+        if (config->tx_sdr_type == TX_SDR_TYPE_NONE) {
+            fprintf(stderr, "<3>[%d] server doesn't support tx\n", client_id);
+            return -1;
+        }
         if (req->tx_center_freq == 0) {
             fprintf(stderr, "<3>[%d] missing tx_center_freq parameter\n", client_id);
             return -1;
