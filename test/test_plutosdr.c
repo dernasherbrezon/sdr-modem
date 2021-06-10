@@ -152,22 +152,6 @@ START_TEST (test_rx) {
 
 END_TEST
 
-START_TEST (test_exceeded_tx_input) {
-    init_rx_data(0, 100);
-
-    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 20, lib, &sdr);
-    ck_assert_int_eq(code, 0);
-
-    float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
-                       0.011719F, 0.012207F, 0.012695F, 0.013184F, 0.013672F, 0.014160F, 0.014648F, 0.015137F, 0.015625F, 0.016113F, 0.016602F, 0.017090F, 0.017578F, 0.018066F, 0.018555F, 0.019043F, 0.019531F, 0.020020F, 0.020508F, 0.020996F, 0.021484F, 0.021973F, 0.022461F, 0.022949F,
-                       0.023438F, 0.023926F};
-    size_t input_len = 50 / 2;
-    code = sdr->sdr_process_tx((float complex *) &input, input_len, sdr->plugin);
-    ck_assert_int_eq(code, -1);
-}
-
-END_TEST
-
 START_TEST (test_no_tx_config) {
     init_rx_data(0, 50);
 
@@ -290,6 +274,7 @@ START_TEST(test_invalid_find_device) {
     code = plutosdr_create(1, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
 START_TEST(test_invalid_rx_config) {
@@ -306,6 +291,7 @@ START_TEST(test_invalid_rx_config) {
     code = plutosdr_create(1, rx_config, NULL, 10000, 2000000, lib, &sdr);
     ck_assert_int_eq(code, -1);
 }
+
 END_TEST
 
 
@@ -349,7 +335,6 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_exceeded_rx_input);
     tcase_add_test(tc_core, test_tx);
     tcase_add_test(tc_core, test_no_tx_config);
-    tcase_add_test(tc_core, test_exceeded_tx_input);
     tcase_add_test(tc_core, test_invalid_scan_context);
     tcase_add_test(tc_core, test_invalid_info_list);
     tcase_add_test(tc_core, test_invalid_ctx);

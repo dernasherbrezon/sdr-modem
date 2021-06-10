@@ -58,24 +58,32 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
         fprintf(stderr, "tx was not initialized\n");
         return -1;
     }
-    if (input_len * 2 > iio->output_len) {
-        fprintf(stderr, "<3>input buffer %zu is more than max: %zu\n", input_len * 2, iio->output_len);
-        return -1;
+
+    size_t processed = 0;
+    size_t left = input_len;
+    while (left > 0) {
+        char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
+        size_t batch;
+        if (left > iio->output_len / 2) {
+            batch = iio->output_len / 2;
+        } else {
+            batch = left;
+        }
+        // put [-1;1] into 16bit interval [-32768;32768]
+        // pluto has 16bit DAC for TX
+        volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) (input + processed), 32768, batch * 2);
+
+        // always use push_partial because normal push won't reset buffer to full length
+        // https://github.com/analogdevicesinc/libiio/blob/e65a97863c3481f30c6ea8642bda86125a7ee39d/buffer.c#L154
+        ssize_t nbytes_tx = iio->lib->iio_buffer_push_partial(iio->tx_buffer, batch);
+        if (nbytes_tx < 0) {
+            return -1;
+        }
+
+        left -= batch;
+        processed += batch;
     }
 
-    char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
-    size_t num_points = input_len * 2;
-
-    // put [-1;1] into 16bit interval [-32768;32768]
-    // pluto has 16bit DAC for TX
-    volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) input, 32768, num_points);
-
-    // always use push_partial because normal push won't reset buffer to full length
-    // https://github.com/analogdevicesinc/libiio/blob/e65a97863c3481f30c6ea8642bda86125a7ee39d/buffer.c#L154
-    ssize_t nbytes_tx = iio->lib->iio_buffer_push_partial(iio->tx_buffer, input_len);
-    if (nbytes_tx < 0) {
-        return -1;
-    }
     return 0;
 }
 
