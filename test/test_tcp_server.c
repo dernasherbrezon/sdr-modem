@@ -188,7 +188,7 @@ START_TEST (test_plutosdr_tx) {
     actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(actual_buffer != NULL);
     size_t actual_read = 0;
-    code = read_data(actual_buffer, &actual_read, sizeof(float complex) * buffer_len, output_file);
+    code = read_data(actual_buffer, &actual_read, sizeof(uint8_t) * buffer_len, output_file);
     ck_assert_int_eq(code, 0);
 
     const float expected_modulated[100] = {1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
