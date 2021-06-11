@@ -6,6 +6,6 @@
 
 void api_network_to_host(struct request *req);
 
-const char * api_demod_type_str(int demod_type);
+const char * api_modem_type_str(int demod_type);
 
 #endif //SDR_MODEM_API_UTILS_H

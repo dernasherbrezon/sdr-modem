@@ -189,6 +189,7 @@ void handle_tx_data(struct tcp_worker *worker) {
     if (code != 0) {
         return;
     }
+    len = ntohl(len);
     uint32_t left = len;
     while (left > 0) {
         uint32_t batch;
@@ -230,12 +231,15 @@ void handle_tx_data(struct tcp_worker *worker) {
             code = worker->device->sdr_process_tx(output, output_len, worker->device->plugin);
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
+                write_message(worker->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 return;
             }
         }
 
         left -= batch;
     }
+
+    write_message(worker->client_socket, RESPONSE_STATUS_SUCCESS, 0);
 }
 
 static void *tcp_worker_callback(void *arg) {
@@ -394,7 +398,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                dsp_worker_destroy(tcp_worker);
+                tcp_worker_destroy(tcp_worker);
                 free(rx);
                 return;
             }
@@ -406,7 +410,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             if (tcp_worker->tx_dump_file == NULL) {
                 fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                dsp_worker_destroy(tcp_worker);
+                tcp_worker_destroy(tcp_worker);
                 free(rx);
                 return;
             }
@@ -416,7 +420,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             if (tx_config == NULL) {
                 fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                dsp_worker_destroy(tcp_worker);
+                tcp_worker_destroy(tcp_worker);
                 free(rx);
                 return;
             }
@@ -428,7 +432,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to init pluto tx\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                dsp_worker_destroy(tcp_worker);
+                tcp_worker_destroy(tcp_worker);
                 free(rx);
                 return;
             }
@@ -502,9 +506,11 @@ void handle_new_client(int client_socket, tcp_server *server) {
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
     fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d demod destination %d\n", tcp_worker->id,
-            api_demod_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
+            api_modem_type_str(tcp_worker->req->demod_type), tcp_worker->req->rx_center_freq,
             tcp_worker->req->rx_sampling_freq, tcp_worker->req->demod_destination);
-
+    if (tcp_worker->req->mod_type != REQUEST_MODEM_TYPE_NONE) {
+        fprintf(stdout, "[%d] mod %s tx center_freq %d tx sampling rate %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->req->mod_type), tcp_worker->req->tx_center_freq, tcp_worker->req->tx_sampling_freq);
+    }
 }
 
 static void *acceptor_worker(void *arg) {

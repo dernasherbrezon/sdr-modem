@@ -51,6 +51,19 @@ int sdr_modem_client_write_request(struct message_header *header, struct request
     return code;
 }
 
+int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req, sdr_modem_client *client) {
+    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
+    if (code != 0) {
+        return code;
+    }
+    uint32_t len_to_send = htonl(req->len);
+    code = tcp_utils_write_data((uint8_t *) &len_to_send, sizeof(req->len), client->client_socket);
+    if (code != 0) {
+        return code;
+    }
+    return tcp_utils_write_data(req->data, sizeof(uint8_t) * req->len, client->client_socket);
+}
+
 int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_client *client) {
     return tcp_utils_write_data(buffer, buffer_len, client->client_socket);
 }

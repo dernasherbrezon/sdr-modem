@@ -12,6 +12,8 @@ int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_cli
 
 int sdr_modem_client_write_request(struct message_header *header, struct request *req, sdr_modem_client *client);
 
+int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req, sdr_modem_client *client);
+
 int sdr_modem_client_read_stream(int8_t **output, size_t expected_read, sdr_modem_client *client);
 
 int sdr_modem_client_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client);

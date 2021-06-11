@@ -22,9 +22,19 @@ uint8_t *expected_buffer = NULL;
 uint8_t *actual_buffer = NULL;
 int16_t *expected_tx = NULL;
 
+uint8_t *data_to_modulate = NULL;
+
 FILE *output_file = NULL;
 FILE *demod_file = NULL;
 FILE *sdr_file = NULL;
+
+struct iio_scan_context *empty_iio_create_scan_context(const char *backend, unsigned int flags) {
+    return NULL;
+}
+
+ssize_t failing_iio_buffer_push_partial(struct iio_buffer *buf, size_t samples_count) {
+    return -1;
+}
 
 void reconnect_client_with_timeout(int read_timeout_seconds) {
     sdr_modem_client_destroy(client0);
@@ -75,30 +85,93 @@ void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_
     assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_REQUEST, type, status, details, req);
 }
 
-START_TEST (test_plutosdr_init_tx) {
+void init_server_with_plutosdr_support() {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
 
     iio_lib_destroy(config->iio);
-    //FIXME size
-    size_t expected_tx_len = 100;
+    size_t expected_tx_len = config->buffer_size;
     expected_tx = malloc(sizeof(int16_t) * expected_tx_len);
     ck_assert(expected_tx != NULL);
     code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
     ck_assert_int_eq(code, 0);
-
     // speed up test a bit
     config->read_timeout_seconds = 2;
     config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);
+
     code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
     ck_assert_int_eq(code, 0);
+}
+
+struct tx_data setup_data_to_modulate() {
+    uint32_t len = 50;
+    data_to_modulate = malloc(sizeof(uint8_t) * len);
+    ck_assert(data_to_modulate != NULL);
+    for (size_t i = 0; i < len; i++) {
+        data_to_modulate[i] = (uint8_t) i;
+    }
+    struct tx_data tx;
+    tx.len = len;
+    tx.data = data_to_modulate;
+    return tx;
+}
+
+START_TEST(test_plutosdr_failures) {
+    init_server_with_plutosdr_support();
+
+    config->iio->iio_buffer_push_partial = failing_iio_buffer_push_partial;
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_TX_DATA;
+    struct tx_data tx = setup_data_to_modulate();
+    int code = sdr_modem_client_write_tx(&header, &tx, client0);
+    ck_assert_int_eq(code, 0);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+
+    config->iio->iio_create_scan_context = empty_iio_create_scan_context;
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
+}
+
+END_TEST
+
+START_TEST (test_plutosdr_tx) {
+    init_server_with_plutosdr_support();
 
     reconnect_client();
     req = create_request();
     req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_TX_DATA;
+
+    struct tx_data tx = setup_data_to_modulate();
+    int code = sdr_modem_client_write_tx(&header, &tx, client0);
+    ck_assert_int_eq(code, 0);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
+
+    int16_t *actual = NULL;
+    size_t actual_len = 0;
+    iio_lib_mock_get_tx(&actual, &actual_len);
+
+    printf("received: %zu\n", actual_len);
+    for (size_t i = 0; i < actual_len; i++) {
+        printf("%d, ", actual[i]);
+    }
 }
 
 END_TEST
@@ -417,10 +490,6 @@ START_TEST (test_read_data) {
 END_TEST
 
 void teardown() {
-    if (req != NULL) {
-        free(req);
-        req = NULL;
-    }
     if (client0 != NULL) {
         sdr_modem_client_destroy(client0);
         client0 = NULL;
@@ -432,6 +501,10 @@ void teardown() {
     if (client2 != NULL) {
         sdr_modem_client_destroy(client2);
         client2 = NULL;
+    }
+    if (req != NULL) {
+        free(req);
+        req = NULL;
     }
     if (server != NULL) {
         tcp_server_destroy(server);
@@ -469,6 +542,10 @@ void teardown() {
         fclose(sdr_file);
         sdr_file = NULL;
     }
+    if (data_to_modulate != NULL) {
+        free(data_to_modulate);
+        data_to_modulate = NULL;
+    }
 }
 
 void setup() {
@@ -490,7 +567,8 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
     tcase_add_test(tc_core, test_read_data);
     tcase_add_test(tc_core, test_invalid_requests);
-    tcase_add_test(tc_core, test_plutosdr_init_tx);
+    tcase_add_test(tc_core, test_plutosdr_failures);
+//    tcase_add_test(tc_core, test_plutosdr_tx);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
