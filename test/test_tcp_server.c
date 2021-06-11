@@ -186,6 +186,7 @@ START_TEST (test_plutosdr_tx) {
     ck_assert(output_file != NULL);
     size_t buffer_len = sizeof(float complex) * config->buffer_size;
     actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
+    ck_assert(actual_buffer != NULL);
     size_t actual_read = 0;
     code = read_data(actual_buffer, &actual_read, sizeof(float complex) * buffer_len, output_file);
     ck_assert_int_eq(code, 0);
