@@ -573,6 +573,10 @@ void teardown() {
         free(data_to_modulate);
         data_to_modulate = NULL;
     }
+    if (expected_tx != NULL) {
+        free(expected_tx);
+        expected_tx = NULL;
+    }
 }
 
 void setup() {
