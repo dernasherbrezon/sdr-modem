@@ -51,7 +51,11 @@ int sdr_modem_client_write_request(struct message_header *header, struct request
     return code;
 }
 
-int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req, sdr_modem_client *client) {
+int sdr_modem_client_write_tx_raw(struct message_header *header, struct tx_data *req, uint32_t req_len, sdr_modem_client *client) {
+    if (req->len < req_len) {
+        fprintf(stderr, "cannot simulate more data than actually allocated\n");
+        return -1;
+    }
     int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
     if (code != 0) {
         return code;
@@ -61,7 +65,11 @@ int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req
     if (code != 0) {
         return code;
     }
-    return tcp_utils_write_data(req->data, sizeof(uint8_t) * req->len, client->client_socket);
+    return tcp_utils_write_data(req->data, sizeof(uint8_t) * req_len, client->client_socket);
+}
+
+int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req, sdr_modem_client *client) {
+    return sdr_modem_client_write_tx_raw(header, req, req->len, client);
 }
 
 int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_client *client) {

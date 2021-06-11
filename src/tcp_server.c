@@ -201,6 +201,7 @@ void handle_tx_data(struct tcp_worker *worker) {
         code = tcp_utils_read_data(worker->buffer, batch, worker->client_socket);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to read tx request fully\n", worker->id);
+            write_message(worker->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
             return;
         }
 

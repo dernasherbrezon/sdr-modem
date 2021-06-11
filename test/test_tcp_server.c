@@ -121,8 +121,8 @@ struct tx_data setup_data_to_modulate() {
 START_TEST(test_plutosdr_failures) {
     init_server_with_plutosdr_support();
 
-    config->iio->iio_buffer_push_partial = failing_iio_buffer_push_partial;
-    reconnect_client();
+    // init timeout a bit more for test to get ack with timeout failure
+    reconnect_client_with_timeout(config->read_timeout_seconds * 2);
     req = create_request();
     req->mod_type = REQUEST_MODEM_TYPE_FSK;
     req->tx_dump_file = REQUEST_DUMP_FILE_YES;
@@ -132,11 +132,17 @@ START_TEST(test_plutosdr_failures) {
     header.protocol_version = PROTOCOL_VERSION;
     header.type = TYPE_TX_DATA;
     struct tx_data tx = setup_data_to_modulate();
-    int code = sdr_modem_client_write_tx(&header, &tx, client0);
+
+    config->iio->iio_buffer_push_partial = failing_iio_buffer_push_partial;
+    int code = sdr_modem_client_write_tx_raw(&header, &tx, tx.len / 2, client0);
+    ck_assert_int_eq(code, 0);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+
+    config->iio->iio_create_scan_context = empty_iio_create_scan_context;
+    code = sdr_modem_client_write_tx(&header, &tx, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
 
-    config->iio->iio_create_scan_context = empty_iio_create_scan_context;
     reconnect_client();
     req = create_request();
     req->mod_type = REQUEST_MODEM_TYPE_FSK;
