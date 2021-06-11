@@ -5,7 +5,7 @@ int16_t *iio_lib_mock_rx = NULL;
 size_t iio_lib_mock_rx_len = 0;
 
 int16_t *iio_lib_mock_tx = NULL;
-size_t iio_lib_mock_tx_len = 0;
+size_t iio_lib_mock_tx_len_processed = 0;
 
 struct iio_device *ad9361_phy = NULL;
 struct iio_channel *iio_lib_mock_tx_channel = NULL;
@@ -47,13 +47,13 @@ void *iio_buffer_first(const struct iio_buffer *buf, const struct iio_channel *c
         return iio_lib_mock_rx;
     }
     if (iio_lib_mock_tx != NULL) {
-        return iio_lib_mock_tx;
+        return iio_lib_mock_tx + iio_lib_mock_tx_len_processed;
     }
     return NULL;
 }
 
 ssize_t iio_buffer_push_partial(struct iio_buffer *buf, size_t samples_count) {
-    iio_lib_mock_tx_len = samples_count;
+    iio_lib_mock_tx_len_processed += (samples_count * 2);
     return samples_count;
 }
 
@@ -223,5 +223,5 @@ int iio_lib_mock_create(int16_t *expected_rx, size_t expected_rx_len, int16_t *e
 
 void iio_lib_mock_get_tx(int16_t **output, size_t *output_len) {
     *output = iio_lib_mock_tx;
-    *output_len = iio_lib_mock_tx_len;
+    *output_len = iio_lib_mock_tx_len_processed;
 }

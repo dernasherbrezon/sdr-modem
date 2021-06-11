@@ -69,6 +69,7 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
         } else {
             batch = left;
         }
+
         // put [-1;1] into 16bit interval [-32768;32768]
         // pluto has 16bit DAC for TX
         volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) (input + processed), 32768, batch * 2);

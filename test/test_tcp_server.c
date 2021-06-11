@@ -85,12 +85,11 @@ void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_
     assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_REQUEST, type, status, details, req);
 }
 
-void init_server_with_plutosdr_support() {
+void init_server_with_plutosdr_support(size_t expected_tx_len) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
 
     iio_lib_destroy(config->iio);
-    size_t expected_tx_len = config->buffer_size;
     expected_tx = malloc(sizeof(int16_t) * expected_tx_len);
     ck_assert(expected_tx != NULL);
     code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
@@ -119,7 +118,7 @@ struct tx_data setup_data_to_modulate() {
 }
 
 START_TEST(test_plutosdr_failures) {
-    init_server_with_plutosdr_support();
+    init_server_with_plutosdr_support(2048);
 
     // init timeout a bit more for test to get ack with timeout failure
     reconnect_client_with_timeout(config->read_timeout_seconds * 2);
@@ -153,12 +152,14 @@ START_TEST(test_plutosdr_failures) {
 END_TEST
 
 START_TEST (test_plutosdr_tx) {
-    init_server_with_plutosdr_support();
+    init_server_with_plutosdr_support(96000);
 
     reconnect_client();
     req = create_request();
     req->mod_type = REQUEST_MODEM_TYPE_FSK;
     req->tx_dump_file = REQUEST_DUMP_FILE_YES;
+    // keep test stable
+    req->correct_doppler = REQUEST_CORRECT_DOPPLER_NO;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
 
     struct message_header header;
@@ -174,10 +175,29 @@ START_TEST (test_plutosdr_tx) {
     size_t actual_len = 0;
     iio_lib_mock_get_tx(&actual, &actual_len);
 
-    printf("received: %zu\n", actual_len);
-    for (size_t i = 0; i < actual_len; i++) {
-        printf("%d, ", actual[i]);
-    }
+    const int16_t expected[] = {32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0};
+
+    // assert only first 50, thus actual_size = 50
+    assert_int16_array(expected, 50, actual, 50);
+
+    char file_path[4096];
+    snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", config->base_path, 0);
+    output_file = fopen(file_path, "rb");
+    ck_assert(output_file != NULL);
+    size_t buffer_len = sizeof(float complex) * config->buffer_size;
+    actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
+    size_t actual_read = 0;
+    code = read_data(actual_buffer, &actual_read, sizeof(float complex) * buffer_len, output_file);
+    ck_assert_int_eq(code, 0);
+
+    const float expected_modulated[100] = {1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
+                                           1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
+                                           1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
+                                           1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
+                                           1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F};
+
+    assert_complex_array(expected_modulated, 50, (float complex *) actual_buffer, 50);
+
 }
 
 END_TEST
@@ -574,7 +594,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_read_data);
     tcase_add_test(tc_core, test_invalid_requests);
     tcase_add_test(tc_core, test_plutosdr_failures);
-//    tcase_add_test(tc_core, test_plutosdr_tx);
+    tcase_add_test(tc_core, test_plutosdr_tx);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
