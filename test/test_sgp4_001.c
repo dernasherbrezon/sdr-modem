@@ -102,6 +102,17 @@ START_TEST(test_time) {
 
 END_TEST
 
+START_TEST(test_math) {
+    ck_assert_int_eq(Sign(-1.0), -1);
+    ck_assert_int_eq(Sign(2.0), 1);
+    ck_assert_int_eq(Sign(0.0), 0);
+
+    ck_assert_int_eq(Degrees(Radians(14.5123)) * 10, 14.5123 * 10);
+}
+
+END_TEST
+
+
 START_TEST(test_solar) {
     double jd = 2458918.986678;
     vector_t actual;
@@ -248,6 +259,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_eclipse);
     tcase_add_test(tc_core, test_calculate_ground_track);
     tcase_add_test(tc_core, test_calculate_radec);
+    tcase_add_test(tc_core, test_math);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

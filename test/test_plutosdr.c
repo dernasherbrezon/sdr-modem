@@ -17,6 +17,10 @@ iio_lib *lib = NULL;
 int16_t *expected_rx = NULL;
 int16_t *expected_tx = NULL;
 
+ssize_t invalid_iio_channel_attr_write(const struct iio_channel *chn, const char *attr, const char *src) {
+    return -1;
+}
+
 struct iio_device *empty_iio_context_find_device(const struct iio_context *ctx, const char *name) {
     return NULL;
 }
@@ -264,6 +268,16 @@ START_TEST(test_invalid_find_channel) {
 
 END_TEST
 
+START_TEST(test_unable_to_write_value) {
+    init_rx_data(10, 10);
+    lib->iio_channel_attr_write = invalid_iio_channel_attr_write;
+
+    int code = plutosdr_create(1, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
 START_TEST(test_invalid_find_device) {
     init_rx_data(10, 10);
     lib->iio_context_find_device = empty_iio_context_find_device;
@@ -343,6 +357,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_invalid_find_channel);
     tcase_add_test(tc_core, test_invalid_find_device);
     tcase_add_test(tc_core, test_invalid_rx_config);
+    tcase_add_test(tc_core, test_unable_to_write_value);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
