@@ -92,9 +92,40 @@ START_TEST(test_time) {
 
 END_TEST
 
+START_TEST(test_solar) {
+    double jd = 2458918.986678;
+    vector_t actual;
+    Calculate_Solar_Position(jd, &actual);
+    ck_assert_int_eq(146496240.579853 * 1000, actual.x * 1000);
+    ck_assert_int_eq(-22805185.677903 * 1000, actual.y * 1000);
+    ck_assert_int_eq(-9885914.456200 * 1000, actual.z * 1000);
+    ck_assert_int_eq(148589893.002415 * 1000, actual.w * 1000);
+}
+
+END_TEST
+
 START_TEST(test_time_epoch) {
     double result = Epoch_Time(2118875388);
     ck_assert_int_eq(71245.500000 * 100, result * 100);
+}
+
+END_TEST
+
+START_TEST(test_eclipse) {
+    double jd = 2458918.986678;
+    vector_t solar;
+    Calculate_Solar_Position(jd, &solar);
+
+    vector_t satellite;
+    satellite.x = 2328.970688;
+    satellite.y = -5995.220856;
+    satellite.z = 1719.970681;
+    satellite.w = 6657.708068;
+
+    double depth;
+    int result = Sat_Eclipsed(&satellite, &solar, &depth);
+    ck_assert_int_eq(result, 0);
+    ck_assert_int_eq(depth * 1000, -0.780165 * 1000);
 }
 
 END_TEST
@@ -127,6 +158,7 @@ START_TEST(test_normal) {
         ck_assert(fabsl(sat.vel.x - expected[i].vx) < 0.00001);
         ck_assert(fabsl(sat.vel.y - expected[i].vy) < 0.00001);
         ck_assert(fabsl(sat.vel.z - expected[i].vz) < 0.00001);
+
     }
 }
 
@@ -152,9 +184,12 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
+    tcase_add_test(tc_core, test_solar);
     tcase_add_test(tc_core, test_time_epoch);
     tcase_add_test(tc_core, test_time);
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_eclipse);
+
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
