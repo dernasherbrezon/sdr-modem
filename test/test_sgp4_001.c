@@ -130,6 +130,53 @@ START_TEST(test_eclipse) {
 
 END_TEST
 
+START_TEST(test_calculate_ground_track) {
+    vector_t satellite;
+    satellite.x = 2328.970688;
+    satellite.y = -5995.220856;
+    satellite.z = 1719.970681;
+    satellite.w = 6657.708068;
+
+    geodetic_t result;
+    Calculate_LatLonAlt(1583840449, &satellite, &result);
+
+    ck_assert_int_eq(result.lat * 1000, 0.262916 * 1000);
+    ck_assert_int_eq(result.lon * 1000, 3.695079 * 1000);
+    ck_assert_int_eq(result.alt * 1000, 281.006635 * 1000);
+
+
+}
+
+END_TEST
+
+START_TEST(test_calculate_radec) {
+    vector_t satellite_position;
+    satellite_position.x = 2328.970688;
+    satellite_position.y = -5995.220856;
+    satellite_position.z = 1719.970681;
+    satellite_position.w = 6657.708068;
+
+    vector_t satellite_velocity;
+    satellite_velocity.x = 2.912072;
+    satellite_velocity.y = -0.983415;
+    satellite_velocity.z = -7.090817;
+    satellite_velocity.w = 7.728322;
+
+    geodetic_t ground_station;
+    ground_station.lat = Radians(53.72F);
+    ground_station.lon = Radians(47.57F);
+    ground_station.alt = 0.0;
+
+    obs_astro_t obs;
+    Calculate_RADec_and_Obs(1583840449, &satellite_position, &satellite_velocity, &ground_station, &obs);
+
+    ck_assert_int_eq(obs.ra * 1000, 5.185192 * 1000);
+    ck_assert_int_eq(obs.dec * 1000, -0.323887 * 1000);
+
+}
+
+END_TEST
+
 START_TEST(test_normal) {
     int i;
 
@@ -189,7 +236,8 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_time);
     tcase_add_test(tc_core, test_normal);
     tcase_add_test(tc_core, test_eclipse);
-
+    tcase_add_test(tc_core, test_calculate_ground_track);
+    tcase_add_test(tc_core, test_calculate_radec);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
