@@ -72,6 +72,7 @@ sat_t sat;
 FILE *fp = NULL;
 
 START_TEST(test_time) {
+    //Tue Mar 10 11:40:49 GMT 2020
     time_t time = 1583840449;
     struct tm *cdate = gmtime(&time);
     cdate->tm_year += 1900;
@@ -87,6 +88,15 @@ START_TEST(test_time) {
     ck_assert_int_eq(cdate->tm_hour, actual.tm_hour);
     ck_assert_int_eq(cdate->tm_min, actual.tm_min);
     ck_assert_int_eq(cdate->tm_sec, actual.tm_sec);
+
+    struct tm date_time;
+    Date_Time(jul_start_time, &date_time);
+    ck_assert_int_eq(cdate->tm_year, date_time.tm_year);
+    ck_assert_int_eq(cdate->tm_mon, date_time.tm_mon);
+    ck_assert_int_eq(cdate->tm_mday, date_time.tm_mday);
+    ck_assert_int_eq(cdate->tm_hour, date_time.tm_hour);
+    ck_assert_int_eq(cdate->tm_min, date_time.tm_min);
+    ck_assert_int_eq(cdate->tm_sec, date_time.tm_sec);
 
 }
 

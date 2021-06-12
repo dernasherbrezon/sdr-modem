@@ -163,6 +163,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_delete_by_selector);
     tcase_add_test(tc_core, test_delete_by_selector1);
     tcase_add_test(tc_core, test_foreach);
+    tcase_add_test(tc_core, test_remove_by_id);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

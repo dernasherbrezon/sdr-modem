@@ -182,29 +182,6 @@ void Date_Time(double julian_date, struct tm *cdate)
 
 }
 
-/* The procedure Check_Date can be used as a check to see if a calendar    */
-/* date and time are valid. It works by first converting the calendar      */
-/* date and time to a Julian Date (which allows for irregularities, such   */
-/* as a time greater than 24 hours) and then converting back and comparing.*/
-int Check_Date(struct tm *cdate)
-{
-    double          jt;
-    struct tm       chkdate;
-
-    jt = Julian_Date(cdate);
-    Date_Time(jt, &chkdate);
-
-    if ((cdate->tm_year == chkdate.tm_year) &&
-        (cdate->tm_mon == chkdate.tm_mon) &&
-        (cdate->tm_mday == chkdate.tm_mday) &&
-        (cdate->tm_hour == chkdate.tm_hour) &&
-        (cdate->tm_min == chkdate.tm_min) && (cdate->tm_sec == chkdate.tm_sec))
-        return (1);
-    else
-        return (0);
-
-}
-
 /* Procedure gmtime_r is used to convert the calendar */
 /* time time_t to a broken-down time representation,  */
 /* expressed in Coordinated Universal Time (UTC).     */
@@ -224,38 +201,6 @@ struct tm      *gmtime_r(const time_t * timer, struct tm *result)
 
 }
 #endif
-
-/* Procedures Time_to_UTC and Time_from_UTC are used to  */
-/* convert 'struct tm' dates between UTC and local time. */
-/* The procedures JD_to_UTC and JD_from_UTC are used to  */
-/* do the same thing working directly with Julian dates. */
-
-void Time_to_UTC(struct tm *cdate, struct tm *odate)
-{
-    time_t          tdate;
-
-    /* 
-       functions such as Julian_Date work with tm_year in being 
-       the year since 0 AD and mktime uses it as the year since 1900
-
-       tm_isdst = -1 forces the mktime call to lookup the daylight 
-       savings for the current timezone instead of using whatever 
-       was in the structure when it was created.
-     */
-    cdate->tm_year -= 1900;
-    cdate->tm_isdst = -1;
-    tdate = mktime(cdate);
-    gmtime_r(&tdate, odate);
-    odate->tm_year += 1900;
-}
-
-struct tm Time_from_UTC(struct tm *cdate)
-{
-    time_t          tdate;
-
-    tdate = mktime(cdate);
-    return (*localtime(&tdate));
-}
 
 /* The function Delta_ET has been added to allow calculations on   */
 /* the position of the sun.  It provides the difference between UT */
