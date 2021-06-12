@@ -240,7 +240,7 @@ void handle_tx_data(struct tcp_worker *worker) {
         left -= batch;
     }
 
-    write_message(worker->client_socket, RESPONSE_STATUS_SUCCESS, 0);
+    write_message(worker->client_socket, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
 }
 
 static void *tcp_worker_callback(void *arg) {
@@ -554,7 +554,7 @@ static void *acceptor_worker(void *arg) {
                 handle_new_client(client_socket, server);
                 break;
             case TYPE_PING:
-                write_message(client_socket, RESPONSE_STATUS_SUCCESS, 0);
+                write_message(client_socket, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
                 close(client_socket);
                 break;
             default:

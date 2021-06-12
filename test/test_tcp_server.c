@@ -228,7 +228,7 @@ START_TEST (test_ping) {
     code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
     sdr_modem_client_send_header(client0, PROTOCOL_VERSION, TYPE_PING);
-    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0);
+    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
 }
 
 END_TEST

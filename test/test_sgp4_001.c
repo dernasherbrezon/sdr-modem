@@ -71,6 +71,34 @@ char tle_str[3][80];
 sat_t sat;
 FILE *fp = NULL;
 
+START_TEST(test_time) {
+    time_t time = 1583840449;
+    struct tm *cdate = gmtime(&time);
+    cdate->tm_year += 1900;
+    cdate->tm_mon += 1;
+    double jul_start_time = Julian_Date(cdate);
+    struct tm actual;
+    Calendar_Date(jul_start_time, &actual);
+    ck_assert_int_eq(cdate->tm_year, actual.tm_year);
+    ck_assert_int_eq(cdate->tm_mon, actual.tm_mon);
+    ck_assert_int_eq(cdate->tm_mday, actual.tm_mday);
+
+    Time_of_Day(jul_start_time, &actual);
+    ck_assert_int_eq(cdate->tm_hour, actual.tm_hour);
+    ck_assert_int_eq(cdate->tm_min, actual.tm_min);
+    ck_assert_int_eq(cdate->tm_sec, actual.tm_sec);
+
+}
+
+END_TEST
+
+START_TEST(test_time_epoch) {
+    double result = Epoch_Time(2118875388);
+    ck_assert_int_eq(71245.500000 * 100, result * 100);
+}
+
+END_TEST
+
 START_TEST(test_normal) {
     int i;
 
@@ -124,6 +152,8 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
+    tcase_add_test(tc_core, test_time_epoch);
+    tcase_add_test(tc_core, test_time);
     tcase_add_test(tc_core, test_normal);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
