@@ -282,9 +282,11 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
     // just to simplify the code below a bit
     if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
         tx_fir_filter_taps = rx_fir_filter_taps;
+        tx_decimation = rx_decimation;
     }
     if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
         rx_fir_filter_taps = tx_fir_filter_taps;
+        rx_decimation = tx_decimation;
     }
 
     char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);

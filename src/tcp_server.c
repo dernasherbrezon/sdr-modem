@@ -240,6 +240,7 @@ void handle_tx_data(struct tcp_worker *worker) {
         left -= batch;
     }
 
+    fprintf(stdout, "[%d] successfully sent %d bytes\n", worker->id, len);
     write_message(worker->client_socket, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
 }
 
@@ -267,7 +268,7 @@ static void *tcp_worker_callback(void *arg) {
             fprintf(stdout, "[%d] client requested disconnect\n", id);
             break;
         } else if (header.type == TYPE_TX_DATA) {
-            fprintf(stdout, "[%d] received tx data\n", id);
+            fprintf(stdout, "[%d] received tx request\n", id);
             handle_tx_data(worker);
         } else {
             fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);

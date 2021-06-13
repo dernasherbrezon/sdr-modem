@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("hello world\n");
+
 	struct server_config *server_config = NULL;
 	int code = server_config_create(&server_config, argv[1]);
 	if (code != 0) {
