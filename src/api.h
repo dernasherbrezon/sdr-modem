@@ -82,6 +82,7 @@ struct request {
 #define RESPONSE_NO_DETAILS 0
 #define RESPONSE_DETAILS_INVALID_REQUEST 1
 #define RESPONSE_DETAILS_INTERNAL_ERROR 3
+#define RESPONSE_DETAILS_TX_IS_BEING_USED 4
 
 struct response {
     uint8_t status;

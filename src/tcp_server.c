@@ -43,7 +43,8 @@ struct tcp_worker {
     gfsk_mod *fsk_mod;
     doppler *dopp;
     FILE *tx_dump_file;
-    sdr_device *device;
+
+    sdr_device *tx_device;
 };
 
 struct tcp_server_t {
@@ -55,6 +56,8 @@ struct tcp_server_t {
 
     linked_list *tcp_workers;
     pthread_mutex_t mutex;
+
+    bool tx_initialized;
 };
 
 void log_client(struct sockaddr_in *address, uint32_t id) {
@@ -228,8 +231,8 @@ void handle_tx_data(struct tcp_worker *worker) {
             }
         }
 
-        if (worker->device != NULL) {
-            code = worker->device->sdr_process_tx(output, output_len, worker->device->plugin);
+        if (worker->tx_device != NULL) {
+            code = worker->tx_device->sdr_process_tx(output, output_len, worker->tx_device->plugin);
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
                 write_message(worker->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
@@ -319,10 +322,13 @@ void tcp_worker_destroy(void *data) {
     if (worker->tx_dump_file != NULL) {
         fclose(worker->tx_dump_file);
     }
-    if (worker->device != NULL) {
-        worker->device->destroy(worker->device->plugin);
-        free(worker->device);
+    pthread_mutex_lock(&worker->server->mutex);
+    if (worker->tx_device != NULL) {
+        worker->tx_device->destroy(worker->tx_device->plugin);
+        free(worker->tx_device);
     }
+    worker->server->tx_initialized = false;
+    pthread_mutex_unlock(&worker->server->mutex);
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
@@ -334,6 +340,63 @@ void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_unlock(&server->mutex);
 }
 
+int tcp_server_init_plutosdr(uint32_t id, struct request *req, tcp_server *server, sdr_device **output) {
+    if (server->tx_initialized) {
+        fprintf(stderr, "<3>[%d] tx is being used\n", id);
+        return -RESPONSE_DETAILS_TX_IS_BEING_USED;
+    }
+    struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
+    if (tx_config == NULL) {
+        fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
+        return -RESPONSE_DETAILS_INTERNAL_ERROR;
+    }
+    tx_config->sampling_freq = req->tx_sampling_freq;
+    tx_config->center_freq = req->tx_center_freq;
+    tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
+    tx_config->manual_gain = server->server_config->tx_plutosdr_gain;
+    int code = plutosdr_create(id, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, output);
+    if (code != 0) {
+        fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
+        return -RESPONSE_DETAILS_INTERNAL_ERROR;
+    }
+    server->tx_initialized = true;
+    return 0;
+}
+
+int tcp_server_init_rx(dsp_worker *dsp_worker, tcp_server *server, struct tcp_worker *tcp_worker) {
+    struct sdr_worker_rx *rx = NULL;
+    int code = tcp_worker_convert(tcp_worker->req, &rx);
+    if (code != 0) {
+        return -RESPONSE_DETAILS_INTERNAL_ERROR;
+    }
+    //re-use sdr connections
+    //this will allow demodulating different modes using the same data
+    struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
+    if (closest == NULL) {
+        sdr_worker *sdr = NULL;
+        // take id from the first tcp client
+        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &sdr);
+        if (code != 0) {
+            return -RESPONSE_DETAILS_INTERNAL_ERROR;
+        }
+        tcp_worker->sdr = sdr;
+    } else {
+        tcp_worker->sdr = closest->sdr;
+        free(rx);
+    }
+
+    code = sdr_worker_add_dsp_worker(dsp_worker, tcp_worker->sdr);
+    if (code != 0) {
+        return -RESPONSE_DETAILS_INTERNAL_ERROR;
+    }
+
+    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
+    if (code != 0) {
+        return -RESPONSE_DETAILS_INTERNAL_ERROR;
+    }
+    return 0;
+}
+
 void handle_new_client(int client_socket, tcp_server *server) {
     struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
     if (tcp_worker == NULL) {
@@ -343,6 +406,7 @@ void handle_new_client(int client_socket, tcp_server *server) {
     *tcp_worker = (struct tcp_worker) {0};
     tcp_worker->id = server->client_counter;
     tcp_worker->client_socket = client_socket;
+    tcp_worker->server = server;
 
     struct request *req = malloc(sizeof(struct request));
     if (req == NULL) {
@@ -375,21 +439,13 @@ void handle_new_client(int client_socket, tcp_server *server) {
         return;
     }
 
-    struct sdr_worker_rx *rx = NULL;
-    int code = tcp_worker_convert(tcp_worker->req, &rx);
-    if (code != 0) {
-        fprintf(stderr, "<3>[%d] unable to create rx\n", tcp_worker->id);
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        tcp_worker_destroy(tcp_worker);
-        return;
-    }
+    int code;
     if (tcp_worker->req->mod_type == REQUEST_MODEM_TYPE_FSK) {
         code = gfsk_mod_create((float) tcp_worker->req->tx_sampling_freq / tcp_worker->req->mod_baud_rate, (2 * M_PI * tcp_worker->req->mod_fsk_deviation / tcp_worker->req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
-            free(rx);
             return;
         }
     }
@@ -401,7 +457,6 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 tcp_worker_destroy(tcp_worker);
-                free(rx);
                 return;
             }
         }
@@ -413,35 +468,21 @@ void handle_new_client(int client_socket, tcp_server *server) {
                 fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
                 respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
                 tcp_worker_destroy(tcp_worker);
-                free(rx);
                 return;
             }
         }
         if (server->server_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
-            struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
-            if (tx_config == NULL) {
-                fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
-                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            pthread_mutex_lock(&server->mutex);
+            code = tcp_server_init_plutosdr(tcp_worker->id, tcp_worker->req, server, &tcp_worker->tx_device);
+            pthread_mutex_unlock(&server->mutex);
+            if (code < 0) {
+                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, -code);
                 tcp_worker_destroy(tcp_worker);
-                free(rx);
-                return;
-            }
-            tx_config->sampling_freq = tcp_worker->req->tx_sampling_freq;
-            tx_config->center_freq = tcp_worker->req->tx_center_freq;
-            tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
-            tx_config->manual_gain = server->server_config->tx_plutosdr_gain;
-            code = plutosdr_create(tcp_worker->id, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &tcp_worker->device);
-            if (code != 0) {
-                fprintf(stderr, "<3>[%d] unable to init pluto tx\n", tcp_worker->id);
-                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                tcp_worker_destroy(tcp_worker);
-                free(rx);
                 return;
             }
         }
     }
     tcp_worker->is_running = true;
-    tcp_worker->server = server;
 
     cleanup_terminated_threads(server);
 
@@ -450,7 +491,6 @@ void handle_new_client(int client_socket, tcp_server *server) {
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
-        free(rx);
         return;
     }
     tcp_worker->client_thread = client_thread;
@@ -460,51 +500,19 @@ void handle_new_client(int client_socket, tcp_server *server) {
     if (code != 0) {
         respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
-        free(rx);
         return;
     }
 
     pthread_mutex_lock(&server->mutex);
-    //re-use sdr connections
-    //this will allow demodulating different modes using the same data
-    struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
-    if (closest == NULL) {
-        sdr_worker *sdr = NULL;
-        // take id from the first tcp client
-        code = sdr_worker_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &sdr);
-        if (code != 0) {
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-            tcp_worker_destroy(tcp_worker);
-            dsp_worker_destroy(dsp_worker);
-            pthread_mutex_unlock(&server->mutex);
-            return;
-        }
-        tcp_worker->sdr = sdr;
-    } else {
-        tcp_worker->sdr = closest->sdr;
-        free(rx);
-    }
-
-    code = sdr_worker_add_dsp_worker(dsp_worker, tcp_worker->sdr);
-    if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        // this will trigger sdr_worker destroy
-        tcp_worker_destroy(tcp_worker);
-        dsp_worker_destroy(dsp_worker);
-        pthread_mutex_unlock(&server->mutex);
-        return;
-    }
-
-    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
-    if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        // this will trigger sdr_worker destroy
-        tcp_worker_destroy(tcp_worker);
-        dsp_worker_destroy(dsp_worker);
-        pthread_mutex_unlock(&server->mutex);
-        return;
-    }
+    code = tcp_server_init_rx(dsp_worker, server, tcp_worker);
     pthread_mutex_unlock(&server->mutex);
+    if (code != 0) {
+        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, -code);
+        // this will trigger sdr_worker destroy if any
+        tcp_worker_destroy(tcp_worker);
+        dsp_worker_destroy(dsp_worker);
+        return;
+    }
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
     fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d demod destination %d\n", tcp_worker->id,
@@ -591,6 +599,7 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
     result->server_socket = server_socket;
     result->is_running = true;
     result->server_config = config;
+    result->tx_initialized = false;
     // start counting from 0
     result->client_counter = -1;
     int opt = 1;

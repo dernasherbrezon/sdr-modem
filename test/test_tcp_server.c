@@ -120,6 +120,19 @@ struct tx_data setup_data_to_modulate() {
 START_TEST(test_plutosdr_failures) {
     init_server_with_plutosdr_support(2048);
 
+    // unable to initialize pluto
+    config->iio->iio_create_scan_context = empty_iio_create_scan_context;
+    reconnect_client();
+    req = create_request();
+    req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
+}
+
+END_TEST
+
+START_TEST(test_plutosdr_failures2) {
+    init_server_with_plutosdr_support(2048);
+
     // init timeout a bit more for test to get ack with timeout failure
     reconnect_client_with_timeout(config->read_timeout_seconds * 2);
     req = create_request();
@@ -132,21 +145,17 @@ START_TEST(test_plutosdr_failures) {
     header.type = TYPE_TX_DATA;
     struct tx_data tx = setup_data_to_modulate();
 
-    config->iio->iio_buffer_push_partial = failing_iio_buffer_push_partial;
+    //test timeout while reading tx data
     int code = sdr_modem_client_write_tx_raw(&header, &tx, tx.len / 2, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
 
-    config->iio->iio_create_scan_context = empty_iio_create_scan_context;
+    //test failure to send to device
+    config->iio->iio_buffer_push_partial = failing_iio_buffer_push_partial;
     code = sdr_modem_client_write_tx(&header, &tx, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
 
-    reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
 }
 
 END_TEST
@@ -592,14 +601,15 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-    tcase_add_test(tc_core, test_invalid_config);
-    tcase_add_test(tc_core, test_ping);
-    tcase_add_test(tc_core, test_multiple_clients);
-    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
-    tcase_add_test(tc_core, test_read_data);
-    tcase_add_test(tc_core, test_invalid_requests);
+//    tcase_add_test(tc_core, test_invalid_config);
+//    tcase_add_test(tc_core, test_ping);
+//    tcase_add_test(tc_core, test_multiple_clients);
+//    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
+//    tcase_add_test(tc_core, test_read_data);
+//    tcase_add_test(tc_core, test_invalid_requests);
     tcase_add_test(tc_core, test_plutosdr_failures);
-    tcase_add_test(tc_core, test_plutosdr_tx);
+    tcase_add_test(tc_core, test_plutosdr_failures2);
+//    tcase_add_test(tc_core, test_plutosdr_tx);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
