@@ -294,6 +294,11 @@ bool tcp_worker_is_stopped(void *data) {
     return true;
 }
 
+bool tcp_worker_is_txing(void *id, void *data) {
+    struct tcp_worker *worker = (struct tcp_worker *) data;
+    return (worker->tx_device != NULL);
+}
+
 bool tcp_worker_find_closest(void *id, void *data) {
     struct tcp_worker *worker = (struct tcp_worker *) data;
     return sdr_worker_find_closest(id, worker->sdr);
@@ -326,13 +331,11 @@ void tcp_worker_destroy(void *data) {
     if (worker->tx_dump_file != NULL) {
         fclose(worker->tx_dump_file);
     }
-    pthread_mutex_lock(&worker->server->mutex);
     if (worker->tx_device != NULL) {
         worker->tx_device->destroy(worker->tx_device->plugin);
         free(worker->tx_device);
+        fprintf(stdout, "[%d] plutosdr stopped\n", worker->id);
     }
-    worker->server->tx_initialized = false;
-    pthread_mutex_unlock(&worker->server->mutex);
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] tcp_worker stopped\n", id);
@@ -341,6 +344,10 @@ void tcp_worker_destroy(void *data) {
 void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_lock(&server->mutex);
     linked_list_destroy_by_selector(&tcp_worker_is_stopped, &server->tcp_workers);
+    void *tx_worker = linked_list_find(NULL, &tcp_worker_is_txing, server->tcp_workers);
+    if (tx_worker == NULL) {
+        server->tx_initialized = false;
+    }
     pthread_mutex_unlock(&server->mutex);
 }
 
@@ -364,6 +371,7 @@ int tcp_server_init_plutosdr(uint32_t id, struct tx_request *req, tcp_server *se
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
     server->tx_initialized = true;
+    fprintf(stdout, "[%d] plutosdr initialized\n", id);
     return 0;
 }
 
@@ -490,8 +498,6 @@ void handle_tx_client(int client_socket, tcp_server *server) {
 
     tcp_worker->is_running = true;
 
-    cleanup_terminated_threads(server);
-
     pthread_t client_thread;
     code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
     if (code != 0) {
@@ -509,7 +515,7 @@ void handle_tx_client(int client_socket, tcp_server *server) {
     }
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod %s tx center_freq %d tx sampling rate %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq);
+    fprintf(stdout, "[%d] mod %s, tx center_freq: %d, tx sampling rate: %d, baud: %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->mod_baud_rate);
 }
 
 void handle_rx_client(int client_socket, tcp_server *server) {
@@ -557,8 +563,6 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     }
 
     tcp_worker->is_running = true;
-
-    cleanup_terminated_threads(server);
 
     pthread_t client_thread;
     int code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
@@ -627,6 +631,8 @@ static void *acceptor_worker(void *arg) {
             respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
             continue;
         }
+
+        cleanup_terminated_threads(server);
 
         switch (header.type) {
             case TYPE_RX_REQUEST:
