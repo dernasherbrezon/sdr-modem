@@ -3,8 +3,8 @@
 #include <volk/volk.h>
 #include <errno.h>
 
-struct request *create_request() {
-    struct request *result = malloc(sizeof(struct request));
+struct rx_request *create_rx_request() {
+    struct rx_request *result = malloc(sizeof(struct rx_request));
     ck_assert(result != NULL);
     result->rx_sampling_freq = 48000;
     result->rx_sdr_server_band_freq = 437525000;
@@ -23,10 +23,22 @@ struct request *create_request() {
     result->demod_decimation = 2;
     result->demod_fsk_deviation = 5000;
     result->demod_baud_rate = 4800;
+    return result;
+}
+
+struct tx_request *create_tx_request() {
+    struct tx_request *result = malloc(sizeof(struct tx_request));
+    ck_assert(result != NULL);
+    result->altitude = 0;
+    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
+    memcpy(result->tle, tle, sizeof(tle));
+    result->latitude = 53.72 * 10E6;
+    result->longitude = 47.57F * 10E6;
+    result->correct_doppler = REQUEST_CORRECT_DOPPLER_YES;
     result->tx_center_freq = 437525000;
     result->tx_sampling_freq = 580000;
     result->tx_dump_file = REQUEST_DUMP_FILE_NO;
-    result->mod_type = REQUEST_MODEM_TYPE_NONE;
+    result->mod_type = REQUEST_MODEM_TYPE_FSK;
     result->mod_baud_rate = 4800;
     result->mod_fsk_deviation = 5000;
     return result;

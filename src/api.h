@@ -6,10 +6,11 @@
 #define PROTOCOL_VERSION 0
 
 // client to server
-#define TYPE_REQUEST 0
+#define TYPE_RX_REQUEST 0
 #define TYPE_SHUTDOWN 1
 #define TYPE_PING 3
 #define TYPE_TX_DATA 4
+#define TYPE_TX_REQUEST 5
 //server to client
 #define TYPE_RESPONSE 2
 
@@ -27,14 +28,13 @@ struct message_header {
 #define REQUEST_CORRECT_DOPPLER_NO 0
 #define REQUEST_CORRECT_DOPPLER_YES 1
 
-#define REQUEST_MODEM_TYPE_NONE 0
 #define REQUEST_MODEM_TYPE_FSK 1
 
 #define REQUEST_DEMOD_DESTINATION_FILE 0
 #define REQUEST_DEMOD_DESTINATION_SOCKET 1
 #define REQUEST_DEMOD_DESTINATION_BOTH 2
 
-struct request {
+struct rx_request {
 
     //generic RX SDR settings
     uint32_t rx_center_freq;
@@ -61,6 +61,16 @@ struct request {
     int32_t demod_fsk_deviation;
     uint32_t demod_fsk_transition_width;
     uint8_t demod_fsk_use_dc_block;
+
+} __attribute__((packed));
+
+struct tx_request {
+    //doppler-related settings
+    uint8_t correct_doppler;
+    char tle[3][80];
+    uint32_t latitude;      //degrees times 10^6
+    uint32_t longitude;     //degrees times 10^6
+    uint32_t altitude;      //kilometers times 10^6
 
     // generic TX sdr settings
     uint32_t tx_center_freq;

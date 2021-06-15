@@ -106,7 +106,7 @@ static void *dsp_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, int client_socket, struct server_config *server_config, struct request *req,
+int dsp_worker_create(uint32_t id, int client_socket, struct server_config *server_config, struct rx_request *req,
                       dsp_worker **worker) {
     struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
     if (result == NULL) {

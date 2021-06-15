@@ -6,7 +6,9 @@
 #include "../src/api.h"
 #include <stdio.h>
 
-struct request *create_request();
+struct rx_request *create_rx_request();
+
+struct tx_request *create_tx_request();
 
 void setup_input_data(float **input, size_t input_offset, size_t len);
 

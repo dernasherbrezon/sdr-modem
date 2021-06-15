@@ -11,7 +11,8 @@
 
 tcp_server *server = NULL;
 struct server_config *config = NULL;
-struct request *req = NULL;
+struct rx_request *req = NULL;
+struct tx_request *tx_req = NULL;
 sdr_modem_client *client0 = NULL;
 sdr_modem_client *client1 = NULL;
 sdr_modem_client *client2 = NULL;
@@ -43,6 +44,10 @@ void reconnect_client_with_timeout(int read_timeout_seconds) {
         free(req);
         req = NULL;
     }
+    if (tx_req != NULL) {
+        free(tx_req);
+        tx_req = NULL;
+    }
     int code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 }
@@ -63,7 +68,17 @@ void assert_response(sdr_modem_client *client, uint8_t type, uint8_t status, uin
     free(response_header);
 }
 
-void assert_response_with_header_and_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, uint8_t status, uint8_t details, struct request *req) {
+void assert_response_with_header_and_tx_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, uint8_t status, uint8_t details, struct tx_request *req) {
+    struct message_header header;
+    header.protocol_version = protocol_version;
+    header.type = request_type;
+    int code = sdr_modem_client_write_tx_request(&header, req, client);
+    ck_assert_int_eq(code, 0);
+
+    assert_response(client, type, status, details);
+}
+
+void assert_response_with_header_and_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, uint8_t status, uint8_t details, struct rx_request *req) {
     struct message_header header;
     header.protocol_version = protocol_version;
     header.type = request_type;
@@ -81,8 +96,12 @@ void sdr_modem_client_send_header(sdr_modem_client *client, uint8_t protocol_ver
     ck_assert_int_eq(code, 0);
 }
 
-void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct request *req) {
-    assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_REQUEST, type, status, details, req);
+void assert_response_with_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct rx_request *req) {
+    assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_RX_REQUEST, type, status, details, req);
+}
+
+void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, uint8_t status, uint8_t details, struct tx_request *req) {
+    assert_response_with_header_and_tx_request(client, PROTOCOL_VERSION, TYPE_TX_REQUEST, type, status, details, req);
 }
 
 void init_server_with_plutosdr_support(size_t expected_tx_len) {
@@ -123,9 +142,9 @@ START_TEST(test_plutosdr_failures) {
     // unable to initialize pluto
     config->iio->iio_create_scan_context = empty_iio_create_scan_context;
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, tx_req);
 }
 
 END_TEST
@@ -135,10 +154,10 @@ START_TEST(test_plutosdr_failures2) {
 
     // init timeout a bit more for test to get ack with timeout failure
     reconnect_client_with_timeout(config->read_timeout_seconds * 2);
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->tx_dump_file = REQUEST_DUMP_FILE_YES;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, tx_req);
 
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
@@ -158,7 +177,7 @@ START_TEST(test_plutosdr_failures2) {
 
     code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, config->read_timeout_seconds, &client1);
     ck_assert_int_eq(code, 0);
-    assert_response_with_request(client1, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_TX_IS_BEING_USED, req);
+    assert_response_with_tx_request(client1, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_TX_IS_BEING_USED, tx_req);
 
 }
 
@@ -168,12 +187,12 @@ START_TEST (test_plutosdr_tx) {
     init_server_with_plutosdr_support(96000);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_dump_file = REQUEST_DUMP_FILE_YES;
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->tx_dump_file = REQUEST_DUMP_FILE_YES;
     // keep test stable
-    req->correct_doppler = REQUEST_CORRECT_DOPPLER_NO;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
+    tx_req->correct_doppler = REQUEST_CORRECT_DOPPLER_NO;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, tx_req);
 
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
@@ -259,7 +278,7 @@ START_TEST (test_invalid_requests) {
     ck_assert_int_eq(code, 0);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
     //do not assert anything here, just make sure request are coming through
     sdr_modem_client_send_header(client0, 255, TYPE_SHUTDOWN);
@@ -269,69 +288,69 @@ START_TEST (test_invalid_requests) {
     client0 = NULL;
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_type = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->rx_center_freq = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->rx_sampling_freq = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->rx_dump_file = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->rx_sdr_server_band_freq = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_baud_rate = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->correct_doppler = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_decimation = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_fsk_transition_width = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_fsk_use_dc_block = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     req->demod_destination = 255;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = 255;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = 255;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     //re-create server with plutosdr support
     tcp_server_destroy(server);
@@ -341,35 +360,35 @@ START_TEST (test_invalid_requests) {
     ck_assert_int_eq(code, 0);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_center_freq = 0;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->tx_center_freq = 0;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_sampling_freq = 0;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->tx_sampling_freq = 0;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->tx_dump_file = 255;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->tx_dump_file = 255;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     reconnect_client();
-    req = create_request();
-    req->mod_type = REQUEST_MODEM_TYPE_FSK;
-    req->mod_baud_rate = 0;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    tx_req = create_tx_request();
+    tx_req->mod_type = REQUEST_MODEM_TYPE_FSK;
+    tx_req->mod_baud_rate = 0;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
     reconnect_client();
-    req = create_request();
-    assert_response_with_header_and_request(client0, 255, TYPE_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
+    req = create_rx_request();
+    assert_response_with_header_and_request(client0, 255, TYPE_RX_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client();
-    req = create_request();
+    req = create_rx_request();
     assert_response_with_header_and_request(client0, PROTOCOL_VERSION, 255, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
     reconnect_client_with_timeout(10);
@@ -395,7 +414,7 @@ START_TEST(test_unable_to_connect_to_sdr_server) {
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 
-    req = create_request();
+    req = create_rx_request();
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, req);
 }
 
@@ -415,7 +434,7 @@ START_TEST (test_multiple_clients) {
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
 
-    req = create_request();
+    req = create_rx_request();
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS_SUCCESS, 0, req);
 
     // same freq, different baud rate
@@ -449,7 +468,7 @@ START_TEST (test_read_data) {
     uint32_t batch_size = 256;
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
-    req = create_request();
+    req = create_rx_request();
     // do not correct doppler - this will make test unstable and dependant on the
     // current satellite position
     req->correct_doppler = REQUEST_CORRECT_DOPPLER_NO;
@@ -545,6 +564,10 @@ void teardown() {
     if (req != NULL) {
         free(req);
         req = NULL;
+    }
+    if (tx_req != NULL) {
+        free(tx_req);
+        tx_req = NULL;
     }
     if (server != NULL) {
         tcp_server_destroy(server);

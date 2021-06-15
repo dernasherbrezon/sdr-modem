@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
-void api_network_to_host(struct request *req) {
+void normalize_rx_request(struct rx_request *req) {
     if (req == NULL) {
         return;
     }
@@ -15,6 +15,12 @@ void api_network_to_host(struct request *req) {
     req->demod_baud_rate = ntohl(req->demod_baud_rate);
     req->demod_fsk_deviation = ntohl(req->demod_fsk_deviation);
     req->demod_fsk_transition_width = ntohl(req->demod_fsk_transition_width);
+}
+
+void normalize_tx_request(struct tx_request *req) {
+    if (req == NULL) {
+        return;
+    }
     req->tx_center_freq = ntohl(req->tx_center_freq);
     req->tx_sampling_freq = ntohl(req->tx_sampling_freq);
     req->mod_baud_rate = ntohl(req->mod_baud_rate);
@@ -24,8 +30,6 @@ void api_network_to_host(struct request *req) {
 const char *api_modem_type_str(int demod_type) {
     if (demod_type == REQUEST_MODEM_TYPE_FSK) {
         return "FSK";
-    } else if (demod_type == REQUEST_MODEM_TYPE_NONE) {
-        return "NONE";
     }
     return "UNKNOWN";
 }

@@ -4,8 +4,10 @@
 
 #include "api.h"
 
-void api_network_to_host(struct request *req);
+void normalize_rx_request(struct rx_request *req);
 
-const char * api_modem_type_str(int demod_type);
+void normalize_tx_request(struct tx_request *req);
+
+const char *api_modem_type_str(int demod_type);
 
 #endif //SDR_MODEM_API_UTILS_H
