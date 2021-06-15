@@ -501,6 +501,13 @@ void handle_tx_client(int client_socket, tcp_server *server) {
     }
     tcp_worker->client_thread = client_thread;
 
+    code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
+    if (code != 0) {
+        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        tcp_worker_destroy(tcp_worker);
+        return;
+    }
+
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
     fprintf(stdout, "[%d] mod %s tx center_freq %d tx sampling rate %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq);
 }
