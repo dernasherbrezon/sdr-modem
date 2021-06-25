@@ -593,9 +593,9 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     }
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod %s rx center_freq %d rx sampling_rate %d demod destination %d\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod %s, rx center_freq: %d, rx sampling_rate: %d, baud: %d, destination %d\n", tcp_worker->id,
             api_modem_type_str(tcp_worker->rx_req->demod_type), tcp_worker->rx_req->rx_center_freq,
-            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_destination);
+            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, tcp_worker->rx_req->demod_destination);
 }
 
 static void *acceptor_worker(void *arg) {

@@ -65,17 +65,17 @@ struct rx_request {
 } __attribute__((packed));
 
 struct tx_request {
+    // generic TX sdr settings
+    uint32_t tx_center_freq;
+    uint32_t tx_sampling_freq;
+    uint8_t tx_dump_file;
+
     //doppler-related settings
     uint8_t correct_doppler;
     char tle[3][80];
     uint32_t latitude;      //degrees times 10^6
     uint32_t longitude;     //degrees times 10^6
     uint32_t altitude;      //kilometers times 10^6
-
-    // generic TX sdr settings
-    uint32_t tx_center_freq;
-    uint32_t tx_sampling_freq;
-    uint8_t tx_dump_file;
 
     //generic modulator settings
     uint8_t mod_type;
