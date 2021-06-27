@@ -162,10 +162,10 @@ static int plutosdr_write_lli(struct iio_channel *chn, const char *what, long lo
     return plutosdr_error_check(iio->lib->iio_channel_attr_write_longlong(chn, what, val), what, iio);
 }
 
-int plutosdr_enable_fir_filter(struct iio_device *dev, int enable, plutosdr *pluto) {
-    int ret = pluto->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", !!enable);
+int plutosdr_enable_fir_filter(struct iio_device *dev, bool enable, plutosdr *pluto) {
+    int ret = pluto->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", enable);
     if (ret < 0) {
-        ret = pluto->lib->iio_channel_attr_write_bool(pluto->lib->iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", !!enable);
+        ret = pluto->lib->iio_channel_attr_write_bool(pluto->lib->iio_device_find_channel(dev, "out", false), "voltage_filter_fir_en", enable);
     }
     return ret;
 }
@@ -183,19 +183,25 @@ static struct iio_channel *plutosdr_find_lo_channel(struct iio_context *ctx, enu
 }
 
 static struct iio_channel *plutosdr_find_streaming_channel(enum iio_direction d, struct iio_device *dev, int chid, plutosdr *pluto) {
-    struct iio_channel *chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
-    if (chn == NULL) {
-        chn = pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("altvoltage", chid), d == TX);
-    }
-    return chn;
+    return pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
 }
 
 int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
-    struct iio_channel *chn = plutosdr_find_phy_channel(ctx, type, channel_name, iio);
+    struct iio_channel *chn = plutosdr_find_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
     }
-    int code = plutosdr_write_lli(chn, "rf_bandwidth", cfg->sampling_freq, iio);
+
+    int code = plutosdr_write_lli(chn, "frequency", cfg->center_freq, iio);
+    if (code != 0) {
+        return code;
+    }
+
+    chn = plutosdr_find_phy_channel(ctx, type, channel_name, iio);
+    if (chn == NULL) {
+        return -1;
+    }
+    code = plutosdr_write_lli(chn, "rf_bandwidth", cfg->sampling_freq, iio);
     if (code != 0) {
         return code;
     }
@@ -230,11 +236,7 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_
         return code;
     }
 
-    chn = plutosdr_find_lo_channel(ctx, type, iio);
-    if (chn == NULL) {
-        return -1;
-    }
-    return plutosdr_write_lli(chn, "frequency", cfg->center_freq, iio);
+    return code;
 }
 
 int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
@@ -377,6 +379,10 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         return -1;
     }
 
+    //always set this field
+    //used for incoming argument validation
+    pluto->output_len = max_input_buffer_length;
+
     if (tx_config != NULL) {
         pluto->tx = plutosdr_find_device(pluto->ctx, TX, pluto);
         if (pluto->tx == NULL) {
@@ -384,6 +390,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
+
         code = plutosdr_configure_streaming_channel(pluto->ctx, tx_config, TX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
@@ -403,7 +410,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         }
         pluto->lib->iio_channel_enable(pluto->tx0_i);
         pluto->lib->iio_channel_enable(pluto->tx0_q);
-        pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, max_input_buffer_length, false);
+        pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->output_len, false);
         if (pluto->tx_buffer == NULL) {
             perror("unable to create tx buffer");
             plutosdr_destroy(pluto);
@@ -411,9 +418,6 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         }
     }
 
-    //always set this field
-    //used for incoming argument validation
-    pluto->output_len = max_input_buffer_length;
     if (rx_config != NULL) {
         pluto->rx = plutosdr_find_device(pluto->ctx, RX, pluto);
         if (pluto->rx == NULL) {
@@ -440,7 +444,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         }
         pluto->lib->iio_channel_enable(pluto->rx0_i);
         pluto->lib->iio_channel_enable(pluto->rx0_q);
-        pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, max_input_buffer_length, false);
+        pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, pluto->output_len, false);
         if (pluto->rx_buffer == NULL) {
             perror("unable to create rx buffer");
             plutosdr_destroy(pluto);
