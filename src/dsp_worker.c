@@ -101,7 +101,6 @@ static void *dsp_worker_callback(void *arg) {
         }
 
     }
-    close(worker->client_socket);
     printf("[%d] dsp_worker stopped\n", worker->id);
     return (void *) 0;
 }

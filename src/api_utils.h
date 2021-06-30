@@ -10,4 +10,6 @@ void normalize_tx_request(struct tx_request *req);
 
 const char *api_modem_type_str(int demod_type);
 
+const char *demod_destination_type_str(int demod_destination);
+
 #endif //SDR_MODEM_API_UTILS_H

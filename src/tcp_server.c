@@ -282,6 +282,8 @@ static void *tcp_worker_callback(void *arg) {
     //terminate sdr_worker if no more dsp_workers there
     sdr_worker_destroy_by_dsp_worker_id(worker->id, worker->sdr);
 
+    close(worker->client_socket);
+
     worker->is_running = false;
     return (void *) 0;
 }
@@ -311,7 +313,6 @@ void tcp_worker_destroy(void *data) {
     struct tcp_worker *worker = (struct tcp_worker *) data;
     fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->id);
     worker->is_running = false;
-    close(worker->client_socket);
     pthread_join(worker->client_thread, NULL);
     if (worker->rx_req != NULL) {
         free(worker->rx_req);
@@ -515,7 +516,7 @@ void handle_tx_client(int client_socket, tcp_server *server) {
     }
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod %s, tx center_freq: %d, tx sampling rate: %d, baud: %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->mod_baud_rate);
+    fprintf(stdout, "[%d] mod: %s, tx center_freq: %d, tx sampling rate: %d, baud: %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->mod_baud_rate);
 }
 
 void handle_rx_client(int client_socket, tcp_server *server) {
@@ -593,9 +594,9 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     }
 
     write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod %s, rx center_freq: %d, rx sampling_rate: %d, baud: %d, destination %d\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod: %s, rx center_freq: %d, rx sampling_rate: %d, baud: %d, destination: %s\n", tcp_worker->id,
             api_modem_type_str(tcp_worker->rx_req->demod_type), tcp_worker->rx_req->rx_center_freq,
-            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, tcp_worker->rx_req->demod_destination);
+            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, demod_destination_type_str(tcp_worker->rx_req->demod_destination));
 }
 
 static void *acceptor_worker(void *arg) {

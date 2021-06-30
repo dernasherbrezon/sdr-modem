@@ -33,3 +33,16 @@ const char *api_modem_type_str(int demod_type) {
     }
     return "UNKNOWN";
 }
+
+const char *demod_destination_type_str(int demod_destination) {
+    switch (demod_destination) {
+        case REQUEST_DEMOD_DESTINATION_FILE:
+            return "FILE";
+        case REQUEST_DEMOD_DESTINATION_SOCKET:
+            return "SOCKET";
+        case REQUEST_DEMOD_DESTINATION_BOTH:
+            return "BOTH";
+        default:
+            return "UNKNOWN";
+    }
+}
