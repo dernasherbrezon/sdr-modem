@@ -129,6 +129,48 @@ static struct iio_device *plutosdr_find_device(struct iio_context *ctx, enum iio
     }
 }
 
+// pluto can generate tones at certain frequencies, phases and amplitudes.
+// they are controlled by the TX1_I_F1/TX1_Q_F1/TX1_I_F2/TX1_Q_F2
+// these parameters can be saved into pluto's persistent memory and accidentally loaded
+// when the data transmitted by sdr-modem, it can be affected by the DDS tones, thus DDS tones must be disabled
+int plutosdr_disable_dds(plutosdr *pluto) {
+    // normally disabling just TX1_I_F1 would disable all other DDS channels
+    // but I disable all just in case
+    struct iio_channel *channel = pluto->lib->iio_device_find_channel(pluto->tx, "TX1_I_F1", true);
+    if (channel == NULL) {
+        return -1;
+    }
+    int code = pluto->lib->iio_channel_attr_write_bool(channel, "raw", 0);
+    if (code < 0) {
+        return code;
+    }
+    channel = pluto->lib->iio_device_find_channel(pluto->tx, "TX1_Q_F1", true);
+    if (channel == NULL) {
+        return -1;
+    }
+    code = pluto->lib->iio_channel_attr_write_bool(channel, "raw", 0);
+    if (code < 0) {
+        return code;
+    }
+    channel = pluto->lib->iio_device_find_channel(pluto->tx, "TX1_Q_F2", true);
+    if (channel == NULL) {
+        return -1;
+    }
+    code = pluto->lib->iio_channel_attr_write_bool(channel, "raw", 0);
+    if (code < 0) {
+        return code;
+    }
+    channel = pluto->lib->iio_device_find_channel(pluto->tx, "TX1_I_F2", true);
+    if (channel == NULL) {
+        return -1;
+    }
+    code = pluto->lib->iio_channel_attr_write_bool(channel, "raw", 0);
+    if (code < 0) {
+        return code;
+    }
+    return 0;
+}
+
 static char *plutosdr_format_channel_name(const char *type, int id) {
     snprintf(plutosdr_tmpstr, sizeof(plutosdr_tmpstr), "%s%d", type, id);
     return plutosdr_tmpstr;
@@ -277,6 +319,23 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
 
     // filter is not needed
     if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
+        //setup sampling freq a bit more to disable fir filter without error
+        struct iio_channel *chn = plutosdr_find_phy_channel(ctx, TX, "voltage0", pluto);
+        if (chn == NULL) {
+            return -1;
+        }
+        code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
+        if (code < 0) {
+            return code;
+        }
+        chn = plutosdr_find_phy_channel(ctx, RX, "voltage0", pluto);
+        if (chn == NULL) {
+            return -1;
+        }
+        code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
+        if (code < 0) {
+            return code;
+        }
         // filter might be configured prior to execution. disable it to support higher rates
         return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
     }
@@ -387,6 +446,12 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
         pluto->tx = plutosdr_find_device(pluto->ctx, TX, pluto);
         if (pluto->tx == NULL) {
             fprintf(stderr, "unable to find tx result\n");
+            plutosdr_destroy(pluto);
+            return -1;
+        }
+
+        code = plutosdr_disable_dds(pluto);
+        if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
         }
