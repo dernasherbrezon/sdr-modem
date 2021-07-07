@@ -1,7 +1,6 @@
 #include "api_utils.h"
 #include "tcp_utils.h"
 #include <stdlib.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
 
@@ -90,17 +89,15 @@ int api_utils_write_response(int socket, ResponseStatus status, uint32_t details
     header.type = TYPE_RESPONSE;
     header.message_length = htonl(len);
 
-    int code = tcp_utils_write_data((uint8_t *) &header, sizeof(struct message_header), socket);
-    if (code != 0) {
-        return code;
-    }
-
-    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    size_t buffer_len = sizeof(struct message_header) + sizeof(uint8_t) * len;
+    uint8_t *buffer = malloc(buffer_len);
     if (buffer == NULL) {
         return -ENOMEM;
     }
-    response__pack(&response, buffer);
-    code = tcp_utils_write_data(buffer, len, socket);
+    memcpy(buffer, &header, sizeof(struct message_header));
+    response__pack(&response, buffer + sizeof(struct message_header));
+
+    int code = tcp_utils_write_data(buffer, buffer_len, socket);
     free(buffer);
     return code;
 }
