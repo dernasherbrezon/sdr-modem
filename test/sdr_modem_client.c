@@ -69,7 +69,9 @@ int sdr_modem_client_write_tx_raw(struct message_header *header, struct TxData *
         return -ENOMEM;
     }
     tx_data__pack(req, buffer);
-    code = tcp_utils_write_data(buffer, req_len, client->client_socket);
+    // simulation partial payload
+    // always send header
+    code = tcp_utils_write_data(buffer, len - req->data.len + req_len, client->client_socket);
     free(buffer);
     return code;
 }

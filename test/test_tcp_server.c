@@ -609,15 +609,15 @@ Suite *common_suite(void) {
     /* Core test case */
     tc_core = tcase_create("Core");
 
-//    tcase_add_test(tc_core, test_invalid_config);
-//    tcase_add_test(tc_core, test_ping);
-//    tcase_add_test(tc_core, test_multiple_clients);
-//    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
-//    tcase_add_test(tc_core, test_read_data);
+    tcase_add_test(tc_core, test_invalid_config);
+    tcase_add_test(tc_core, test_ping);
+    tcase_add_test(tc_core, test_multiple_clients);
+    tcase_add_test(tc_core, test_unable_to_connect_to_sdr_server);
+    tcase_add_test(tc_core, test_read_data);
     tcase_add_test(tc_core, test_invalid_requests);
-//    tcase_add_test(tc_core, test_plutosdr_failures);
-//    tcase_add_test(tc_core, test_plutosdr_failures2);
-//    tcase_add_test(tc_core, test_plutosdr_tx);
+    tcase_add_test(tc_core, test_plutosdr_failures);
+    tcase_add_test(tc_core, test_plutosdr_failures2);
+    tcase_add_test(tc_core, test_plutosdr_tx);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
