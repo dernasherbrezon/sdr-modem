@@ -8,8 +8,8 @@
 #include "dsp/doppler.h"
 #include <string.h>
 #include <complex.h>
-#include <unistd.h>
 #include "tcp_utils.h"
+#include "api_utils.h"
 
 struct dsp_worker_t {
     uint32_t id;
@@ -90,7 +90,7 @@ static void *dsp_worker_callback(void *arg) {
             }
         }
         int code = 0;
-        if (worker->demod_destination == REQUEST_DEMOD_DESTINATION_SOCKET || worker->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
+        if (worker->demod_destination == DEMOD_DESTINATION__SOCKET || worker->demod_destination == DEMOD_DESTINATION__BOTH) {
             code = tcp_utils_write_data((uint8_t *) demod_output, demod_output_len, worker->client_socket);
         }
 
@@ -105,7 +105,7 @@ static void *dsp_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, int client_socket, struct server_config *server_config, struct rx_request *req,
+int dsp_worker_create(uint32_t id, int client_socket, struct server_config *server_config, struct RxRequest *req,
                       dsp_worker **worker) {
     struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
     if (result == NULL) {
@@ -117,8 +117,11 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     result->client_socket = client_socket;
 
     int code = 0;
-    if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
-        code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->rx_sampling_freq, req->rx_center_freq, 0, server_config->buffer_size, req->tle, &result->dopp);
+    if (req->doppler != NULL) {
+        struct DopplerSettings *doppler_settings = req->doppler;
+        char tle[3][80];
+        api_utils_convert_tle(doppler_settings->tle, tle);
+        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, req->rx_sampling_freq, req->rx_center_freq, 0, server_config->buffer_size, tle, &result->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create doppler correction block\n", result->id);
             dsp_worker_destroy(result);
@@ -126,11 +129,11 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         }
     }
 
-    if (req->demod_type == REQUEST_MODEM_TYPE_FSK) {
-        bool use_dc_block = (req->demod_fsk_use_dc_block == REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES);
+    if (req->demod_type == MODEM_TYPE__GMSK) {
+        struct FskDemodulationSettings *fsk_settings = req->fsk_settings;
         code = fsk_demod_create(req->rx_sampling_freq, req->demod_baud_rate,
-                                req->demod_fsk_deviation, req->demod_decimation,
-                                req->demod_fsk_transition_width, use_dc_block,
+                                fsk_settings->demod_fsk_deviation, req->demod_decimation,
+                                fsk_settings->demod_fsk_transition_width, fsk_settings->demod_fsk_use_dc_block,
                                 server_config->buffer_size, &result->fsk_demod);
     }
 
@@ -140,7 +143,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         return code;
     }
 
-    if (req->rx_dump_file == REQUEST_DUMP_FILE_YES) {
+    if (req->rx_dump_file) {
         char file_path[4096];
         snprintf(file_path, sizeof(file_path), "%s/rx.sdr2demod.%d.cf32", server_config->base_path, id);
         result->rx_dump_file = fopen(file_path, "wb");
@@ -151,7 +154,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         }
     }
     result->demod_destination = req->demod_destination;
-    if (req->demod_destination == REQUEST_DEMOD_DESTINATION_FILE || req->demod_destination == REQUEST_DEMOD_DESTINATION_BOTH) {
+    if (req->demod_destination == DEMOD_DESTINATION__FILE || req->demod_destination == DEMOD_DESTINATION__BOTH) {
         char file_path[4096];
         snprintf(file_path, sizeof(file_path), "%s/rx.demod2client.%d.s8", server_config->base_path, id);
         result->demod_file = fopen(file_path, "wb");

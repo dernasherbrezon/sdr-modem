@@ -3,45 +3,81 @@
 #include <volk/volk.h>
 #include <errno.h>
 
-struct rx_request *create_rx_request() {
-    struct rx_request *result = malloc(sizeof(struct rx_request));
-    ck_assert(result != NULL);
-    result->rx_sampling_freq = 48000;
-    result->rx_sdr_server_band_freq = 437525000;
-    result->rx_center_freq = 437525000;
-    result->rx_dump_file = REQUEST_DUMP_FILE_NO;
-    result->altitude = 0;
-    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
-    memcpy(result->tle, tle, sizeof(tle));
-    result->latitude = 53.72 * 10E6;
-    result->longitude = 47.57F * 10E6;
-    result->correct_doppler = REQUEST_CORRECT_DOPPLER_YES;
-    result->demod_destination = REQUEST_DEMOD_DESTINATION_SOCKET;
-    result->demod_type = REQUEST_MODEM_TYPE_FSK;
-    result->demod_fsk_use_dc_block = REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES;
-    result->demod_fsk_transition_width = 2000;
-    result->demod_decimation = 2;
-    result->demod_fsk_deviation = 5000;
-    result->demod_baud_rate = 4800;
-    return result;
+struct RxRequest *create_rx_request() {
+    struct DopplerSettings doppler_settings = DOPPLER_SETTINGS__INIT;
+    doppler_settings.altitude = 0;
+    doppler_settings.n_tle = 3;
+    char **tle = malloc(sizeof(char *) * doppler_settings.n_tle);
+    tle[0] = "LUCKY-7";
+    tle[1] = "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992";
+    tle[2] = "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524";
+    doppler_settings.tle = tle;
+    doppler_settings.latitude = 53.72 * 10E6;
+    doppler_settings.longitude = 47.57F * 10E6;
+
+    struct FskDemodulationSettings fsk_settings = FSK_DEMODULATION_SETTINGS__INIT;
+    fsk_settings.demod_fsk_use_dc_block = true;
+    fsk_settings.demod_fsk_transition_width = 2000;
+    fsk_settings.demod_fsk_deviation = 5000;
+
+    struct RxRequest result = RX_REQUEST__INIT;
+    result.rx_sampling_freq = 48000;
+    result.rx_sdr_server_band_freq = 437525000;
+    result.rx_center_freq = 437525000;
+    result.rx_dump_file = false;
+    result.doppler = &doppler_settings;
+    result.demod_destination = DEMOD_DESTINATION__SOCKET;
+    result.demod_type = MODEM_TYPE__GMSK;
+    result.demod_decimation = 2;
+    result.demod_baud_rate = 4800;
+    result.fsk_settings = &fsk_settings;
+
+    size_t len = rx_request__get_packed_size(&result);
+    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    if (buffer == NULL) {
+        free(tle);
+        return NULL;
+    }
+    rx_request__pack(&result, buffer);
+    struct RxRequest *unpacked = rx_request__unpack(NULL, len, buffer);
+    free(buffer);
+    free(tle);
+    return unpacked;
 }
 
-struct tx_request *create_tx_request() {
-    struct tx_request *result = malloc(sizeof(struct tx_request));
-    ck_assert(result != NULL);
-    result->altitude = 0;
-    char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992", "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524"};
-    memcpy(result->tle, tle, sizeof(tle));
-    result->latitude = 53.72 * 10E6;
-    result->longitude = 47.57F * 10E6;
-    result->correct_doppler = REQUEST_CORRECT_DOPPLER_YES;
-    result->tx_center_freq = 437525000;
-    result->tx_sampling_freq = 580000;
-    result->tx_dump_file = REQUEST_DUMP_FILE_NO;
-    result->mod_type = REQUEST_MODEM_TYPE_FSK;
-    result->mod_baud_rate = 4800;
-    result->mod_fsk_deviation = 5000;
-    return result;
+struct TxRequest *create_tx_request() {
+    struct DopplerSettings doppler_settings = DOPPLER_SETTINGS__INIT;
+    doppler_settings.altitude = 0;
+    doppler_settings.n_tle = 3;
+    char **tle = malloc(sizeof(char *) * doppler_settings.n_tle);
+    tle[0] = "LUCKY-7";
+    tle[1] = "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992";
+    tle[2] = "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524";
+    doppler_settings.tle = tle;
+    doppler_settings.latitude = 53.72 * 10E6;
+    doppler_settings.longitude = 47.57F * 10E6;
+    TxRequest result = TX_REQUEST__INIT;
+    result.doppler = &doppler_settings;
+    result.tx_center_freq = 437525000;
+    result.tx_sampling_freq = 580000;
+    result.tx_dump_file = false;
+    result.mod_type = MODEM_TYPE__GMSK;
+    result.mod_baud_rate = 4800;
+    struct FskModulationSettings fsk_settings = FSK_MODULATION_SETTINGS__INIT;
+    fsk_settings.mod_fsk_deviation = 5000;
+    result.fsk_settings = &fsk_settings;
+
+    size_t len = tx_request__get_packed_size(&result);
+    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    if (buffer == NULL) {
+        free(tle);
+        return NULL;
+    }
+    tx_request__pack(&result, buffer);
+    struct TxRequest *unpacked = tx_request__unpack(NULL, len, buffer);
+    free(buffer);
+    free(tle);
+    return unpacked;
 }
 
 void setup_input_data(float **input, size_t input_offset, size_t len) {
@@ -162,5 +198,15 @@ char *utils_read_and_copy_str(const char *value) {
     }
     strncpy(result, value, length);
     result[length] = '\0';
+    return result;
+}
+
+char **utils_allocate_tle(char tle[3][80]) {
+    char **result = malloc(sizeof(char *) * 3);
+    for (int i = 0; i < 3; i++) {
+        char *cur = malloc(sizeof(char) * 80);
+        strncpy(cur, tle[i], 80);
+        result[i] = cur;
+    }
     return result;
 }

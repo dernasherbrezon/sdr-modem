@@ -12,12 +12,12 @@
 #include <stdatomic.h>
 
 #include "api.h"
+#include "api.pb-c.h"
 #include "tcp_server.h"
 #include "linked_list.h"
 #include "api_utils.h"
 #include "dsp_worker.h"
 #include "sdr_worker.h"
-#include "tcp_utils.h"
 #include "dsp/gfsk_mod.h"
 #include <math.h>
 #include "dsp/doppler.h"
@@ -29,8 +29,8 @@
 #endif
 
 struct tcp_worker {
-    struct rx_request *rx_req;
-    struct tx_request *tx_req;
+    struct RxRequest *rx_req;
+    struct TxRequest *tx_req;
     int client_socket;
     uint32_t id;
     atomic_bool is_running;
@@ -67,7 +67,7 @@ void log_client(struct sockaddr_in *address, uint32_t id) {
     printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-int tcp_worker_convert(struct rx_request *req, struct sdr_worker_rx **result) {
+int tcp_worker_convert(struct RxRequest *req, struct sdr_worker_rx **result) {
     struct sdr_worker_rx *rx = malloc(sizeof(struct sdr_worker_rx));
     if (rx == NULL) {
         return -ENOMEM;
@@ -80,8 +80,8 @@ int tcp_worker_convert(struct rx_request *req, struct sdr_worker_rx **result) {
     return 0;
 }
 
-int validate_tx_request(struct tx_request *req, uint32_t client_id, struct server_config *config) {
-    if (req->mod_type != REQUEST_MODEM_TYPE_FSK) {
+int validate_tx_request(struct TxRequest *req, uint32_t client_id, struct server_config *config) {
+    if (req->mod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown mod_type: %d\n", client_id, req->mod_type);
         return -1;
     }
@@ -97,19 +97,21 @@ int validate_tx_request(struct tx_request *req, uint32_t client_id, struct serve
         fprintf(stderr, "<3>[%d] missing tx_sampling_freq parameter\n", client_id);
         return -1;
     }
-    if (req->tx_dump_file != REQUEST_DUMP_FILE_YES && req->tx_dump_file != REQUEST_DUMP_FILE_NO) {
-        fprintf(stderr, "<3>[%d] unknown tx_dump_file: %d\n", client_id, req->tx_dump_file);
-        return -1;
-    }
     if (req->mod_baud_rate == 0) {
         fprintf(stderr, "<3>[%d] missing mod_baud_rate parameter\n", client_id);
         return -1;
     }
+    if (req->doppler != NULL) {
+        if (req->doppler->n_tle != 3) {
+            fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
+            return -1;
+        }
+    }
     return 0;
 }
 
-int validate_rx_request(struct rx_request *req, uint32_t client_id, struct server_config *config) {
-    if (req->demod_type != REQUEST_MODEM_TYPE_FSK) {
+int validate_rx_request(struct RxRequest *req, uint32_t client_id, struct server_config *config) {
+    if (req->demod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
     }
@@ -121,10 +123,6 @@ int validate_rx_request(struct rx_request *req, uint32_t client_id, struct serve
         fprintf(stderr, "<3>[%d] missing rx_sampling_freq parameter\n", client_id);
         return -1;
     }
-    if (req->rx_dump_file != REQUEST_DUMP_FILE_YES && req->rx_dump_file != REQUEST_DUMP_FILE_NO) {
-        fprintf(stderr, "<3>[%d] unknown rx_dump_file: %d\n", client_id, req->rx_dump_file);
-        return -1;
-    }
     if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
         fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
         return -1;
@@ -133,68 +131,48 @@ int validate_rx_request(struct rx_request *req, uint32_t client_id, struct serve
         fprintf(stderr, "<3>[%d] missing demod_baud_rate parameter\n", client_id);
         return -1;
     }
-    if (req->correct_doppler != REQUEST_CORRECT_DOPPLER_NO && req->correct_doppler != REQUEST_CORRECT_DOPPLER_YES) {
-        fprintf(stderr, "<3>[%d] unknown correct_doppler: %d\n", client_id, req->correct_doppler);
+    if (req->doppler != NULL) {
+        if (req->doppler->n_tle != 3) {
+            fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
+            return -1;
+        }
+    }
+    if (req->demod_decimation == 0) {
+        fprintf(stderr, "<3>[%d] missing demod_decimation parameter\n", client_id);
         return -1;
     }
-    if (req->demod_type == REQUEST_MODEM_TYPE_FSK) {
-        if (req->demod_decimation == 0) {
-            fprintf(stderr, "<3>[%d] missing demod_decimation parameter\n", client_id);
+    if (req->demod_destination != DEMOD_DESTINATION__FILE && req->demod_destination != DEMOD_DESTINATION__SOCKET && req->demod_destination != DEMOD_DESTINATION__BOTH) {
+        fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
+        return -1;
+    }
+    if (req->demod_type == MODEM_TYPE__GMSK) {
+        if (req->fsk_settings == NULL) {
+            fprintf(stderr, "<3>[%d] missing fsk_settings parameter\n", client_id);
             return -1;
         }
-        if (req->demod_fsk_transition_width == 0) {
+        if (req->fsk_settings->demod_fsk_transition_width == 0) {
             fprintf(stderr, "<3>[%d] missing demod_fsk_transition_width parameter\n", client_id);
-            return -1;
-        }
-        if (req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_NO && req->demod_fsk_use_dc_block != REQUEST_DEMOD_FSK_USE_DC_BLOCK_YES) {
-            fprintf(stderr, "<3>[%d] unknown demod_fsk_use_dc_block: %d\n", client_id, req->demod_fsk_use_dc_block);
-            return -1;
-        }
-        if (req->demod_destination != REQUEST_DEMOD_DESTINATION_FILE && req->demod_destination != REQUEST_DEMOD_DESTINATION_SOCKET && req->demod_destination != REQUEST_DEMOD_DESTINATION_BOTH) {
-            fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
             return -1;
         }
     }
     return 0;
 }
 
-int write_message(int socket, uint8_t status, uint32_t details) {
-    struct message_header header;
-    header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_RESPONSE;
-    struct response resp;
-    resp.status = status;
-    resp.details = htonl(details);
-
-    // it is possible to directly populate *buffer with the fields,
-    // however populating structs and then serializing them into byte array
-    // is more readable
-    size_t total_len = sizeof(struct message_header) + sizeof(struct response);
-    uint8_t *buffer = malloc(total_len);
-    if (buffer == NULL) {
-        return -ENOMEM;
-    }
-    memcpy(buffer, &header, sizeof(struct message_header));
-    memcpy(buffer + sizeof(struct message_header), &resp, sizeof(struct response));
-
-    int code = tcp_utils_write_data(buffer, total_len, socket);
-    free(buffer);
-    return code;
-}
-
-void respond_failure(int client_socket, uint8_t status, uint32_t details) {
-    write_message(client_socket, status, details);
+void respond_failure(int client_socket, ResponseStatus status, uint32_t details) {
+    api_utils_write_response(client_socket, status, details);
     close(client_socket);
 }
 
-void handle_tx_data(struct tcp_worker *worker) {
-    uint32_t len = 0;
-    int code = tcp_utils_read_data(&len, sizeof(uint32_t), worker->client_socket);
+void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
+    TxData *data = NULL;
+    int code = api_utils_read_tx_data(worker->client_socket, header, &data);
     if (code != 0) {
+        fprintf(stderr, "<3>[%d] unable to read tx request fully\n", worker->id);
+        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         return;
     }
-    len = ntohl(len);
-    uint32_t left = len;
+    uint32_t left = data->data.len;
+    uint32_t processed = 0;
     while (left > 0) {
         uint32_t batch;
         if (left < worker->buffer_size) {
@@ -202,17 +180,10 @@ void handle_tx_data(struct tcp_worker *worker) {
         } else {
             batch = worker->buffer_size;
         }
-        code = tcp_utils_read_data(worker->buffer, batch, worker->client_socket);
-        if (code != 0) {
-            fprintf(stderr, "<3>[%d] unable to read tx request fully\n", worker->id);
-            write_message(worker->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-            return;
-        }
-
         float complex *output = NULL;
         size_t output_len = 0;
         if (worker->fsk_mod != NULL) {
-            gfsk_mod_process(worker->buffer, batch, &output, &output_len, worker->fsk_mod);
+            gfsk_mod_process(data->data.data + processed, batch, &output, &output_len, worker->fsk_mod);
         }
 
         if (worker->dopp != NULL) {
@@ -236,16 +207,20 @@ void handle_tx_data(struct tcp_worker *worker) {
             code = worker->tx_device->sdr_process_tx(output, output_len, worker->tx_device->plugin);
             if (code != 0) {
                 fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
-                write_message(worker->client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-                return;
+                api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+                break;
             }
         }
 
         left -= batch;
+        processed += batch;
     }
 
-    fprintf(stdout, "[%d] successfully sent %d bytes\n", worker->id, len);
-    write_message(worker->client_socket, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
+    if (left == 0) {
+        fprintf(stdout, "[%d] successfully sent %zu bytes\n", worker->id, data->data.len);
+        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
+    }
+    tx_data__free_unpacked(data, NULL);
 }
 
 static void *tcp_worker_callback(void *arg) {
@@ -254,7 +229,7 @@ static void *tcp_worker_callback(void *arg) {
     fprintf(stdout, "[%d] tcp_worker is starting\n", id);
     while (worker->is_running) {
         struct message_header header;
-        int code = tcp_utils_read_data(&header, sizeof(struct message_header), worker->client_socket);
+        int code = api_utils_read_header(worker->client_socket, &header);
         if (code < -1) {
             // read timeout happened. it's ok.
             // client already sent all information we need
@@ -273,7 +248,7 @@ static void *tcp_worker_callback(void *arg) {
             break;
         } else if (header.type == TYPE_TX_DATA) {
             fprintf(stdout, "[%d] received tx request\n", id);
-            handle_tx_data(worker);
+            handle_tx_data(worker, &header);
         } else {
             fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
         }
@@ -315,10 +290,10 @@ void tcp_worker_destroy(void *data) {
     worker->is_running = false;
     pthread_join(worker->client_thread, NULL);
     if (worker->rx_req != NULL) {
-        free(worker->rx_req);
+        rx_request__free_unpacked(worker->rx_req, NULL);
     }
     if (worker->tx_req != NULL) {
-        free(worker->tx_req);
+        tx_request__free_unpacked(worker->tx_req, NULL);
     }
     if (worker->buffer != NULL) {
         free(worker->buffer);
@@ -352,7 +327,7 @@ void cleanup_terminated_threads(tcp_server *server) {
     pthread_mutex_unlock(&server->mutex);
 }
 
-int tcp_server_init_plutosdr(uint32_t id, struct tx_request *req, tcp_server *server, sdr_device **output) {
+int tcp_server_init_plutosdr(uint32_t id, struct TxRequest *req, tcp_server *server, sdr_device **output) {
     if (server->tx_initialized) {
         fprintf(stderr, "<3>[%d] tx is being used\n", id);
         return -RESPONSE_DETAILS_TX_IS_BEING_USED;
@@ -410,25 +385,16 @@ int tcp_server_init_rx(dsp_worker *dsp_worker, tcp_server *server, struct tcp_wo
     return 0;
 }
 
-void handle_tx_client(int client_socket, tcp_server *server) {
+void handle_tx_client(int client_socket, struct message_header *header, tcp_server *server) {
     struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
     if (tcp_worker == NULL) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         return;
     }
     *tcp_worker = (struct tcp_worker) {0};
     tcp_worker->id = server->client_counter;
     tcp_worker->client_socket = client_socket;
     tcp_worker->server = server;
-
-    struct tx_request *req = malloc(sizeof(struct tx_request));
-    if (req == NULL) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-        tcp_worker_destroy(tcp_worker);
-        return;
-    }
-    *req = (struct tx_request) {0};
-    tcp_worker->tx_req = req;
     //explicitly init all rx fields to NULL for tx client
     tcp_worker->rx_req = NULL;
     tcp_worker->sdr = NULL;
@@ -436,52 +402,56 @@ void handle_tx_client(int client_socket, tcp_server *server) {
     tcp_worker->buffer_size = server->server_config->buffer_size;
     tcp_worker->buffer = malloc(sizeof(uint8_t) * tcp_worker->buffer_size);
     if (tcp_worker->buffer == NULL) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
 
-    if (tcp_utils_read_data(tcp_worker->tx_req, sizeof(struct tx_request), client_socket) < 0) {
+    if (api_utils_read_tx_request(client_socket, header, &tcp_worker->tx_req) != 0) {
         fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
-    normalize_tx_request(tcp_worker->tx_req);
 
     if (validate_tx_request(tcp_worker->tx_req, tcp_worker->id, server->server_config) < 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
 
     int code;
-    if (tcp_worker->tx_req->mod_type == REQUEST_MODEM_TYPE_FSK) {
-        code = gfsk_mod_create((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate, (2 * M_PI * tcp_worker->tx_req->mod_fsk_deviation / tcp_worker->tx_req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
+    if (tcp_worker->tx_req->mod_type == MODEM_TYPE__GMSK) {
+        struct FskModulationSettings *fsk_settings = tcp_worker->tx_req->fsk_settings;
+        code = gfsk_mod_create((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate, (2 * M_PI * fsk_settings->mod_fsk_deviation / tcp_worker->tx_req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
             return;
         }
     }
-    if (req->correct_doppler == REQUEST_CORRECT_DOPPLER_YES) {
+    if (tcp_worker->tx_req->doppler != NULL) {
+        struct DopplerSettings *doppler_settings = tcp_worker->tx_req->doppler;
+        char tle[3][80];
+        api_utils_convert_tle(doppler_settings->tle, tle);
         int samples_per_symbol = (int) ((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
-        code = doppler_create(req->latitude / 10E6F, req->longitude / 10E6F, req->altitude / 10E3F, req->tx_sampling_freq, req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size, req->tle, &tcp_worker->dopp);
+        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size,
+                              tle, &tcp_worker->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
             return;
         }
     }
-    if (req->tx_dump_file == REQUEST_DUMP_FILE_YES) {
+    if (tcp_worker->tx_req->tx_dump_file) {
         char file_path[4096];
         snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", server->server_config->base_path, tcp_worker->id);
         tcp_worker->tx_dump_file = fopen(file_path, "wb");
         if (tcp_worker->tx_dump_file == NULL) {
             fprintf(stderr, "<3>[%d] unable to open file for tx output: %s\n", tcp_worker->id, file_path);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
             return;
         }
@@ -491,7 +461,7 @@ void handle_tx_client(int client_socket, tcp_server *server) {
         code = tcp_server_init_plutosdr(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
         pthread_mutex_unlock(&server->mutex);
         if (code < 0) {
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, -code);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, -code);
             tcp_worker_destroy(tcp_worker);
             return;
         }
@@ -502,7 +472,7 @@ void handle_tx_client(int client_socket, tcp_server *server) {
     pthread_t client_thread;
     code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
     if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
@@ -510,34 +480,26 @@ void handle_tx_client(int client_socket, tcp_server *server) {
 
     code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
     if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
 
-    write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod: %s, tx center_freq: %d, tx sampling rate: %d, baud: %d\n", tcp_worker->id, api_modem_type_str(tcp_worker->tx_req->mod_type), tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->mod_baud_rate);
+    api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
+    fprintf(stdout, "[%d] mod: %s, tx center_freq: %d, tx sampling rate: %d, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_sampling_freq,
+            tcp_worker->tx_req->mod_baud_rate);
 }
 
-void handle_rx_client(int client_socket, tcp_server *server) {
+void handle_rx_client(int client_socket, struct message_header *header, tcp_server *server) {
     struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
     if (tcp_worker == NULL) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         return;
     }
     *tcp_worker = (struct tcp_worker) {0};
     tcp_worker->id = server->client_counter;
     tcp_worker->client_socket = client_socket;
     tcp_worker->server = server;
-
-    struct rx_request *req = malloc(sizeof(struct rx_request));
-    if (req == NULL) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-        tcp_worker_destroy(tcp_worker);
-        return;
-    }
-    *req = (struct rx_request) {0};
-    tcp_worker->rx_req = req;
     //explicitly init all tx fields to NULL for rx client
     tcp_worker->tx_req = NULL;
     tcp_worker->fsk_mod = NULL;
@@ -549,16 +511,15 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     tcp_worker->buffer_size = 0;
     tcp_worker->buffer = NULL;
 
-    if (tcp_utils_read_data(tcp_worker->rx_req, sizeof(struct rx_request), client_socket) < 0) {
+    if (api_utils_read_rx_request(client_socket, header, &tcp_worker->rx_req) != 0) {
         fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
-    normalize_rx_request(tcp_worker->rx_req);
 
     if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id, server->server_config) < 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
     }
@@ -568,7 +529,7 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     pthread_t client_thread;
     int code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
     if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
@@ -577,7 +538,7 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     dsp_worker *dsp_worker = NULL;
     code = dsp_worker_create(tcp_worker->id, tcp_worker->client_socket, server->server_config, tcp_worker->rx_req, &dsp_worker);
     if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
         tcp_worker_destroy(tcp_worker);
         return;
     }
@@ -586,17 +547,17 @@ void handle_rx_client(int client_socket, tcp_server *server) {
     code = tcp_server_init_rx(dsp_worker, server, tcp_worker);
     pthread_mutex_unlock(&server->mutex);
     if (code != 0) {
-        respond_failure(client_socket, RESPONSE_STATUS_FAILURE, -code);
+        respond_failure(client_socket, RESPONSE_STATUS__FAILURE, -code);
         // this will trigger sdr_worker destroy if any
         tcp_worker_destroy(tcp_worker);
         dsp_worker_destroy(dsp_worker);
         return;
     }
 
-    write_message(tcp_worker->client_socket, RESPONSE_STATUS_SUCCESS, tcp_worker->id);
+    api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
     fprintf(stdout, "[%d] demod: %s, rx center_freq: %d, rx sampling_rate: %d, baud: %d, destination: %s\n", tcp_worker->id,
-            api_modem_type_str(tcp_worker->rx_req->demod_type), tcp_worker->rx_req->rx_center_freq,
-            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, demod_destination_type_str(tcp_worker->rx_req->demod_destination));
+            protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, tcp_worker->rx_req->rx_center_freq,
+            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name);
 }
 
 static void *acceptor_worker(void *arg) {
@@ -622,14 +583,14 @@ static void *acceptor_worker(void *arg) {
         server->client_counter++;
 
         struct message_header header;
-        if (tcp_utils_read_data(&header, sizeof(struct message_header), client_socket) < 0) {
+        if (api_utils_read_header(client_socket, &header) != 0) {
             fprintf(stderr, "<3>[%d] unable to read request header fully\n", server->client_counter);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
             continue;
         }
         if (header.protocol_version != PROTOCOL_VERSION) {
             fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", server->client_counter, header.protocol_version);
-            respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+            respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
             continue;
         }
 
@@ -638,19 +599,19 @@ static void *acceptor_worker(void *arg) {
         switch (header.type) {
             case TYPE_RX_REQUEST:
                 log_client(&address, server->client_counter);
-                handle_rx_client(client_socket, server);
+                handle_rx_client(client_socket, &header, server);
                 break;
             case TYPE_TX_REQUEST:
                 log_client(&address, server->client_counter);
-                handle_tx_client(client_socket, server);
+                handle_tx_client(client_socket, &header, server);
                 break;
             case TYPE_PING:
-                write_message(client_socket, RESPONSE_STATUS_SUCCESS, RESPONSE_NO_DETAILS);
+                api_utils_write_response(client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
                 close(client_socket);
                 break;
             default:
                 fprintf(stderr, "<3>[%d] unsupported request: %d\n", server->client_counter, header.type);
-                respond_failure(client_socket, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+                respond_failure(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
                 break;
         }
 

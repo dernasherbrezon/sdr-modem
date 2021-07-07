@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include "../src/tcp_utils.h"
+#include "../src/api_utils.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -16,110 +17,100 @@ struct sdr_modem_client_t {
     size_t output_len;
 };
 
-int sdr_modem_client_write_tx_request(struct message_header *header, struct tx_request *req, sdr_modem_client *client) {
-    struct tx_request *req_copy = malloc(sizeof(struct tx_request));
-    if (req_copy == NULL) {
-        return -ENOMEM;
-    }
-    memcpy(req_copy, req, sizeof(struct tx_request));
-    req_copy->tx_center_freq = htonl(req->tx_center_freq);
-    req_copy->tx_sampling_freq = htonl(req->tx_sampling_freq);
-    req_copy->mod_baud_rate = htonl(req->mod_baud_rate);
-    req_copy->mod_fsk_deviation = htonl(req->mod_fsk_deviation);
-
-    size_t total_len = sizeof(struct message_header) + sizeof(struct tx_request);
-    uint8_t *buffer = malloc(total_len);
-    if (buffer == NULL) {
-        free(req_copy);
-        return -ENOMEM;
-    }
-    memcpy(buffer, header, sizeof(struct message_header));
-    memcpy(buffer + sizeof(struct message_header), req_copy, sizeof(struct tx_request));
-
-    int code = tcp_utils_write_data(buffer, total_len, client->client_socket);
-    free(buffer);
-    free(req_copy);
-    return code;
-}
-
-int sdr_modem_client_write_request(struct message_header *header, struct rx_request *req, sdr_modem_client *client) {
-    struct rx_request *req_copy = malloc(sizeof(struct rx_request));
-    if (req_copy == NULL) {
-        return -ENOMEM;
-    }
-    memcpy(req_copy, req, sizeof(struct rx_request));
-    req_copy->rx_center_freq = htonl(req->rx_center_freq);
-    req_copy->rx_sampling_freq = htonl(req->rx_sampling_freq);
-    req_copy->rx_sdr_server_band_freq = htonl(req->rx_sdr_server_band_freq);
-    req_copy->latitude = htonl(req->latitude);
-    req_copy->longitude = htonl(req->longitude);
-    req_copy->altitude = htonl(req->altitude);
-    req_copy->demod_baud_rate = htonl(req->demod_baud_rate);
-    req_copy->demod_fsk_deviation = htonl(req->demod_fsk_deviation);
-    req_copy->demod_fsk_transition_width = htonl(req->demod_fsk_transition_width);
-
-    size_t total_len = sizeof(struct message_header) + sizeof(struct rx_request);
-    uint8_t *buffer = malloc(total_len);
-    if (buffer == NULL) {
-        free(req_copy);
-        return -ENOMEM;
-    }
-    memcpy(buffer, header, sizeof(struct message_header));
-    memcpy(buffer + sizeof(struct message_header), req_copy, sizeof(struct rx_request));
-
-    int code = tcp_utils_write_data(buffer, total_len, client->client_socket);
-    free(buffer);
-    free(req_copy);
-    return code;
-}
-
-int sdr_modem_client_write_tx_raw(struct message_header *header, struct tx_data *req, uint32_t req_len, sdr_modem_client *client) {
-    if (req->len < req_len) {
-        fprintf(stderr, "cannot simulate more data than actually allocated\n");
-        return -1;
-    }
+int sdr_modem_client_write_tx_request(struct message_header *header, struct TxRequest *req, sdr_modem_client *client) {
+    size_t len = tx_request__get_packed_size(req);
+    header->message_length = htonl(len);
     int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
     if (code != 0) {
         return code;
     }
-    uint32_t len_to_send = htonl(req->len);
-    code = tcp_utils_write_data((uint8_t *) &len_to_send, sizeof(req->len), client->client_socket);
+
+    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    if (buffer == NULL) {
+        return -ENOMEM;
+    }
+    tx_request__pack(req, buffer);
+    code = tcp_utils_write_data(buffer, len, client->client_socket);
+    free(buffer);
+    return code;
+}
+
+int sdr_modem_client_write_request(struct message_header *header, struct RxRequest *req, sdr_modem_client *client) {
+    size_t len = rx_request__get_packed_size(req);
+    header->message_length = htonl(len);
+    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
     if (code != 0) {
         return code;
     }
-    return tcp_utils_write_data(req->data, sizeof(uint8_t) * req_len, client->client_socket);
+
+    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    if (buffer == NULL) {
+        return -ENOMEM;
+    }
+    rx_request__pack(req, buffer);
+    code = tcp_utils_write_data(buffer, len, client->client_socket);
+    free(buffer);
+    return code;
 }
 
-int sdr_modem_client_write_tx(struct message_header *header, struct tx_data *req, sdr_modem_client *client) {
-    return sdr_modem_client_write_tx_raw(header, req, req->len, client);
+int sdr_modem_client_write_tx_raw(struct message_header *header, struct TxData *req, uint32_t req_len, sdr_modem_client *client) {
+    if (req->data.len < req_len) {
+        fprintf(stderr, "cannot simulate more data than actually allocated\n");
+        return -1;
+    }
+    size_t len = tx_data__get_packed_size(req);
+    header->message_length = htonl(len);
+    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
+    if (code != 0) {
+        return code;
+    }
+    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
+    if (buffer == NULL) {
+        return -ENOMEM;
+    }
+    tx_data__pack(req, buffer);
+    code = tcp_utils_write_data(buffer, req_len, client->client_socket);
+    free(buffer);
+    return code;
+}
+
+int sdr_modem_client_write_tx(struct message_header *header, struct TxData *req, sdr_modem_client *client) {
+    return sdr_modem_client_write_tx_raw(header, req, req->data.len, client);
 }
 
 int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_client *client) {
     return tcp_utils_write_data(buffer, buffer_len, client->client_socket);
 }
 
-int sdr_modem_client_read_response(struct message_header **response_header, struct response **resp, sdr_modem_client *client) {
+int sdr_modem_client_read_response(struct message_header **response_header, struct Response **resp, sdr_modem_client *client) {
     struct message_header *header = malloc(sizeof(struct message_header));
     if (header == NULL) {
         return -ENOMEM;
     }
-    int code = tcp_utils_read_data(header, sizeof(struct message_header), client->client_socket);
+    int code = api_utils_read_header(client->client_socket, header);
     if (code != 0) {
         free(header);
         return code;
     }
-    struct response *result = malloc(sizeof(struct response));
-    if (result == NULL) {
+    uint8_t *buffer = malloc(sizeof(uint8_t) * header->message_length);
+    if (buffer == NULL) {
         free(header);
         return -ENOMEM;
     }
-    code = tcp_utils_read_data(result, sizeof(struct response), client->client_socket);
+
+    code = tcp_utils_read_data(buffer, header->message_length, client->client_socket);
     if (code != 0) {
+        free(buffer);
         free(header);
-        free(result);
         return code;
     }
-    result->details = ntohl(result->details);
+    Response *result = response__unpack(NULL, header->message_length, buffer);
+    if (result == NULL) {
+        free(header);
+        free(buffer);
+        return -1;
+    }
+
     *response_header = header;
     *resp = result;
     return 0;

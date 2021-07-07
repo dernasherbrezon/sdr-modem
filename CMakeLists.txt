@@ -9,6 +9,7 @@ endif ()
 
 add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api_utils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/linked_list.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/queue.c
@@ -57,6 +58,10 @@ target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
 pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
 include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
 target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LINK_LIBRARIES})
+
+pkg_check_modules(PC_LIBPROTOBUFC REQUIRED libprotobuf-c)
+include_directories(${PC_LIBPROTOBUFC_INCLUDE_DIRS})
+target_link_libraries(sdr_modemLib ${PC_LIBPROTOBUFC_LINK_LIBRARIES})
 
 if (APPLE)
     find_path(LIBIIO_INCLUDE_DIRS iio.h)

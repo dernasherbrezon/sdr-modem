@@ -3,12 +3,12 @@
 
 #include <complex.h>
 #include <stdlib.h>
-#include "../src/api.h"
+#include "../src/api.pb-c.h"
 #include <stdio.h>
 
-struct rx_request *create_rx_request();
+struct RxRequest *create_rx_request();
 
-struct tx_request *create_tx_request();
+struct TxRequest *create_tx_request();
 
 void setup_input_data(float **input, size_t input_offset, size_t len);
 
@@ -29,4 +29,7 @@ void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffe
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file);
 
 char *utils_read_and_copy_str(const char *value);
+
+char ** utils_allocate_tle(char tle[3][80]);
+
 #endif //SDR_MODEM_UTILS_H

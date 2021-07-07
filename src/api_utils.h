@@ -3,13 +3,18 @@
 #define SDR_MODEM_API_UTILS_H
 
 #include "api.h"
+#include "api.pb-c.h"
 
-void normalize_rx_request(struct rx_request *req);
+int api_utils_read_header(int socket, struct message_header *header);
 
-void normalize_tx_request(struct tx_request *req);
+int api_utils_read_rx_request(int socket, struct message_header *header, struct RxRequest **request);
 
-const char *api_modem_type_str(int demod_type);
+int api_utils_read_tx_request(int socket, struct message_header *header, struct TxRequest **request);
 
-const char *demod_destination_type_str(int demod_destination);
+int api_utils_read_tx_data(int socket, struct message_header *header, struct TxData **request);
+
+int api_utils_write_response(int socket, ResponseStatus status, uint32_t details);
+
+void api_utils_convert_tle(char **tle, char (*output)[80]);
 
 #endif //SDR_MODEM_API_UTILS_H

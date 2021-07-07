@@ -6,7 +6,7 @@
 
 dsp_worker *worker = NULL;
 struct server_config *config = NULL;
-struct rx_request *req = NULL;
+struct RxRequest *req = NULL;
 
 START_TEST (test_invalid_basepath) {
     int code = server_config_create(&config, "full.conf");
@@ -14,12 +14,12 @@ START_TEST (test_invalid_basepath) {
     free(config->base_path);
     config->base_path = utils_read_and_copy_str("/invalidpath/");
     req = create_rx_request();
-    req->rx_dump_file = REQUEST_DUMP_FILE_YES;
+    req->rx_dump_file = true;
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 
-    req->rx_dump_file = REQUEST_DUMP_FILE_NO;
-    req->demod_destination = REQUEST_DEMOD_DESTINATION_FILE;
+    req->rx_dump_file = false;
+    req->demod_destination = DEMOD_DESTINATION__FILE;
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 
@@ -42,8 +42,9 @@ START_TEST (test_invalid_doppler_configuration) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
     req = create_rx_request();
-    char tle[3][80] = {"0", "1 0 0   0  0  00000-0  0 0  0", "2 0  0  0 0 0 0 0 0"};
-    memcpy(req->tle, tle, sizeof(tle));
+    free(req->doppler->tle);
+    char tle[3][80] = {"0\0", "1 0 0   0  0  00000-0  0 0  0\0", "2 0  0  0 0 0 0 0 0\0"};
+    req->doppler->tle = utils_allocate_tle(tle);
     code = dsp_worker_create(1, 0, config, req, &worker);
     ck_assert_int_eq(code, -1);
 }
@@ -85,7 +86,7 @@ void teardown() {
         config = NULL;
     }
     if (req != NULL) {
-        free(req);
+        rx_request__free_unpacked(req, NULL);
         req = NULL;
     }
 }
