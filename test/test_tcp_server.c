@@ -42,11 +42,11 @@ void reconnect_client_with_timeout(int read_timeout_seconds) {
     sdr_modem_client_destroy(client0);
     client0 = NULL;
     if (req != NULL) {
-        free(req);
+        rx_request__free_unpacked(req, NULL);
         req = NULL;
     }
     if (tx_req != NULL) {
-        free(tx_req);
+        tx_request__free_unpacked(tx_req, NULL);
         tx_req = NULL;
     }
     int code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, read_timeout_seconds, &client0);
