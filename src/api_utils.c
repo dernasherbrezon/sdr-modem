@@ -25,6 +25,7 @@ int api_utils_read_tx_data(int socket, struct message_header *header, struct TxD
     }
     int code = tcp_utils_read_data(buffer, header->message_length, socket);
     if (code != 0) {
+        free(buffer);
         return -1;
     }
     TxData *result = tx_data__unpack(NULL, header->message_length, buffer);

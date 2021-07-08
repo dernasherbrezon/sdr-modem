@@ -191,6 +191,7 @@ START_TEST (test_plutosdr_tx) {
     tx_req->mod_type = MODEM_TYPE__GMSK;
     tx_req->tx_dump_file = true;
     // keep test stable
+    doppler_settings__free_unpacked(tx_req->doppler, NULL);
     tx_req->doppler = NULL;
     assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
 
@@ -452,6 +453,7 @@ START_TEST (test_read_data) {
     req = create_rx_request();
     // do not correct doppler - this will make test unstable and dependant on the
     // current satellite position
+    doppler_settings__free_unpacked(req->doppler, NULL);
     req->doppler = NULL;
     req->rx_dump_file = true;
     req->demod_destination = DEMOD_DESTINATION__BOTH;
