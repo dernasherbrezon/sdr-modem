@@ -125,17 +125,13 @@ void init_server_with_plutosdr_support(size_t expected_tx_len) {
     ck_assert_int_eq(code, 0);
 }
 
-struct TxData setup_data_to_modulate() {
-    uint32_t len = 50;
+uint8_t *setup_data_to_modulate(uint32_t len) {
     data_to_modulate = malloc(sizeof(uint8_t) * len);
     ck_assert(data_to_modulate != NULL);
     for (size_t i = 0; i < len; i++) {
         data_to_modulate[i] = (uint8_t) i;
     }
-    struct TxData tx = TX_DATA__INIT;
-    tx.data.len = len;
-    tx.data.data = data_to_modulate;
-    return tx;
+    return data_to_modulate;
 }
 
 START_TEST(test_plutosdr_failures) {
@@ -164,7 +160,9 @@ START_TEST(test_plutosdr_failures2) {
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
     header.type = TYPE_TX_DATA;
-    struct TxData tx = setup_data_to_modulate();
+    struct TxData tx = TX_DATA__INIT;
+    tx.data.len = 50;
+    tx.data.data = setup_data_to_modulate(tx.data.len);
 
     //test timeout while reading tx data
     int code = sdr_modem_client_write_tx_raw(&header, &tx, tx.data.len / 2, client0);
@@ -199,8 +197,10 @@ START_TEST (test_plutosdr_tx) {
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
     header.type = TYPE_TX_DATA;
+    struct TxData tx = TX_DATA__INIT;
+    tx.data.len = 50;
+    tx.data.data = setup_data_to_modulate(tx.data.len);
 
-    struct TxData tx = setup_data_to_modulate();
     int code = sdr_modem_client_write_tx(&header, &tx, client0);
     ck_assert_int_eq(code, 0);
     assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0);
