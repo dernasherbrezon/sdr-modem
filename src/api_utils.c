@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 uint32_t MAX_MESSAGE_LENGTH = 32 * 1024; // kilobyte
 
