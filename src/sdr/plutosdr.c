@@ -10,8 +10,8 @@
 static char plutosdr_tmpstr[256];
 static const size_t plutosdr_tmpstr_len = 256;
 static const uint32_t MIN_NO_FIR_FILTER = 2083334; // ((double) 25000000 / 12 + 1)
-static const uint32_t MIN_FIR_FILTER_2 = MIN_NO_FIR_FILTER / 2 + 1;
-static const uint32_t MIN_FIR_FILTER = MIN_NO_FIR_FILTER / 4 + 1;
+static const uint32_t MIN_FIR_FILTER_2 = 1041667; // MIN_NO_FIR_FILTER / 2;
+static const uint32_t MIN_FIR_FILTER = 520834; // MIN_NO_FIR_FILTER / 4 + 1;
 static int16_t fir_128_4[] = {
         -15, -27, -23, -6, 17, 33, 31, 9, -23, -47, -45, -13, 34, 69, 67, 21, -49, -102, -99, -32, 69, 146, 143, 48, -96, -204, -200, -69, 129, 278, 275, 97, -170,
         -372, -371, -135, 222, 494, 497, 187, -288, -654, -665, -258, 376, 875, 902, 363, -500, -1201, -1265, -530, 699, 1748, 1906, 845, -1089, -2922, -3424,
