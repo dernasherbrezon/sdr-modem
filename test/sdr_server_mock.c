@@ -107,7 +107,9 @@ static void *acceptor_worker(void *arg) {
     }
 
     printf("sdr server mock stopped\n");
-    close(server->client_socket);
+    if (server->client_socket >= 0) {
+        close(server->client_socket);
+    }
     return (void *) 0;
 }
 
