@@ -543,11 +543,11 @@ void teardown() {
         client2 = NULL;
     }
     if (req != NULL) {
-        free(req);
+        rx_request__free_unpacked(req, NULL);
         req = NULL;
     }
     if (tx_req != NULL) {
-        free(tx_req);
+        tx_request__free_unpacked(tx_req, NULL);
         tx_req = NULL;
     }
     if (server != NULL) {
