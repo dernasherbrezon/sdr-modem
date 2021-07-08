@@ -42,6 +42,9 @@ START_TEST (test_invalid_doppler_configuration) {
     int code = server_config_create(&config, "full.conf");
     ck_assert_int_eq(code, 0);
     req = create_rx_request();
+    for (int i = 0; i < req->doppler->n_tle; i++) {
+        free(req->doppler->tle[i]);
+    }
     free(req->doppler->tle);
     char tle[3][80] = {"0\0", "1 0 0   0  0  00000-0  0 0  0\0", "2 0  0  0 0 0 0 0 0\0"};
     req->doppler->tle = utils_allocate_tle(tle);

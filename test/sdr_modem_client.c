@@ -107,9 +107,9 @@ int sdr_modem_client_read_response(struct message_header **response_header, stru
         return code;
     }
     Response *result = response__unpack(NULL, header->message_length, buffer);
+    free(buffer);
     if (result == NULL) {
         free(header);
-        free(buffer);
         return -1;
     }
 
