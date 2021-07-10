@@ -19,6 +19,28 @@ struct sdr_server_client_t {
     size_t output_len;
 };
 
+int sdr_server_client_create2(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **output) {
+    sdr_server_client *client = NULL;
+    int code = sdr_server_client_create(id, addr, port, read_timeout_seconds, max_output_buffer_length, &client);
+    if (code != 0) {
+        return code;
+    }
+
+    struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
+    if (result == NULL) {
+        sdr_server_client_destroy(client);
+        return -ENOMEM;
+    }
+    result->plugin = client;
+    result->destroy = sdr_server_client_destroy;
+    result->sdr_process_rx = sdr_server_client_read_stream;
+    result->sdr_process_tx = NULL;
+    result->stop_rx = sdr_server_client_stop;
+
+    *output = result;
+    return 0;
+}
+
 int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_server_client **client) {
     struct sdr_server_client_t *result = malloc(sizeof(struct sdr_server_client_t));
     if (result == NULL) {
@@ -104,7 +126,8 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
     return 0;
 }
 
-int sdr_server_client_read_stream(float complex **output, size_t *output_len, sdr_server_client *client) {
+int sdr_server_client_read_stream(float complex **output, size_t *output_len, void *plugin) {
+    sdr_server_client *client = (sdr_server_client *) plugin;
     size_t actually_read = 0;
     int code = tcp_utils_read_data_partially(client->output, sizeof(float complex) * client->output_len, &actually_read, client->client_socket);
     if (actually_read != 0) {
@@ -143,10 +166,11 @@ int sdr_server_client_request(struct sdr_server_request request, struct sdr_serv
     return sdr_server_client_read_response(response, client);
 }
 
-void sdr_server_client_stop(sdr_server_client *client) {
-    if (client == NULL) {
+void sdr_server_client_stop(void *plugin) {
+    if (plugin == NULL) {
         return;
     }
+    sdr_server_client *client = (sdr_server_client *) plugin;
     while (true) {
         struct sdr_server_message_header header;
         header.type = SDR_SERVER_TYPE_SHUTDOWN;
@@ -166,10 +190,11 @@ void sdr_server_client_stop(sdr_server_client *client) {
     close(client->client_socket);
 }
 
-void sdr_server_client_destroy(sdr_server_client *client) {
-    if (client == NULL) {
+void sdr_server_client_destroy(void *plugin) {
+    if (plugin == NULL) {
         return;
     }
+    sdr_server_client *client = (sdr_server_client *) plugin;
     if (client->output != NULL) {
         free(client->output);
     }

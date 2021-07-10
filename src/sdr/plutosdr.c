@@ -88,19 +88,19 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
     return 0;
 }
 
-void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin) {
+int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin) {
     plutosdr *iio = (plutosdr *) plugin;
     if (iio->rx_buffer == NULL) {
         fprintf(stderr, "rx was not initialized\n");
         *output = NULL;
         *output_len = 0;
-        return;
+        return -1;
     }
     ssize_t ret = iio->lib->iio_buffer_refill(iio->rx_buffer);
     if (ret < 0) {
         *output = NULL;
         *output_len = 0;
-        return;
+        return -1;
     }
 
     char *p_end = iio->lib->iio_buffer_end(iio->rx_buffer);
@@ -110,12 +110,13 @@ void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugi
         fprintf(stderr, "<3>input buffer %zu is more than max: %zu\n", num_points / 2, iio->output_len);
         *output = NULL;
         *output_len = 0;
-        return;
+        return -1;
     }
     // ADC is 12bit, thus 2^12 = 2048
     volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_start, 2048.0F, num_points);
     *output = iio->output;
     *output_len = num_points / 2;
+    return 0;
 }
 
 static struct iio_device *plutosdr_find_device(struct iio_context *ctx, enum iio_direction d, plutosdr *iio) {
@@ -531,6 +532,8 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     result->destroy = plutosdr_destroy;
     result->sdr_process_rx = plutosdr_process_rx;
     result->sdr_process_tx = plutosdr_process_tx;
+    //FIXME
+    result->stop_rx = NULL;
 
     *output = result;
     return 0;

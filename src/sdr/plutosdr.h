@@ -23,7 +23,7 @@ struct stream_cfg {
 
 int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
 
-void plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
+int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
 
 int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin);
 
