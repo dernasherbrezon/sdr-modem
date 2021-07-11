@@ -9,7 +9,7 @@
 #include "sdr/sdr_server_client.h"
 
 struct sdr_worker_t {
-    struct sdr_worker_rx *rx;
+    struct sdr_rx *rx;
     sdr_device *rx_device;
     uint32_t id;
     linked_list *dsp_configs;
@@ -54,7 +54,7 @@ static void *sdr_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, sdr_device *rx_device, sdr_worker **worker) {
+int sdr_worker_create(uint32_t id, struct sdr_rx *rx, sdr_device *rx_device, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -84,7 +84,7 @@ bool sdr_worker_find_closest(void *id, void *data) {
     if (data == NULL) {
         return false;
     }
-    struct sdr_worker_rx *rx = (struct sdr_worker_rx *) id;
+    struct sdr_rx *rx = (struct sdr_rx *) id;
     sdr_worker *worker = (sdr_worker *) data;
     if (worker->rx->rx_center_freq == rx->rx_center_freq &&
         worker->rx->rx_sampling_freq >= rx->rx_sampling_freq &&

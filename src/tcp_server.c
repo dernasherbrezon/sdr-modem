@@ -69,8 +69,8 @@ void log_client(struct sockaddr_in *address, uint32_t id) {
     printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-int tcp_worker_convert(struct RxRequest *req, struct sdr_worker_rx **result) {
-    struct sdr_worker_rx *rx = malloc(sizeof(struct sdr_worker_rx));
+int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
+    struct sdr_rx *rx = malloc(sizeof(struct sdr_rx));
     if (rx == NULL) {
         return -ENOMEM;
     }
@@ -366,7 +366,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
 }
 
 int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct tcp_worker *tcp_worker) {
-    struct sdr_worker_rx *rx = NULL;
+    struct sdr_rx *rx = NULL;
     int code = tcp_worker_convert(tcp_worker->rx_req, &rx);
     if (code != 0) {
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -377,7 +377,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
         if (closest == NULL) {
             sdr_device *rx_device = NULL;
-            code = sdr_server_client_create2(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &rx_device);
+            code = sdr_server_client_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &rx_device);
             if (code != 0) {
                 return -RESPONSE_DETAILS_INTERNAL_ERROR;
             }
