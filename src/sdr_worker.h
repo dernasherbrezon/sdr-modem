@@ -4,14 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dsp_worker.h"
+#include "sdr/sdr_device.h"
 
 typedef struct sdr_worker_t sdr_worker;
-
-struct sdr_worker_rx {
-    uint32_t rx_center_freq;
-    uint32_t rx_sampling_freq;
-    uint32_t band_freq;
-};
 
 void sdr_worker_destroy(void *data);
 
@@ -21,6 +16,6 @@ void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *sdr);
 
 int sdr_worker_add_dsp_worker(dsp_worker *worker, sdr_worker *sdr);
 
-int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_worker **result);
+int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, sdr_device *rx_device, sdr_worker **result);
 
 #endif //SDR_MODEM_SDR_WORKER_H

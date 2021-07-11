@@ -119,6 +119,8 @@ int server_config_create(struct server_config **config, const char *path) {
         const char *rx_sdr_type_str = config_setting_get_string(setting);
         if (strcmp(rx_sdr_type_str, "sdr-server") == 0) {
             rx_sdr_type = RX_SDR_TYPE_SDR_SERVER;
+        } else if (strcmp(rx_sdr_type_str, "plutosdr") == 0) {
+            rx_sdr_type = RX_SDR_TYPE_PLUTOSDR;
         } else {
             fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
             config_destroy(&libconfig);
@@ -187,6 +189,18 @@ int server_config_create(struct server_config **config, const char *path) {
     // log parameter only if it is relevant
     if (result->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
         fprintf(stdout, "tx plutosdr gain %f\n", result->tx_plutosdr_gain);
+    }
+    setting = config_lookup(&libconfig, "rx_plutosdr_gain");
+    double rx_plutosdr_gain;
+    if (setting == NULL) {
+        rx_plutosdr_gain = 0.0;
+    } else {
+        rx_plutosdr_gain = config_setting_get_float(setting);
+    }
+    result->rx_plutosdr_gain = rx_plutosdr_gain;
+    // log parameter only if it is relevant
+    if (result->rx_sdr_type == RX_SDR_TYPE_PLUTOSDR) {
+        fprintf(stdout, "rx plutosdr gain %f\n", result->rx_plutosdr_gain);
     }
     setting = config_lookup(&libconfig, "tx_plutosdr_timeout_millis");
     unsigned int tx_plutosdr_timeout_millis;

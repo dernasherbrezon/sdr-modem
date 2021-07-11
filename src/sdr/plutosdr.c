@@ -4,6 +4,9 @@
 #include <errno.h>
 #include <volk/volk.h>
 #include <stdbool.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <string.h>
 
 #define FIR_BUF_SIZE    8192
 
@@ -28,7 +31,6 @@ static int16_t fir_128_2[] = {
 struct plutosdr_t {
     uint32_t id;
 
-    struct iio_context *ctx;
     struct iio_device *tx;
     struct iio_channel *tx0_i;
     struct iio_channel *tx0_q;
@@ -46,7 +48,12 @@ struct plutosdr_t {
     struct stream_cfg *tx_config;
 
     iio_lib *lib;
+    atomic_bool rx_is_running;
 };
+
+struct iio_context *global_iio_ctx = NULL;
+int global_iio_ctx_usages = 0;
+pthread_mutex_t global_iio_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
 enum iio_direction {
     RX, TX
@@ -90,6 +97,11 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
 
 int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin) {
     plutosdr *iio = (plutosdr *) plugin;
+    if (!iio->rx_is_running) {
+        *output = NULL;
+        *output_len = 0;
+        return -1;
+    }
     if (iio->rx_buffer == NULL) {
         fprintf(stderr, "rx was not initialized\n");
         *output = NULL;
@@ -381,6 +393,44 @@ int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_con
     return 0;
 }
 
+void plutosdr_stop_rx(void *data) {
+    plutosdr *pluto = (plutosdr *) data;
+    pluto->rx_is_running = false;
+}
+
+ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
+    if (global_iio_ctx != NULL) {
+        return 0;
+    }
+    struct iio_scan_context *scan_ctx = lib->iio_create_scan_context(NULL, 0);
+    if (scan_ctx == NULL) {
+        perror("unable to scan");
+        return -1;
+    }
+    struct iio_context_info **info = NULL;
+    ssize_t code = lib->iio_scan_context_get_info_list(scan_ctx, &info);
+    if (code < 0) {
+        fprintf(stderr, "unable to scan contexts: %zd\n", code);
+        lib->iio_scan_context_destroy(scan_ctx);
+        return -1;
+    }
+    if (code == 0) {
+        fprintf(stderr, "no sdr contexts found\n");
+        lib->iio_scan_context_destroy(scan_ctx);
+        return -1;
+    }
+    const char *uri = lib->iio_context_info_get_uri(info[0]);
+    fprintf(stdout, "plutosdr ctx initialized from context uri: %s\n", uri);
+    global_iio_ctx = lib->iio_create_context_from_uri(uri);
+    lib->iio_context_info_list_free(info);
+    lib->iio_scan_context_destroy(scan_ctx);
+    if (global_iio_ctx == NULL) {
+        fprintf(stderr, "unable to init context: %s", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
 int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
     if (rx_config == NULL && tx_config == NULL) {
         fprintf(stderr, "configuration is missing\n");
@@ -396,44 +446,25 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     pluto->lib = lib;
     pluto->id = id;
 
-    struct iio_scan_context *scan_ctx = pluto->lib->iio_create_scan_context(NULL, 0);
-    if (scan_ctx == NULL) {
-        perror("unable to scan");
-        plutosdr_destroy(pluto);
-        return -1;
-    }
-    struct iio_context_info **info = NULL;
-    ssize_t code = pluto->lib->iio_scan_context_get_info_list(scan_ctx, &info);
-    if (code < 0) {
-        fprintf(stderr, "unable to scan contexts: %zd\n", code);
-        pluto->lib->iio_scan_context_destroy(scan_ctx);
-        plutosdr_destroy(pluto);
-        return -1;
-    }
+    pthread_mutex_lock(&global_iio_mutex);
+    ssize_t code = plutosdr_init_global_ctx(pluto->lib);
     if (code == 0) {
-        fprintf(stderr, "no sdr contexts found\n");
-        pluto->lib->iio_scan_context_destroy(scan_ctx);
+        global_iio_ctx_usages++;
+    }
+    pthread_mutex_unlock(&global_iio_mutex);
+    if (code != 0) {
         plutosdr_destroy(pluto);
         return -1;
     }
-    const char *uri = pluto->lib->iio_context_info_get_uri(info[0]);
-    fprintf(stdout, "using context uri: %s\n", uri);
-    pluto->ctx = pluto->lib->iio_create_context_from_uri(uri);
-    pluto->lib->iio_context_info_list_free(info);
-    pluto->lib->iio_scan_context_destroy(scan_ctx);
-    if (pluto->ctx == NULL) {
-        perror("unable to setup context");
-        plutosdr_destroy(pluto);
-        return -1;
-    }
-    code = pluto->lib->iio_context_set_timeout(pluto->ctx, timeout_ms);
+
+    code = pluto->lib->iio_context_set_timeout(global_iio_ctx, timeout_ms);
     if (code < 0) {
         fprintf(stderr, "unable to setup timeout: %zd\n", code);
         plutosdr_destroy(pluto);
         return -1;
     }
 
-    code = plutosdr_setup_fir_filter(pluto->ctx, rx_config, tx_config, pluto);
+    code = plutosdr_setup_fir_filter(global_iio_ctx, rx_config, tx_config, pluto);
     if (code < 0) {
         plutosdr_destroy(pluto);
         return -1;
@@ -444,7 +475,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     pluto->output_len = max_input_buffer_length;
 
     if (tx_config != NULL) {
-        pluto->tx = plutosdr_find_device(pluto->ctx, TX, pluto);
+        pluto->tx = plutosdr_find_device(global_iio_ctx, TX, pluto);
         if (pluto->tx == NULL) {
             fprintf(stderr, "unable to find tx result\n");
             plutosdr_destroy(pluto);
@@ -457,7 +488,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             return -1;
         }
 
-        code = plutosdr_configure_streaming_channel(pluto->ctx, tx_config, TX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, tx_config, TX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -485,13 +516,13 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     }
 
     if (rx_config != NULL) {
-        pluto->rx = plutosdr_find_device(pluto->ctx, RX, pluto);
+        pluto->rx = plutosdr_find_device(global_iio_ctx, RX, pluto);
         if (pluto->rx == NULL) {
             fprintf(stderr, "unable to find rx result\n");
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(pluto->ctx, rx_config, RX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_config, RX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -521,6 +552,9 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -ENOMEM;
         }
+        pluto->rx_is_running = true;
+    } else {
+        pluto->rx_is_running = false;
     }
 
     struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
@@ -532,8 +566,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
     result->destroy = plutosdr_destroy;
     result->sdr_process_rx = plutosdr_process_rx;
     result->sdr_process_tx = plutosdr_process_tx;
-    //FIXME
-    result->stop_rx = NULL;
+    result->stop_rx = plutosdr_stop_rx;
 
     *output = result;
     return 0;
@@ -565,9 +598,18 @@ void plutosdr_destroy(void *plugin) {
     if (pluto->output != NULL) {
         free(pluto->output);
     }
-    if (pluto->ctx != NULL) {
-        pluto->lib->iio_context_destroy(pluto->ctx);
+
+    pthread_mutex_lock(&global_iio_mutex);
+    if (global_iio_ctx != NULL) {
+        global_iio_ctx_usages--;
+        if (global_iio_ctx_usages <= 0) {
+            pluto->lib->iio_context_destroy(global_iio_ctx);
+            global_iio_ctx = NULL;
+            fprintf(stdout, "plutosdr ctx de-initialized\n");
+        }
     }
+    pthread_mutex_unlock(&global_iio_mutex);
+
     if (pluto->rx_config != NULL) {
         free(pluto->rx_config);
     }

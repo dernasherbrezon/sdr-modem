@@ -18,6 +18,7 @@
 #define RESPONSE_DETAILS_INVALID_REQUEST 1
 #define RESPONSE_DETAILS_INTERNAL_ERROR 3
 #define RESPONSE_DETAILS_TX_IS_BEING_USED 4
+#define RESPONSE_DETAILS_RX_IS_BEING_USED 5
 
 struct message_header {
     uint8_t protocol_version;

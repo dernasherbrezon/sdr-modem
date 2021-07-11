@@ -19,12 +19,32 @@ struct sdr_server_client_t {
     size_t output_len;
 };
 
-int sdr_server_client_create2(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_server_client_create2(uint32_t id, struct sdr_worker_rx *rx, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **output) {
     sdr_server_client *client = NULL;
     int code = sdr_server_client_create(id, addr, port, read_timeout_seconds, max_output_buffer_length, &client);
     if (code != 0) {
         return code;
     }
+
+    struct sdr_server_request req;
+    req.center_freq = rx->rx_center_freq;
+    req.band_freq = rx->band_freq;
+    req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
+    req.sampling_rate = rx->rx_sampling_freq;
+    struct sdr_server_response *response = NULL;
+    code = sdr_server_client_request(req, &response, client);
+    if (code != 0) {
+        fprintf(stderr, "<3>[%d] unable to send request to sdr server\n", id);
+        sdr_server_client_destroy(client);
+        return code;
+    }
+    if (response->status != SDR_SERVER_RESPONSE_STATUS_SUCCESS) {
+        fprintf(stderr, "<3>[%d] request to sdr server rejected: %d\n", id, response->details);
+        sdr_server_client_destroy(client);
+        free(response);
+        return -1;
+    }
+    free(response);
 
     struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
     if (result == NULL) {

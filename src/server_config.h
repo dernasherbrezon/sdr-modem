@@ -6,6 +6,7 @@
 #include "sdr/iio_lib.h"
 
 #define RX_SDR_TYPE_SDR_SERVER 0
+#define RX_SDR_TYPE_PLUTOSDR 1
 
 #define TX_SDR_TYPE_NONE 0
 #define TX_SDR_TYPE_PLUTOSDR 1
@@ -28,6 +29,7 @@ struct server_config {
 
 	uint8_t tx_sdr_type;
     double tx_plutosdr_gain;
+    double rx_plutosdr_gain;
     unsigned int tx_plutosdr_timeout_millis;
 	iio_lib *iio;
 };

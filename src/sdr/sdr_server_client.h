@@ -8,7 +8,7 @@
 
 typedef struct sdr_server_client_t sdr_server_client;
 
-int sdr_server_client_create2(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **result);
+int sdr_server_client_create2(uint32_t id, struct sdr_worker_rx *rx, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **result);
 
 int sdr_server_client_create(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_server_client **client);
 

@@ -58,6 +58,7 @@ struct iio_lib_t {
     void (*iio_channel_disable)(struct iio_channel *chn);
 
     void (*iio_context_destroy)(struct iio_context *ctx);
+
 };
 
 int iio_lib_create(iio_lib **lib);

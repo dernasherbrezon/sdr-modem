@@ -10,7 +10,7 @@
 
 struct sdr_worker_t {
     struct sdr_worker_rx *rx;
-    sdr_server_client *client;
+    sdr_device *rx_device;
     uint32_t id;
     linked_list *dsp_configs;
     pthread_t sdr_thread;
@@ -33,7 +33,7 @@ static void *sdr_worker_callback(void *arg) {
     fprintf(stdout, "[%d] sdr_worker is starting\n", worker->id);
     struct array_t output;
     while (true) {
-        int code = sdr_server_client_read_stream(&output.output, &output.output_len, worker->client);
+        int code = worker->rx_device->sdr_process_rx(&output.output, &output.output_len, worker->rx_device->plugin);
         if (code < -1) {
             // read timeout happened. it's ok.
             continue;
@@ -54,7 +54,7 @@ static void *sdr_worker_callback(void *arg) {
     return (void *) 0;
 }
 
-int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_address, int sdr_server_port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_worker **worker) {
+int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, sdr_device *rx_device, sdr_worker **worker) {
     struct sdr_worker_t *result = malloc(sizeof(struct sdr_worker_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -66,35 +66,10 @@ int sdr_worker_create(uint32_t id, struct sdr_worker_rx *rx, char *sdr_server_ad
     result->dsp_configs = NULL;
     result->rx = rx;
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-
-    int code = sdr_server_client_create(result->id, sdr_server_address, sdr_server_port, read_timeout_seconds, max_output_buffer_length, &result->client);
-    if (code != 0) {
-        sdr_worker_destroy(result);
-        return code;
-    }
-
-    struct sdr_server_request req;
-    req.center_freq = rx->rx_center_freq;
-    req.band_freq = rx->band_freq;
-    req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
-    req.sampling_rate = rx->rx_sampling_freq;
-    struct sdr_server_response *response = NULL;
-    code = sdr_server_client_request(req, &response, result->client);
-    if (code != 0) {
-        fprintf(stderr, "<3>[%d] unable to send request to sdr server\n", result->id);
-        sdr_worker_destroy(result);
-        return code;
-    }
-    if (response->status != SDR_SERVER_RESPONSE_STATUS_SUCCESS) {
-        fprintf(stderr, "<3>[%d] request to sdr server rejected: %d\n", result->id, response->details);
-        sdr_worker_destroy(result);
-        free(response);
-        return -1;
-    }
-    free(response);
+    result->rx_device = rx_device;
 
     pthread_t sdr_thread;
-    code = pthread_create(&sdr_thread, NULL, &sdr_worker_callback, result);
+    int code = pthread_create(&sdr_thread, NULL, &sdr_worker_callback, result);
     if (code != 0) {
         sdr_worker_destroy(result);
         return code;
@@ -119,19 +94,35 @@ bool sdr_worker_find_closest(void *id, void *data) {
     return false;
 }
 
+void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *worker) {
+    if (worker == NULL) {
+        return;
+    }
+    pthread_mutex_lock(&worker->mutex);
+    if (worker->dsp_configs != NULL) {
+        linked_list_destroy_by_id(&id, &dsp_worker_find_by_id, &worker->dsp_configs);
+    }
+    bool result = (worker->dsp_configs == NULL);
+    pthread_mutex_unlock(&worker->mutex);
+    if (result) {
+        sdr_worker_destroy(worker);
+    }
+}
+
 void sdr_worker_destroy(void *data) {
     if (data == NULL) {
         return;
     }
     sdr_worker *worker = (sdr_worker *) data;
-    // terminate reading from sdr server first
-    if (worker->client != NULL) {
-        sdr_server_client_stop(worker->client);
+    //gracefully shutdown connection
+    if (worker->rx_device != NULL) {
+        worker->rx_device->stop_rx(worker->rx_device->plugin);
     }
     pthread_join(worker->sdr_thread, NULL);
-
-    if (worker->client != NULL) {
-        sdr_server_client_destroy(worker->client);
+    //destroy the rx device
+    if (worker->rx_device != NULL) {
+        worker->rx_device->destroy(worker->rx_device->plugin);
+        free(worker->rx_device);
     }
 
     pthread_mutex_lock(&worker->mutex);
@@ -146,21 +137,6 @@ void sdr_worker_destroy(void *data) {
     uint32_t id = worker->id;
     free(worker);
     fprintf(stdout, "[%d] sdr_worker stopped\n", id);
-}
-
-void sdr_worker_destroy_by_dsp_worker_id(uint32_t id, sdr_worker *worker) {
-    if (worker == NULL) {
-        return;
-    }
-    pthread_mutex_lock(&worker->mutex);
-    if (worker->dsp_configs != NULL) {
-        linked_list_destroy_by_id(&id, &dsp_worker_find_by_id, &worker->dsp_configs);
-    }
-    bool result = (worker->dsp_configs == NULL);
-    pthread_mutex_unlock(&worker->mutex);
-    if (result) {
-        sdr_worker_destroy(worker);
-    }
 }
 
 int sdr_worker_add_dsp_worker(dsp_worker *worker, sdr_worker *sdr) {
