@@ -379,6 +379,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             sdr_device *rx_device = NULL;
             code = sdr_server_client_create(tcp_worker->id, rx, server->server_config->rx_sdr_server_address, server->server_config->rx_sdr_server_port, server->server_config->read_timeout_seconds, server->server_config->buffer_size, &rx_device);
             if (code != 0) {
+                free(rx);
                 return -RESPONSE_DETAILS_INTERNAL_ERROR;
             }
             sdr_worker *sdr = NULL;
@@ -394,11 +395,13 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         }
     } else if (server->server_config->rx_sdr_type == RX_SDR_TYPE_PLUTOSDR) {
         if (server->rx_initialized) {
+            free(rx);
             fprintf(stderr, "<3>[%d] rx is being used\n", tcp_worker->id);
             return -RESPONSE_DETAILS_RX_IS_BEING_USED;
         }
         struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
         if (rx_config == NULL) {
+            free(rx);
             fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
@@ -409,6 +412,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         sdr_device *rx_device = NULL;
         code = plutosdr_create(tcp_worker->id, rx_config, NULL, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &rx_device);
         if (code != 0) {
+            free(rx);
             fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
