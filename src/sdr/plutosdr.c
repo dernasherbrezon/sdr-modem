@@ -241,10 +241,22 @@ static struct iio_channel *plutosdr_find_streaming_channel(enum iio_direction d,
     return pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
 }
 
-int plutosdr_configure_streaming_channel(struct iio_context *ctx, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
+int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
     struct iio_channel *chn = plutosdr_find_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
+    }
+
+    if (rx_only && type == RX) {
+        // completely disabling TX when doing RX only will significantly improve sensitivity
+        // details: https://wiki.analog.com/university/tools/pluto/hacking/listening_to_yourself
+        struct iio_channel *lo_channel = plutosdr_find_lo_channel(global_iio_ctx, TX, iio);
+        if (lo_channel != NULL) {
+            plutosdr_write_lli(lo_channel, "powerdown", 1, iio);
+        }
+    }
+    if (type == TX) {
+        plutosdr_write_lli(chn, "powerdown", 0, iio);
     }
 
     int code = plutosdr_write_lli(chn, "frequency", cfg->center_freq, iio);
@@ -431,7 +443,7 @@ ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
     return 0;
 }
 
-int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
+int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
     if (rx_config == NULL && tx_config == NULL) {
         fprintf(stderr, "configuration is missing\n");
         return -1;
@@ -488,7 +500,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             return -1;
         }
 
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, tx_config, TX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_only, tx_config, TX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -522,7 +534,7 @@ int plutosdr_create(uint32_t id, struct stream_cfg *rx_config, struct stream_cfg
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_config, RX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_only, rx_config, RX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;

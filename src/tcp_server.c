@@ -352,7 +352,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
         tx_config->center_freq = req->tx_center_freq;
         tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
         tx_config->manual_gain = server->server_config->tx_plutosdr_gain;
-        int code = plutosdr_create(id, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, output);
+        int code = plutosdr_create(id, false, NULL, tx_config, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, output);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -410,7 +410,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
         rx_config->manual_gain = server->server_config->rx_plutosdr_gain;
         sdr_device *rx_device = NULL;
-        code = plutosdr_create(tcp_worker->id, rx_config, NULL, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &rx_device);
+        code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &rx_device);
         if (code != 0) {
             free(rx);
             fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);
