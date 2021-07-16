@@ -15,7 +15,7 @@ char tle[3][80] = {"LUCKY-7", "1 44406U 19038W   20069.88080907  .00000505  0000
 int max_buffer_length = 2000;
 
 START_TEST (test_invalid_arguments) {
-    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, max_buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
     float complex *output = NULL;
@@ -37,7 +37,7 @@ START_TEST (test_invalid_arguments) {
 END_TEST
 
 START_TEST (test_success_rx) {
-    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, max_buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
     input_file = fopen("lucky7.cf32", "rb");
@@ -67,7 +67,7 @@ START_TEST (test_success_rx) {
 END_TEST
 
 START_TEST (test_success_tx) {
-    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 1583840449, max_buffer_length, tle, &dopp);
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, max_buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
     // use RX inverted input data for test

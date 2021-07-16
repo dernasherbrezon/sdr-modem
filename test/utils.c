@@ -22,7 +22,7 @@ struct RxRequest *create_rx_request() {
 
     struct RxRequest result = RX_REQUEST__INIT;
     result.rx_sampling_freq = 48000;
-    result.rx_sdr_server_band_freq = 437525000;
+    result.rx_offset = 0;
     result.rx_center_freq = 437525000;
     result.rx_dump_file = false;
     result.doppler = &doppler_settings;
@@ -61,6 +61,7 @@ struct TxRequest *create_tx_request() {
     result.tx_center_freq = 437525000;
     result.tx_sampling_freq = 580000;
     result.tx_dump_file = false;
+    result.tx_offset = 0;
     result.mod_type = MODEM_TYPE__GMSK;
     result.mod_baud_rate = 4800;
     struct FskModulationSettings fsk_settings = FSK_MODULATION_SETTINGS__INIT;

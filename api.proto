@@ -31,7 +31,7 @@ message RxRequest {
     required uint32 rx_center_freq = 1;
     required uint32 rx_sampling_freq = 2;
     required bool rx_dump_file = 3;
-    required uint32 rx_sdr_server_band_freq = 4;
+    required int32 rx_offset = 4;
     required modem_type demod_type = 5;
     required uint32 demod_baud_rate = 6;
     required uint32 demod_decimation = 7;
@@ -45,11 +45,12 @@ message TxRequest {
     required uint32 tx_center_freq = 1;
     required uint32 tx_sampling_freq = 2;
     required bool tx_dump_file = 3;
-    required modem_type mod_type = 4;
-    required uint32 mod_baud_rate = 5;
+    required int32 tx_offset = 4;
+    required modem_type mod_type = 5;
+    required uint32 mod_baud_rate = 6;
 
-    optional doppler_settings doppler = 6;
-    optional fsk_modulation_settings fsk_settings = 7;
+    optional doppler_settings doppler = 7;
+    optional fsk_modulation_settings fsk_settings = 8;
 }
 
 enum response_status {

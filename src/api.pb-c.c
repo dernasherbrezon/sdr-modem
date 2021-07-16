@@ -540,12 +540,12 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "rx_sdr_server_band_freq",
+    "rx_offset",
     4,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(RxRequest, rx_sdr_server_band_freq),
+    offsetof(RxRequest, rx_offset),
     NULL,
     NULL,
     0,             /* flags */
@@ -633,8 +633,8 @@ static const unsigned rx_request__field_indices_by_name[] = {
   9,   /* field[9] = fsk_settings */
   0,   /* field[0] = rx_center_freq */
   2,   /* field[2] = rx_dump_file */
+  3,   /* field[3] = rx_offset */
   1,   /* field[1] = rx_sampling_freq */
-  3,   /* field[3] = rx_sdr_server_band_freq */
 };
 static const ProtobufCIntRange rx_request__number_ranges[1 + 1] =
 {
@@ -656,7 +656,7 @@ const ProtobufCMessageDescriptor rx_request__descriptor =
   (ProtobufCMessageInit) rx_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
+static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
 {
   {
     "tx_center_freq",
@@ -695,8 +695,20 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "mod_type",
+    "tx_offset",
     4,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(TxRequest, tx_offset),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "mod_type",
+    5,
     PROTOBUF_C_LABEL_REQUIRED,
     PROTOBUF_C_TYPE_ENUM,
     0,   /* quantifier_offset */
@@ -708,7 +720,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
   },
   {
     "mod_baud_rate",
-    5,
+    6,
     PROTOBUF_C_LABEL_REQUIRED,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -720,7 +732,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
   },
   {
     "doppler",
-    6,
+    7,
     PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
@@ -732,7 +744,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
   },
   {
     "fsk_settings",
-    7,
+    8,
     PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
@@ -744,18 +756,19 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[7] =
   },
 };
 static const unsigned tx_request__field_indices_by_name[] = {
-  5,   /* field[5] = doppler */
-  6,   /* field[6] = fsk_settings */
-  4,   /* field[4] = mod_baud_rate */
-  3,   /* field[3] = mod_type */
+  6,   /* field[6] = doppler */
+  7,   /* field[7] = fsk_settings */
+  5,   /* field[5] = mod_baud_rate */
+  4,   /* field[4] = mod_type */
   0,   /* field[0] = tx_center_freq */
   2,   /* field[2] = tx_dump_file */
+  3,   /* field[3] = tx_offset */
   1,   /* field[1] = tx_sampling_freq */
 };
 static const ProtobufCIntRange tx_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 7 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor tx_request__descriptor =
 {
@@ -765,7 +778,7 @@ const ProtobufCMessageDescriptor tx_request__descriptor =
   "TxRequest",
   "",
   sizeof(TxRequest),
-  7,
+  8,
   tx_request__field_descriptors,
   tx_request__field_indices_by_name,
   1,  tx_request__number_ranges,

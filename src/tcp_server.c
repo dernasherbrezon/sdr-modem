@@ -76,7 +76,7 @@ int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
     }
     rx->rx_sampling_freq = req->rx_sampling_freq;
     rx->rx_center_freq = req->rx_center_freq;
-    rx->band_freq = req->rx_sdr_server_band_freq;
+    rx->rx_offset = req->rx_offset;
 
     *result = rx;
     return 0;
@@ -123,10 +123,6 @@ int validate_rx_request(struct RxRequest *req, uint32_t client_id, struct server
     }
     if (req->rx_sampling_freq == 0) {
         fprintf(stderr, "<3>[%d] missing rx_sampling_freq parameter\n", client_id);
-        return -1;
-    }
-    if (config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER && req->rx_sdr_server_band_freq == 0) {
-        fprintf(stderr, "<3>[%d] missing rx_sdr_server_band_freq parameter\n", client_id);
         return -1;
     }
     if (req->demod_baud_rate == 0) {
@@ -409,6 +405,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         rx_config->center_freq = tcp_worker->rx_req->rx_center_freq;
         rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
         rx_config->manual_gain = server->server_config->rx_plutosdr_gain;
+        rx_config->offset = tcp_worker->rx_req->rx_offset;
         sdr_device *rx_device = NULL;
         code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &rx_device);
         if (code != 0) {
@@ -489,7 +486,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
         int samples_per_symbol = (int) ((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
-        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, 0, samples_per_symbol * server->server_config->buffer_size,
+        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, samples_per_symbol * server->server_config->buffer_size,
                               tle, &tcp_worker->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
@@ -608,8 +605,8 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod: %s, rx center_freq: %d, rx sampling_rate: %d, baud: %d, destination: %s\n", tcp_worker->id,
-            protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, tcp_worker->rx_req->rx_center_freq,
+    fprintf(stdout, "[%d] demod: %s, rx freq: %d, rx sampling_rate: %d, baud: %d, destination: %s\n", tcp_worker->id,
+            protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, (tcp_worker->rx_req->rx_center_freq + tcp_worker->rx_req->rx_offset),
             tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name);
 }
 

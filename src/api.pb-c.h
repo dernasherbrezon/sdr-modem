@@ -95,7 +95,7 @@ struct  RxRequest
   uint32_t rx_center_freq;
   uint32_t rx_sampling_freq;
   protobuf_c_boolean rx_dump_file;
-  uint32_t rx_sdr_server_band_freq;
+  int32_t rx_offset;
   ModemType demod_type;
   uint32_t demod_baud_rate;
   uint32_t demod_decimation;
@@ -114,6 +114,7 @@ struct  TxRequest
   uint32_t tx_center_freq;
   uint32_t tx_sampling_freq;
   protobuf_c_boolean tx_dump_file;
+  int32_t tx_offset;
   ModemType mod_type;
   uint32_t mod_baud_rate;
   DopplerSettings *doppler;
@@ -121,7 +122,7 @@ struct  TxRequest
 };
 #define TX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&tx_request__descriptor) \
-    , 0, 0, 0, MODEM_TYPE__GMSK, 0, NULL, NULL }
+    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, NULL, NULL }
 
 
 struct  Response

@@ -18,6 +18,7 @@ struct stream_cfg {
     uint32_t sampling_freq; // Baseband sample rate in Hz
     uint32_t center_freq; // Local oscillator frequency in Hz
     uint8_t gain_control_mode;
+    int32_t offset;
     double manual_gain;
 };
 

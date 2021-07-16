@@ -307,11 +307,6 @@ START_TEST (test_invalid_requests) {
 
     reconnect_client();
     req = create_rx_request();
-    req->rx_sdr_server_band_freq = 0;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
-
-    reconnect_client();
-    req = create_rx_request();
     req->demod_baud_rate = 0;
     assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
