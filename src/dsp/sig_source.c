@@ -1,6 +1,8 @@
 #include "sig_source.h"
 #include <math.h>
 #include <errno.h>
+#include <volk/volk.h>
+#include <stdio.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -45,6 +47,23 @@ void sig_source_process(int32_t freq, size_t expected_output_len, float complex 
 
     *output = source->output;
     *output_len = expected_output_len;
+}
+
+void sig_source_multiply(int32_t freq, float complex *input, size_t input_len, float complex **output, size_t *output_len, sig_source *source) {
+    if (input_len > source->output_len) {
+        fprintf(stderr, "<3>requested buffer %zu is more than max: %u\n", input_len, source->output_len);
+        *output = NULL;
+        *output_len = 0;
+        return;
+    }
+    float complex *sig_output = NULL;
+    size_t sig_output_len = 0;
+    sig_source_process(freq, input_len, &sig_output, &sig_output_len, source);
+
+    volk_32fc_x2_multiply_32fc((lv_32fc_t *) source->output, (const lv_32fc_t *) input, (const lv_32fc_t *) sig_output, input_len);
+
+    *output = source->output;
+    *output_len = input_len;
 }
 
 void sig_source_destroy(sig_source *source) {

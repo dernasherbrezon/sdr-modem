@@ -21,6 +21,7 @@
 #include "dsp/gfsk_mod.h"
 #include <math.h>
 #include "dsp/doppler.h"
+#include "dsp/sig_source.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"
@@ -45,6 +46,7 @@ struct tcp_worker {
     gfsk_mod *fsk_mod;
     doppler *dopp;
     FILE *tx_dump_file;
+    sig_source *signal;
 
     sdr_device *tx_device;
 };
@@ -191,6 +193,13 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
             output = dopp_output;
             output_len = dopp_output_len;
         }
+        if (worker->signal != NULL) {
+            float complex *signal_output = NULL;
+            size_t signal_output_len = 0;
+            sig_source_multiply(worker->tx_req->tx_offset, output, output_len, &signal_output, &signal_output_len, worker->signal);
+            output = signal_output;
+            output_len = signal_output_len;
+        }
 
         if (worker->tx_dump_file != NULL) {
             size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
@@ -306,6 +315,9 @@ void tcp_worker_destroy(void *data) {
     }
     if (worker->dopp != NULL) {
         doppler_destroy(worker->dopp);
+    }
+    if (worker->signal != NULL) {
+        sig_source_destroy(worker->signal);
     }
     if (worker->tx_dump_file != NULL) {
         fclose(worker->tx_dump_file);
@@ -481,15 +493,24 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
             return;
         }
     }
+    int samples_per_symbol = (int) ((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
+    uint32_t max_output_buffer = samples_per_symbol * server->server_config->buffer_size;
     if (tcp_worker->tx_req->doppler != NULL) {
         struct DopplerSettings *doppler_settings = tcp_worker->tx_req->doppler;
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
-        int samples_per_symbol = (int) ((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
-        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, samples_per_symbol * server->server_config->buffer_size,
+        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, max_output_buffer,
                               tle, &tcp_worker->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
+            tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+            tcp_worker_destroy(tcp_worker);
+            return;
+        }
+    } else if (tcp_worker->tx_req->tx_offset != 0) {
+        code = sig_source_create(1.0F, tcp_worker->tx_req->tx_sampling_freq, max_output_buffer, &tcp_worker->signal);
+        if (code != 0) {
+            fprintf(stderr, "<3>[%d] unable to create freq correction block\n", tcp_worker->id);
             tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
             tcp_worker_destroy(tcp_worker);
             return;

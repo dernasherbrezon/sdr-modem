@@ -2,7 +2,6 @@
 #include "../sgpsdp/sgp4sdp4.h"
 #include "sig_source.h"
 #include <errno.h>
-#include <volk/volk.h>
 
 // km/sec
 float SPEED_OF_LIGHT = 2.99792458E5;
@@ -26,8 +25,6 @@ struct doppler_t {
     sat_t *satellite;
     obs_set_t *obs_set;
 
-    float complex *output;
-    size_t output_len;
 };
 
 int32_t doppler_calculate_shift(doppler *result, int direction) {
@@ -102,24 +99,12 @@ int doppler_create(float latitude, float longitude, float altitude, uint32_t sam
     select_ephemeris(result->satellite);
     result->satellite->jul_epoch = Julian_Date_of_Epoch(result->satellite->tle.epoch);
     result->next_freq_difference = 0;
-    result->output_len = max_output_buffer_length;
-    result->output = malloc((sizeof(float complex) * result->output_len));
-    if (result->output == NULL) {
-        doppler_destroy(result);
-        return -ENOMEM;
-    }
     *d = result;
     return 0;
 }
 
 void doppler_process(float complex *input, size_t input_len, float complex **output, size_t *output_len, int direction, doppler *result) {
     if (input == NULL || input_len == 0) {
-        *output = NULL;
-        *output_len = 0;
-        return;
-    }
-    if (input_len > result->output_len) {
-        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, result->output_len);
         *output = NULL;
         *output_len = 0;
         return;
@@ -157,12 +142,10 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
 
     float complex *sig_output = NULL;
     size_t sig_output_len = 0;
-    sig_source_process(result->current_freq_difference, input_len, &sig_output, &sig_output_len, result->source);
+    sig_source_multiply(result->current_freq_difference, input, input_len, &sig_output, &sig_output_len, result->source);
 
-    volk_32fc_x2_multiply_32fc((lv_32fc_t *) result->output, (const lv_32fc_t *) input, (const lv_32fc_t *) sig_output, input_len);
-
-    *output = result->output;
-    *output_len = input_len;
+    *output = sig_output;
+    *output_len = sig_output_len;
 }
 
 void doppler_process_tx(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result) {
@@ -186,9 +169,6 @@ void doppler_destroy(doppler *result) {
     }
     if (result->satellite != NULL) {
         free(result->satellite);
-    }
-    if (result->output != NULL) {
-        free(result->output);
     }
     if (result->obs_set != NULL) {
         free(result->obs_set);
