@@ -431,6 +431,9 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
+    } else {
+        free(rx);
+        return -1;
     }
 
     code = sdr_worker_add_dsp_worker(dsp_worker, tcp_worker->sdr);
