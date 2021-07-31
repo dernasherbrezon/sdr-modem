@@ -414,7 +414,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         rx_config->sampling_freq = tcp_worker->rx_req->rx_sampling_freq;
-        rx_config->center_freq = tcp_worker->rx_req->rx_center_freq;
+        rx_config->center_freq = tcp_worker->rx_req->rx_center_freq + tcp_worker->rx_req->rx_offset;
         rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
         rx_config->manual_gain = server->server_config->rx_plutosdr_gain;
         rx_config->offset = tcp_worker->rx_req->rx_offset;
