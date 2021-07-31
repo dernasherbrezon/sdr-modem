@@ -121,20 +121,19 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
             if (result->jul_start_time == 0.0) {
                 struct tm t;
                 UTC_Calendar_Now(&t);
-                result->satellite->jul_utc = Julian_Date(&t);
-            } else {
-                result->satellite->jul_utc = result->jul_start_time;
+                result->jul_start_time = Julian_Date(&t);
             }
+            result->satellite->jul_utc = result->jul_start_time;
             result->current_freq_difference = doppler_calculate_shift(result, direction);
         } else {
             result->current_freq_difference = result->next_freq_difference;
         }
 
-        result->satellite->jul_utc = result->jul_start_time + result->next_update_samples / (double) result->sampling_freq / secday;
+        result->satellite->jul_utc += (float) result->update_interval_samples / result->sampling_freq / secday;
         result->next_freq_difference = doppler_calculate_shift(result, direction);
         // linear interpolation between next and current doppler shift
         // this is to avoid sudden jumps of frequency between corrections
-        result->freq_difference_per_sample = ((float) result->next_freq_difference - result->current_freq_difference) / result->sampling_freq;
+        result->freq_difference_per_sample = ((float) result->next_freq_difference - result->current_freq_difference) / result->update_interval_samples;
     } else {
         result->current_samples += input_len;
         result->current_freq_difference += result->freq_difference_per_sample * input_len;
