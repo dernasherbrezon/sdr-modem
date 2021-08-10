@@ -142,6 +142,7 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
         free(result);
         return code;
     }
+    result->details = ntohl(result->details);
     *response = result;
     return 0;
 }
