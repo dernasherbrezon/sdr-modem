@@ -84,7 +84,7 @@ int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
     return 0;
 }
 
-int validate_tx_request(struct TxRequest *req, uint32_t client_id, struct server_config *config) {
+int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const struct server_config *config) {
     if (req->mod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown mod_type: %d\n", client_id, req->mod_type);
         return -1;
@@ -105,16 +105,14 @@ int validate_tx_request(struct TxRequest *req, uint32_t client_id, struct server
         fprintf(stderr, "<3>[%d] missing mod_baud_rate parameter\n", client_id);
         return -1;
     }
-    if (req->doppler != NULL) {
-        if (req->doppler->n_tle != 3) {
-            fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
-            return -1;
-        }
+    if (req->doppler != NULL && req->doppler->n_tle != 3) {
+        fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
+        return -1;
     }
     return 0;
 }
 
-int validate_rx_request(struct RxRequest *req, uint32_t client_id, struct server_config *config) {
+int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const struct server_config *config) {
     if (req->demod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
@@ -131,11 +129,9 @@ int validate_rx_request(struct RxRequest *req, uint32_t client_id, struct server
         fprintf(stderr, "<3>[%d] missing demod_baud_rate parameter\n", client_id);
         return -1;
     }
-    if (req->doppler != NULL) {
-        if (req->doppler->n_tle != 3) {
-            fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
-            return -1;
-        }
+    if (req->doppler != NULL && req->doppler->n_tle != 3) {
+        fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
+        return -1;
     }
     if (req->demod_decimation == 0) {
         fprintf(stderr, "<3>[%d] missing demod_decimation parameter\n", client_id);
@@ -171,12 +167,12 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
         api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         return;
     }
-    uint32_t left = data->data.len;
+    size_t left = data->data.len;
     uint32_t processed = 0;
     while (left > 0) {
         uint32_t batch;
         if (left < worker->buffer_size) {
-            batch = left;
+            batch = (uint32_t) left;
         } else {
             batch = worker->buffer_size;
         }
@@ -560,7 +556,8 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod: %s, tx freq: %d, tx offset: %d, tx sampling_rate: %d, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, tcp_worker->tx_req->tx_sampling_freq,
+    fprintf(stdout, "[%d] mod: %s, tx freq: %d, tx offset: %d, tx sampling_rate: %d, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
+            tcp_worker->tx_req->tx_sampling_freq,
             tcp_worker->tx_req->mod_baud_rate);
 }
 
