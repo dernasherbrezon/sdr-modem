@@ -70,7 +70,7 @@ int doppler_create(double latitude, double longitude, double altitude, uint32_t 
     result->next_update_samples = 0;
     result->current_samples = 0;
     result->sampling_freq = sampling_freq;
-    result->update_interval_samples = sampling_freq * 1.0F; // recalculate doppler frequency every second
+    result->update_interval_samples = sampling_freq; // * 1.0F recalculate doppler frequency every second
     // no idea what theta means
     result->ground_station->theta = 0.0;
     int code = sig_source_create(1.0F, sampling_freq, max_output_buffer_length, &result->source);
