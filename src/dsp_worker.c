@@ -121,7 +121,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         struct DopplerSettings *doppler_settings = req->doppler;
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
-        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, req->rx_sampling_freq, req->rx_center_freq, 0, 0, server_config->buffer_size, tle, &result->dopp);
+        code = doppler_create(doppler_settings->latitude / 10E6, doppler_settings->longitude / 10E6, doppler_settings->altitude / 10E3, req->rx_sampling_freq, req->rx_center_freq, 0, 0, server_config->buffer_size, tle, &result->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create doppler correction block\n", result->id);
             dsp_worker_destroy(result);

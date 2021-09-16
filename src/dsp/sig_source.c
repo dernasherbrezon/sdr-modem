@@ -60,7 +60,7 @@ void sig_source_multiply(int32_t freq, float complex *input, size_t input_len, f
     size_t sig_output_len = 0;
     sig_source_process(freq, input_len, &sig_output, &sig_output_len, source);
 
-    volk_32fc_x2_multiply_32fc((lv_32fc_t *) source->output, (const lv_32fc_t *) input, (const lv_32fc_t *) sig_output, input_len);
+    volk_32fc_x2_multiply_32fc(source->output, (const lv_32fc_t *) input, (const lv_32fc_t *) sig_output, (unsigned int) input_len);
 
     *output = source->output;
     *output_len = input_len;
