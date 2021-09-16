@@ -85,11 +85,14 @@ int api_utils_write_response(int socket, ResponseStatus status, uint32_t details
     response.details = details;
 
     size_t len = response__get_packed_size(&response);
+    if (len > UINT32_MAX) {
+        return -1;
+    }
 
     struct message_header header;
     header.protocol_version = PROTOCOL_VERSION;
     header.type = TYPE_RESPONSE;
-    header.message_length = htonl(len);
+    header.message_length = htonl((uint32_t) len);
 
     size_t buffer_len = sizeof(struct message_header) + sizeof(uint8_t) * len;
     uint8_t *buffer = malloc(buffer_len);
