@@ -129,7 +129,7 @@ void doppler_process(float complex *input, size_t input_len, float complex **out
             result->current_freq_difference = result->next_freq_difference;
         }
 
-        result->satellite->jul_utc += (float) result->update_interval_samples / result->sampling_freq / secday;
+        result->satellite->jul_utc += (double) result->update_interval_samples / result->sampling_freq / secday;
         result->next_freq_difference = doppler_calculate_shift(result, direction);
         // linear interpolation between next and current doppler shift
         // this is to avoid sudden jumps of frequency between corrections

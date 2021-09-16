@@ -498,7 +498,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
         struct DopplerSettings *doppler_settings = tcp_worker->tx_req->doppler;
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
-        code = doppler_create(doppler_settings->latitude / 10E6F, doppler_settings->longitude / 10E6F, doppler_settings->altitude / 10E3F, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, max_output_buffer,
+        code = doppler_create(doppler_settings->latitude / 10E6, doppler_settings->longitude / 10E6, doppler_settings->altitude / 10E3, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, max_output_buffer,
                               tle, &tcp_worker->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
