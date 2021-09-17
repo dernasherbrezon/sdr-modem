@@ -20,7 +20,7 @@ struct dsp_worker_t {
     pthread_t dsp_thread;
     FILE *rx_dump_file;
     FILE *demod_file;
-    uint8_t demod_destination;
+    DemodDestination demod_destination;
 };
 
 bool dsp_worker_find_by_id(void *id, void *data) {
