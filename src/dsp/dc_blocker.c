@@ -57,10 +57,10 @@ float moving_average_process(float input, struct moving_average *mavg) {
     float inDelayed = mavg->inDelayed;
     mavg->inDelayed = mavg->delay_line[0];
     memmove(mavg->delay_line, mavg->delay_line + 1, sizeof(float) * (mavg->delay_line_len - 1));
-    mavg->delay_line[(mavg->delay_line_len - 1)] = input;
+    mavg->delay_line[mavg->delay_line_len - 1] = input;
     float y = input - inDelayed + mavg->outD1;
     mavg->outD1 = y;
-    return y / mavg->length;
+    return y / (float) mavg->length;
 }
 
 int dc_blocker_create(int length, dc_blocker **blocker) {
@@ -111,7 +111,7 @@ void dc_blocker_process(float *input, size_t input_len, float **output, size_t *
 
         float d = blocker->delay_line[0];
         memmove(blocker->delay_line, blocker->delay_line + 1, sizeof(float) * (blocker->delay_line_len - 1));
-        blocker->delay_line[(blocker->delay_line_len - 1)] = blocker->ma0->inDelayed;
+        blocker->delay_line[blocker->delay_line_len - 1] = blocker->ma0->inDelayed;
         input[i] = d - y4;
     }
     *output = input;
