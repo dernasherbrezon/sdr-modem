@@ -4,7 +4,7 @@
 #include <errno.h>
 
 // km/sec
-float SPEED_OF_LIGHT = 2.99792458E5;
+double SPEED_OF_LIGHT = 2.99792458E5;
 
 struct doppler_t {
     sig_source *source;
@@ -60,10 +60,14 @@ int doppler_create(double latitude, double longitude, double altitude, uint32_t 
     if (start_time_seconds == 0) {
         result->jul_start_time = 0.0;
     } else {
-        struct tm *cdate = gmtime(&start_time_seconds);
-        cdate->tm_year += 1900;
-        cdate->tm_mon += 1;
-        result->jul_start_time = Julian_Date(cdate);
+        struct tm cdate;
+        if (gmtime_r(&start_time_seconds, &cdate) == NULL) {
+            doppler_destroy(result);
+            return -1;
+        }
+        cdate.tm_year += 1900;
+        cdate.tm_mon += 1;
+        result->jul_start_time = Julian_Date(&cdate);
     }
     result->current_freq_difference = 0;
     result->freq_difference_per_sample = 0.0F;
