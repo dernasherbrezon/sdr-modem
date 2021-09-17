@@ -45,7 +45,18 @@ START_TEST (test_normal) {
 
 END_TEST
 
+START_TEST(test_invalid_alignment) {
+    setenv("VOLK_ALIGNMENT", "invalid", 1);
+    size_t taps_len = 12;
+    int code = gaussian_taps_create(1.5, 2 * (32000.0F / 1200), 0.5, 12, &taps);
+    ck_assert_int_eq(code, 0);
+    code = interp_fir_filter_create(taps, taps_len, 2, 1000, &filter);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
 void teardown() {
+    unsetenv("VOLK_ALIGNMENT");
     if (filter != NULL) {
         interp_fir_filter_destroy(filter);
         filter = NULL;
@@ -73,6 +84,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_invalid_alignment);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

@@ -43,7 +43,11 @@ int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
 
     char *alignment_override = getenv("VOLK_ALIGNMENT");
     if (alignment_override != NULL) {
-        result->alignment = atoi(alignment_override);
+        result->alignment = strtol(alignment_override, (char **) NULL, 10);
+        if (errno == ERANGE || result->alignment == 0) {
+            fprintf(stderr, "<3>invalid VOLK_ALIGNMENT specified: %s\n", alignment_override);
+            return -1;
+        }
     } else {
         result->alignment = volk_get_alignment();
     }
@@ -152,10 +156,10 @@ void fir_filter_process(const void *input, size_t input_len, void **output, size
         return;
     }
     if (filter->num_bytes == sizeof(float complex)) {
-        fir_filter_process_complex((float complex *) input, input_len, (float complex *) filter->working_buffer, output,
+        fir_filter_process_complex((const float complex *) input, input_len, (float complex *) filter->working_buffer, output,
                                    output_len, filter);
     } else if (filter->num_bytes == sizeof(float)) {
-        fir_filter_process_float((float *) input, input_len, (float *) filter->working_buffer, output, output_len, filter);
+        fir_filter_process_float((const float *) input, input_len, (float *) filter->working_buffer, output, output_len, filter);
     }
 }
 
