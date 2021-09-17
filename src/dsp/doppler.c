@@ -37,7 +37,7 @@ int32_t doppler_calculate_shift(doppler *result, int direction) {
 
     Convert_Sat_State(&result->satellite->pos, &result->satellite->vel);
     Calculate_Obs(result->satellite->jul_utc, &result->satellite->pos, &result->satellite->vel, result->ground_station, result->obs_set);
-    return direction * (result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT) + result->constant_offset;
+    return (int32_t) (direction * (result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT)) + result->constant_offset;
 }
 
 int doppler_create(double latitude, double longitude, double altitude, uint32_t sampling_freq, uint32_t center_freq, int32_t constant_offset, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **d) {
