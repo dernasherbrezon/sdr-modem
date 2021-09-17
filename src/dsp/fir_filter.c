@@ -46,6 +46,7 @@ int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
         result->alignment = strtol(alignment_override, (char **) NULL, 10);
         if (errno == ERANGE || result->alignment == 0) {
             fprintf(stderr, "<3>invalid VOLK_ALIGNMENT specified: %s\n", alignment_override);
+            fir_filter_destroy(result);
             return -1;
         }
     } else {

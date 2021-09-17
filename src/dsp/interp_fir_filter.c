@@ -19,7 +19,7 @@ struct interp_fir_filter_t {
 int interp_fir_filter_roundup_to_interpolation(float *taps, size_t taps_len, uint8_t interpolation, float **result_taps, size_t *result_taps_len) {
     size_t len;
     // round up length to a multiple of the interpolation factor
-    int n = taps_len % interpolation;
+    size_t n = taps_len % interpolation;
     if (n > 0) {
         n = interpolation - n;
         len = taps_len + n;
@@ -39,9 +39,9 @@ int interp_fir_filter_roundup_to_interpolation(float *taps, size_t taps_len, uin
     return 0;
 }
 
-float **interp_fir_filter_create_interleaved_taps(float *taps, size_t taps_len, uint8_t interpolation) {
+float **interp_fir_filter_create_interleaved_taps(const float *taps, size_t taps_len, uint8_t interpolation) {
     // guaranteed to be integer. see interp_fir_filter_roundup_to_interpolation
-    int filter_taps_len = taps_len / interpolation;
+    size_t filter_taps_len = taps_len / interpolation;
     float **interleaved_taps = malloc(sizeof(float *) * interpolation);
     if (interleaved_taps == NULL) {
         return NULL;
@@ -111,10 +111,10 @@ int interp_fir_filter_create(float *taps, size_t taps_len, uint8_t interpolation
     }
 
     int result_code = 0;
-    int filter_taps_len = result->taps_len / interpolation;
+    size_t filter_taps_len = result->taps_len / interpolation;
     for (size_t i = 0; i < result->filters_len; i++) {
         fir_filter *curFilter = NULL;
-        int code = fir_filter_create(1, interleaved_taps[i], filter_taps_len, max_input_buffer_length, sizeof(float), &curFilter);
+        code = fir_filter_create(1, interleaved_taps[i], filter_taps_len, max_input_buffer_length, sizeof(float), &curFilter);
         //init all filters anyway
         if (code != 0) {
             free(interleaved_taps[i]);
