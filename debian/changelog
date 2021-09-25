@@ -3,4 +3,4 @@ sdr-modem (1.0.0-1) unstable; urgency=medium
   * Initial release. (Closes: #1)
   * improve rotator performance
 
- -- Andrey Rodionov <info@r2cloud.ru>  Fri, 17 Sept 2021 10:17:21 +0100
+ -- Andrey Rodionov <info@r2cloud.ru>  Fri, 17 Sep 2021 10:17:21 +0100
