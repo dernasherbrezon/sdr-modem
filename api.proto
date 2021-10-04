@@ -34,6 +34,7 @@ message RxRequest {
     required int64 rx_offset = 4;
     required modem_type demod_type = 5;
     required uint32 demod_baud_rate = 6;
+    // the actual is uint8
     required uint32 demod_decimation = 7;
     required demod_destination demod_destination = 8;
 

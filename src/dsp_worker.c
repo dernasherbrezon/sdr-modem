@@ -132,7 +132,7 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
     if (req->demod_type == MODEM_TYPE__GMSK) {
         struct FskDemodulationSettings *fsk_settings = req->fsk_settings;
         code = fsk_demod_create(req->rx_sampling_freq, req->demod_baud_rate,
-                                fsk_settings->demod_fsk_deviation, req->demod_decimation,
+                                fsk_settings->demod_fsk_deviation, (uint8_t) req->demod_decimation,
                                 fsk_settings->demod_fsk_transition_width, fsk_settings->demod_fsk_use_dc_block,
                                 server_config->buffer_size, &result->fsk_demod);
     }

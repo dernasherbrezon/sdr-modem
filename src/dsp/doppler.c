@@ -17,7 +17,7 @@ struct doppler_t {
     int64_t next_freq_difference;
     float freq_difference_per_sample;
 
-    uint32_t update_interval_samples;
+    uint64_t update_interval_samples;
     uint64_t next_update_samples;
     uint64_t current_samples;
 
