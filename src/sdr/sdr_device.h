@@ -3,6 +3,7 @@
 
 #include <complex.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef struct sdr_device_t sdr_device;
 
