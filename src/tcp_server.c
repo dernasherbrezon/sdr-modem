@@ -374,6 +374,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
             fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
+        fprintf(stdout, "[%d] mod file output at: %s\n", id, filename);
     } else {
         fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->server_config->tx_sdr_type);
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -456,6 +457,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
+        fprintf(stdout, "[%d] demod file input at: %s\n", tcp_worker->id, filename);
     } else {
         free(rx);
         return -1;
@@ -555,7 +557,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
             return;
         }
     }
-    if (server->server_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+    if (server->server_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR || server->server_config->tx_sdr_type == TX_SDR_TYPE_FILE) {
         pthread_mutex_lock(&server->mutex);
         code = tcp_server_init_tx_device(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
         pthread_mutex_unlock(&server->mutex);

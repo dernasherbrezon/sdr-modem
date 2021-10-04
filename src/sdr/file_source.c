@@ -80,10 +80,15 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin) {
     file_device *device = (file_device *) plugin;
     if (device->rx_file == NULL) {
+        fprintf(stderr, "<3>[%d] rx file was not initialized\n", device->id);
+        *output = NULL;
+        *output_len = 0;
         return -1;
     }
     size_t actually_read = fread(device->output, sizeof(float complex), device->output_len, device->rx_file);
     if (actually_read <= 0) {
+        *output = NULL;
+        *output_len = 0;
         return -1;
     }
     if (device->signal != NULL) {
@@ -106,6 +111,7 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
         return -1;
     }
     if (device->tx_file == NULL) {
+        fprintf(stderr, "<3>[%d] tx file was not initialized\n", device->id);
         return -1;
     }
     if (device->signal != NULL) {

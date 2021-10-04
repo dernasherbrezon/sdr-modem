@@ -69,21 +69,21 @@ void assert_response(sdr_modem_client *client, uint8_t type, ResponseStatus stat
     free(response_header);
 }
 
-void assert_response_with_header_and_tx_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, uint8_t status, uint8_t details, struct TxRequest *req) {
+void assert_response_with_header_and_tx_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, uint8_t status, uint8_t details, struct TxRequest *tx_req) {
     struct message_header header;
     header.protocol_version = protocol_version;
     header.type = request_type;
-    int code = sdr_modem_client_write_tx_request(&header, req, client);
+    int code = sdr_modem_client_write_tx_request(&header, tx_req, client);
     ck_assert_int_eq(code, 0);
 
     assert_response(client, type, status, details);
 }
 
-void assert_response_with_header_and_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, ResponseStatus status, uint8_t details, struct RxRequest *req) {
+void assert_response_with_header_and_request(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type, uint8_t type, ResponseStatus status, uint8_t details, struct RxRequest *rx_req) {
     struct message_header header;
     header.protocol_version = protocol_version;
     header.type = request_type;
-    int code = sdr_modem_client_write_request(&header, req, client);
+    int code = sdr_modem_client_write_request(&header, rx_req, client);
     ck_assert_int_eq(code, 0);
 
     assert_response(client, type, status, details);
@@ -98,12 +98,12 @@ void sdr_modem_client_send_header(sdr_modem_client *client, uint8_t protocol_ver
     ck_assert_int_eq(code, 0);
 }
 
-void assert_response_with_request(sdr_modem_client *client, uint8_t type, ResponseStatus status, uint8_t details, struct RxRequest *req) {
-    assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_RX_REQUEST, type, status, details, req);
+void assert_response_with_request(sdr_modem_client *client, uint8_t type, ResponseStatus status, uint8_t details, struct RxRequest *rx_req) {
+    assert_response_with_header_and_request(client, PROTOCOL_VERSION, TYPE_RX_REQUEST, type, status, details, rx_req);
 }
 
-void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, ResponseStatus status, uint8_t details, struct TxRequest *req) {
-    assert_response_with_header_and_tx_request(client, PROTOCOL_VERSION, TYPE_TX_REQUEST, type, status, details, req);
+void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, ResponseStatus status, uint8_t details, struct TxRequest *tx_req) {
+    assert_response_with_header_and_tx_request(client, PROTOCOL_VERSION, TYPE_TX_REQUEST, type, status, details, tx_req);
 }
 
 void init_server_with_plutosdr_support(size_t expected_tx_len) {
@@ -132,6 +132,19 @@ uint8_t *setup_data_to_modulate(uint32_t len) {
         data_to_modulate[i] = (uint8_t) i;
     }
     return data_to_modulate;
+}
+
+void assert_response_with_tx_data(ResponseStatus status) {
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_TX_DATA;
+    struct TxData tx = TX_DATA__INIT;
+    tx.data.len = 50;
+    tx.data.data = setup_data_to_modulate(tx.data.len);
+
+    int code = sdr_modem_client_write_tx(&header, &tx, client0);
+    ck_assert_int_eq(code, 0);
+    assert_response(client0, TYPE_RESPONSE, status, 0);
 }
 
 START_TEST(test_plutosdr_failures) {
@@ -194,17 +207,7 @@ START_TEST (test_plutosdr_tx) {
     doppler_settings__free_unpacked(tx_req->doppler, NULL);
     tx_req->doppler = NULL;
     assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
-
-    struct message_header header;
-    header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_TX_DATA;
-    struct TxData tx = TX_DATA__INIT;
-    tx.data.len = 50;
-    tx.data.data = setup_data_to_modulate(tx.data.len);
-
-    int code = sdr_modem_client_write_tx(&header, &tx, client0);
-    ck_assert_int_eq(code, 0);
-    assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0);
+    assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
 
     int16_t *actual = NULL;
     size_t actual_len = 0;
@@ -223,7 +226,7 @@ START_TEST (test_plutosdr_tx) {
     actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
     ck_assert(actual_buffer != NULL);
     size_t actual_read = 0;
-    code = read_data(actual_buffer, &actual_read, sizeof(uint8_t) * buffer_len, output_file);
+    int code = read_data(actual_buffer, &actual_read, sizeof(uint8_t) * buffer_len, output_file);
     ck_assert_int_eq(code, 0);
 
     const float expected_modulated[100] = {1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
@@ -430,6 +433,35 @@ START_TEST (test_multiple_clients) {
 
 END_TEST
 
+START_TEST (test_file_data) {
+    int code = server_config_create(&config, "full.conf");
+    ck_assert_int_eq(code, 0);
+    config->tx_sdr_type = TX_SDR_TYPE_FILE;
+    config->rx_sdr_type = RX_SDR_TYPE_FILE;
+    code = tcp_server_create(config, &server);
+    ck_assert_int_eq(code, 0);
+
+    reconnect_client();
+    tx_req = create_tx_request();
+    tx_req->filename = utils_read_and_copy_str("tx.cf32");
+    // keep test stable
+    doppler_settings__free_unpacked(tx_req->doppler, NULL);
+    tx_req->doppler = NULL;
+    assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
+    assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
+
+    reconnect_client();
+    req = create_rx_request();
+    req->filename = utils_read_and_copy_str("tx.cf32");
+    // do not correct doppler - this will make test unstable and dependent on the
+    // current satellite position
+    doppler_settings__free_unpacked(req->doppler, NULL);
+    req->doppler = NULL;
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, req);
+    //FIXME assert rx data
+}
+END_TEST
+
 START_TEST (test_read_data) {
     int code = server_config_create(&config, "minimal.conf");
     ck_assert_int_eq(code, 0);
@@ -615,6 +647,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_plutosdr_failures);
     tcase_add_test(tc_core, test_plutosdr_failures2);
     tcase_add_test(tc_core, test_plutosdr_tx);
+//    tcase_add_test(tc_core, test_file_data);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
