@@ -264,5 +264,11 @@ void server_config_destroy(struct server_config *config) {
     if (config->iio != NULL) {
         iio_lib_destroy(config->iio);
     }
+    if (config->rx_file_base_path != NULL) {
+        free(config->rx_file_base_path);
+    }
+    if (config->tx_file_base_path != NULL) {
+        free(config->tx_file_base_path);
+    }
     free(config);
 }
