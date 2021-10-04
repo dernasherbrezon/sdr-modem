@@ -1,6 +1,6 @@
 ## sdr-modem
 
-[![Build Status](https://app.travis-ci.com/dernasherbrezon/sdr-modem.svg?branch=main)](https://travis-ci.com/dernasherbrezon/sdr-modem) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
+[![Build Status](https://app.travis-ci.com/dernasherbrezon/sdr-modem.svg?branch=main)](https://app.travis-ci.com/github/dernasherbrezon/sdr-modem) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
 
 Modem based on software defined radios.
 
@@ -18,7 +18,7 @@ Modem based on software defined radios.
    * [sdr-server](https://github.com/dernasherbrezon/sdr-server)
    * [plutosdr](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/adalm-pluto.html)
  * Misc:
-   * Doppler correction for satellites using SGP4 model
+   * Doppler's correction for satellites using SGP4 model
    * Save intermittent data onto disk for future analysis/replay
 
 ## API

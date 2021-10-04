@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <inttypes.h>
 
 #define FIR_BUF_SIZE    8192
 
@@ -314,7 +315,7 @@ int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, i
     }
 
     if (cfg->sampling_freq < MIN_FIR_FILTER) {
-        fprintf(stderr, "sampling freq is too low: %llu\n", cfg->sampling_freq);
+        fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", cfg->sampling_freq);
         return -1;
     } else if (cfg->sampling_freq < MIN_FIR_FILTER_2) {
         *decimation = 4;

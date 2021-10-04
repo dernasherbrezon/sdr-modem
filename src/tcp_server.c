@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <inttypes.h>
 
 #include "api.h"
 #include "api.pb-c.h"
@@ -556,7 +557,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod: %s, tx freq: %llu, tx offset: %lld, tx sampling_rate: %llu, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
+    fprintf(stdout, "[%d] mod: %s, tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sampling_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
             tcp_worker->tx_req->tx_sampling_freq,
             tcp_worker->tx_req->mod_baud_rate);
 }
@@ -626,7 +627,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod: %s, rx freq: %llu, rx offset: %lld, rx sampling_rate: %llu, baud: %d, destination: %s\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod: %s, rx freq: %" PRIu64 ", rx offset: %" PRId64 ", rx sampling_rate: %" PRIu64 ", baud: %d, destination: %s\n", tcp_worker->id,
             protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, tcp_worker->rx_req->rx_center_freq, tcp_worker->rx_req->rx_offset,
             tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name);
 }

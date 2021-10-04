@@ -9,6 +9,7 @@
 #endif
 
 #include "lpf_taps.h"
+#include <inttypes.h>
 
 int sanity_check_1f(uint64_t sampling_freq, uint64_t cutoff_freq, uint32_t transition_width) {
     if (sampling_freq <= 0) {
@@ -17,7 +18,7 @@ int sanity_check_1f(uint64_t sampling_freq, uint64_t cutoff_freq, uint32_t trans
     }
 
     if (cutoff_freq <= 0 || (double) cutoff_freq > (double) sampling_freq / 2) {
-        fprintf(stderr, "<3>cutoff frequency should be positive and less than sampling freq / 2. got: %llu\n", cutoff_freq);
+        fprintf(stderr, "<3>cutoff frequency should be positive and less than sampling freq / 2. got: %" PRIu64 "\n", cutoff_freq);
         return -1;
     }
 
