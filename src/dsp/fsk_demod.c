@@ -25,7 +25,7 @@ struct fsk_demod_t {
     size_t output_len;
 };
 
-int fsk_demod_create(uint32_t sampling_freq, uint32_t baud_rate, int32_t deviation, uint8_t decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
+int fsk_demod_create(uint64_t sampling_freq, uint32_t baud_rate, int64_t deviation, uint8_t decimation, uint32_t transition_width, bool use_dc_block, uint32_t max_input_buffer_length, fsk_demod **demod) {
     struct fsk_demod_t *result = malloc(sizeof(struct fsk_demod_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -33,34 +33,34 @@ int fsk_demod_create(uint32_t sampling_freq, uint32_t baud_rate, int32_t deviati
     // init all fields with 0 so that destroy_* method would work
     *result = (struct fsk_demod_t) {0};
 
-    float carson_cutoff = abs(deviation) + baud_rate / 2.0f;
-    int code = lpf_create(1, sampling_freq, carson_cutoff, 0.1 * carson_cutoff, max_input_buffer_length, sizeof(float complex), &result->lpf1);
+    double carson_cutoff = (double) llabs(deviation) + (double) baud_rate / 2;
+    int code = lpf_create(1, sampling_freq, (uint64_t) carson_cutoff, (uint32_t) (0.1f * carson_cutoff), max_input_buffer_length, sizeof(float complex), &result->lpf1);
     if (code != 0) {
         fsk_demod_destroy(result);
         return code;
     }
-    code = quadrature_demod_create((sampling_freq / (2 * M_PI * deviation)), max_input_buffer_length, &result->quad_demod);
+    code = quadrature_demod_create((float) ((double) sampling_freq / (2 * M_PI * (double) deviation)), max_input_buffer_length, &result->quad_demod);
     if (code != 0) {
         fsk_demod_destroy(result);
         return code;
     }
-    code = lpf_create(decimation, sampling_freq, (float) baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
+    code = lpf_create(decimation, sampling_freq, baud_rate / 2, transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
     if (code != 0) {
         fsk_demod_destroy(result);
         return code;
     }
 
-    float sps = sampling_freq / (float) decimation / (float) baud_rate;
+    float sps = (float) ((double) sampling_freq / baud_rate / decimation);
 
     if (use_dc_block) {
-        code = dc_blocker_create(ceilf(sps * 32), &result->dc);
+        code = dc_blocker_create((int) ceilf(sps * 32), &result->dc);
         if (code != 0) {
             fsk_demod_destroy(result);
             return code;
         }
     }
 
-    code = clock_mm_create(sps, (sps * M_PI) / 100, 0.5f, 0.5f / 8.0f, 0.01f, max_input_buffer_length, &result->clock);
+    code = clock_mm_create(sps, (sps * (float) M_PI) / 100, 0.5f, 0.5f / 8.0f, 0.01f, max_input_buffer_length, &result->clock);
     if (code != 0) {
         fsk_demod_destroy(result);
         return code;

@@ -8,13 +8,13 @@ double SPEED_OF_LIGHT = 2.99792458E5;
 
 struct doppler_t {
     sig_source *source;
-    uint32_t sampling_freq;
-    int32_t center_freq;
-    int32_t constant_offset;
+    uint64_t sampling_freq;
+    int64_t center_freq;
+    int64_t constant_offset;
     double jul_start_time;
 
-    int32_t current_freq_difference;
-    int32_t next_freq_difference;
+    int64_t current_freq_difference;
+    int64_t next_freq_difference;
     float freq_difference_per_sample;
 
     uint32_t update_interval_samples;
@@ -27,7 +27,7 @@ struct doppler_t {
 
 };
 
-int32_t doppler_calculate_shift(doppler *result, int direction) {
+int64_t doppler_calculate_shift(doppler *result, int direction) {
     double tsince = (result->satellite->jul_utc - result->satellite->jul_epoch) * xmnpda;
     if (result->satellite->flags & DEEP_SPACE_EPHEM_FLAG) {
         SDP4(result->satellite, tsince);
@@ -37,10 +37,10 @@ int32_t doppler_calculate_shift(doppler *result, int direction) {
 
     Convert_Sat_State(&result->satellite->pos, &result->satellite->vel);
     Calculate_Obs(result->satellite->jul_utc, &result->satellite->pos, &result->satellite->vel, result->ground_station, result->obs_set);
-    return (int32_t) (direction * (result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT)) + result->constant_offset;
+    return (int64_t) (direction * (result->center_freq - result->center_freq * (SPEED_OF_LIGHT - result->obs_set->range_rate) / SPEED_OF_LIGHT)) + result->constant_offset;
 }
 
-int doppler_create(double latitude, double longitude, double altitude, uint32_t sampling_freq, uint32_t center_freq, int32_t constant_offset, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **d) {
+int doppler_create(double latitude, double longitude, double altitude, uint64_t sampling_freq, uint64_t center_freq, int64_t constant_offset, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **d) {
     struct doppler_t *result = malloc(sizeof(struct doppler_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -55,7 +55,7 @@ int doppler_create(double latitude, double longitude, double altitude, uint32_t 
     result->ground_station->lat = Radians(latitude);
     result->ground_station->lon = Radians(longitude);
     result->ground_station->alt = altitude;
-    result->center_freq = center_freq;
+    result->center_freq = (int64_t) center_freq;
     result->constant_offset = constant_offset;
     if (start_time_seconds == 0) {
         result->jul_start_time = 0.0;

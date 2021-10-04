@@ -70,7 +70,7 @@ struct  DopplerSettings
 struct  FskDemodulationSettings
 {
   ProtobufCMessage base;
-  int32_t demod_fsk_deviation;
+  int64_t demod_fsk_deviation;
   uint32_t demod_fsk_transition_width;
   protobuf_c_boolean demod_fsk_use_dc_block;
 };
@@ -82,7 +82,7 @@ struct  FskDemodulationSettings
 struct  FskModulationSettings
 {
   ProtobufCMessage base;
-  int32_t mod_fsk_deviation;
+  int64_t mod_fsk_deviation;
 };
 #define FSK_MODULATION_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&fsk_modulation_settings__descriptor) \
@@ -92,10 +92,10 @@ struct  FskModulationSettings
 struct  RxRequest
 {
   ProtobufCMessage base;
-  uint32_t rx_center_freq;
-  uint32_t rx_sampling_freq;
+  uint64_t rx_center_freq;
+  uint64_t rx_sampling_freq;
   protobuf_c_boolean rx_dump_file;
-  int32_t rx_offset;
+  int64_t rx_offset;
   ModemType demod_type;
   uint32_t demod_baud_rate;
   uint32_t demod_decimation;
@@ -111,10 +111,10 @@ struct  RxRequest
 struct  TxRequest
 {
   ProtobufCMessage base;
-  uint32_t tx_center_freq;
-  uint32_t tx_sampling_freq;
+  uint64_t tx_center_freq;
+  uint64_t tx_sampling_freq;
   protobuf_c_boolean tx_dump_file;
-  int32_t tx_offset;
+  int64_t tx_offset;
   ModemType mod_type;
   uint32_t mod_baud_rate;
   DopplerSettings *doppler;

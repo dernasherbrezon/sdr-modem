@@ -405,7 +405,7 @@ static const ProtobufCFieldDescriptor fsk_demodulation_settings__field_descripto
     "demod_fsk_deviation",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
     offsetof(FskDemodulationSettings, demod_fsk_deviation),
     NULL,
@@ -469,7 +469,7 @@ static const ProtobufCFieldDescriptor fsk_modulation_settings__field_descriptors
     "mod_fsk_deviation",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
     offsetof(FskModulationSettings, mod_fsk_deviation),
     NULL,
@@ -507,7 +507,7 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
     "rx_center_freq",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
     offsetof(RxRequest, rx_center_freq),
     NULL,
@@ -519,7 +519,7 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
     "rx_sampling_freq",
     2,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
     offsetof(RxRequest, rx_sampling_freq),
     NULL,
@@ -543,7 +543,7 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
     "rx_offset",
     4,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
     offsetof(RxRequest, rx_offset),
     NULL,
@@ -662,7 +662,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
     "tx_center_freq",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
     offsetof(TxRequest, tx_center_freq),
     NULL,
@@ -674,7 +674,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
     "tx_sampling_freq",
     2,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
     offsetof(TxRequest, tx_sampling_freq),
     NULL,
@@ -698,7 +698,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
     "tx_offset",
     4,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
     offsetof(TxRequest, tx_offset),
     NULL,

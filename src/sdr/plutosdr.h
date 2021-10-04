@@ -15,10 +15,10 @@ typedef struct plutosdr_t plutosdr;
 #define IIO_GAIN_MODE_HYBRID 3
 
 struct stream_cfg {
-    uint32_t sampling_freq; // Baseband sample rate in Hz
-    uint32_t center_freq; // Local oscillator frequency in Hz
+    uint64_t sampling_freq; // Baseband sample rate in Hz
+    uint64_t center_freq; // Local oscillator frequency in Hz
     uint8_t gain_control_mode;
-    int32_t offset;
+    int64_t offset;
     double manual_gain;
 };
 

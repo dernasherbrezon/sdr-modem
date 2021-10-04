@@ -14,10 +14,10 @@ struct sig_source_t {
 
     float complex *output;
     uint32_t output_len;
-    uint32_t rx_sampling_freq;
+    uint64_t rx_sampling_freq;
 };
 
-int sig_source_create(float amplitude, uint32_t rx_sampling_freq, uint32_t max_output_buffer_length, sig_source **source) {
+int sig_source_create(float amplitude, uint64_t rx_sampling_freq, uint32_t max_output_buffer_length, sig_source **source) {
     struct sig_source_t *result = malloc(sizeof(struct sig_source_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -38,7 +38,7 @@ int sig_source_create(float amplitude, uint32_t rx_sampling_freq, uint32_t max_o
     return 0;
 }
 
-void sig_source_process(int32_t freq, size_t expected_output_len, float complex **output, size_t *output_len, sig_source *source) {
+void sig_source_process(int64_t freq, size_t expected_output_len, float complex **output, size_t *output_len, sig_source *source) {
     float adjusted_freq = freq / (float) source->rx_sampling_freq;
     for (size_t i = 0; i < expected_output_len; i++) {
         source->output[i] = cosf(source->phase) * source->amplitude + sinf(source->phase) * source->amplitude * I;
@@ -49,7 +49,7 @@ void sig_source_process(int32_t freq, size_t expected_output_len, float complex 
     *output_len = expected_output_len;
 }
 
-void sig_source_multiply(int32_t freq, float complex *input, size_t input_len, float complex **output, size_t *output_len, sig_source *source) {
+void sig_source_multiply(int64_t freq, float complex *input, size_t input_len, float complex **output, size_t *output_len, sig_source *source) {
     if (input_len > source->output_len) {
         fprintf(stderr, "<3>requested buffer %zu is more than max: %u\n", input_len, source->output_len);
         *output = NULL;

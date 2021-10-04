@@ -112,7 +112,7 @@ int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const s
     return 0;
 }
 
-int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const struct server_config *config) {
+int validate_rx_request(const struct RxRequest *req, uint32_t client_id) {
     if (req->demod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
@@ -484,7 +484,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     int code;
     if (tcp_worker->tx_req->mod_type == MODEM_TYPE__GMSK) {
         struct FskModulationSettings *fsk_settings = tcp_worker->tx_req->fsk_settings;
-        code = gfsk_mod_create((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate, (2 * M_PI * fsk_settings->mod_fsk_deviation / tcp_worker->tx_req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
+        code = gfsk_mod_create((float) ((double) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate), (float) (2 * M_PI * (double) fsk_settings->mod_fsk_deviation / (double) tcp_worker->tx_req->tx_sampling_freq), 0.5F, tcp_worker->buffer_size, &tcp_worker->fsk_mod);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
             tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
@@ -492,7 +492,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
             return;
         }
     }
-    int samples_per_symbol = (int) ((float) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
+    int samples_per_symbol = (int) ((double) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
     uint32_t max_output_buffer = samples_per_symbol * server->server_config->buffer_size;
     if (tcp_worker->tx_req->doppler != NULL) {
         struct DopplerSettings *doppler_settings = tcp_worker->tx_req->doppler;
@@ -556,7 +556,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod: %s, tx freq: %d, tx offset: %d, tx sampling_rate: %d, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
+    fprintf(stdout, "[%d] mod: %s, tx freq: %llu, tx offset: %lld, tx sampling_rate: %llu, baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
             tcp_worker->tx_req->tx_sampling_freq,
             tcp_worker->tx_req->mod_baud_rate);
 }
@@ -589,7 +589,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
         return;
     }
 
-    if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id, server->server_config) < 0) {
+    if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id) < 0) {
         tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;
@@ -626,7 +626,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod: %s, rx freq: %d, rx offset: %d, rx sampling_rate: %d, baud: %d, destination: %s\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod: %s, rx freq: %llu, rx offset: %lld, rx sampling_rate: %llu, baud: %d, destination: %s\n", tcp_worker->id,
             protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, tcp_worker->rx_req->rx_center_freq, tcp_worker->rx_req->rx_offset,
             tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name);
 }

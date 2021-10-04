@@ -11,7 +11,7 @@
 
 typedef struct doppler_t doppler;
 
-int doppler_create(double latitude, double longitude, double altitude, uint32_t sampling_freq, uint32_t center_freq, int32_t constant_offset, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **result);
+int doppler_create(double latitude, double longitude, double altitude, uint64_t sampling_freq, uint64_t center_freq, int64_t constant_offset, time_t start_time_seconds, uint32_t max_output_buffer_length, char tle[3][80], doppler **result);
 
 void doppler_process_rx(float complex *input, size_t input_len, float complex **output, size_t *output_len, doppler *result);
 
