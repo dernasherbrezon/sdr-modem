@@ -40,6 +40,7 @@ message RxRequest {
 
     optional doppler_settings doppler = 9;
     optional fsk_demodulation_settings fsk_settings = 10;
+    optional string filename = 11;
 }
 
 message TxRequest {
@@ -52,6 +53,7 @@ message TxRequest {
 
     optional doppler_settings doppler = 7;
     optional fsk_modulation_settings fsk_settings = 8;
+    optional string filename = 9;
 }
 
 enum response_status {

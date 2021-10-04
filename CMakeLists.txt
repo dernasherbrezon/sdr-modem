@@ -33,6 +33,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sig_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/math/fast_atan2f.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_server_client.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/sgp4sdp4.c

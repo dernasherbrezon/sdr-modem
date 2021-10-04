@@ -98,14 +98,18 @@ struct  RxRequest
   int64_t rx_offset;
   ModemType demod_type;
   uint32_t demod_baud_rate;
+  /*
+   * the actual is uint8
+   */
   uint32_t demod_decimation;
   DemodDestination demod_destination;
   DopplerSettings *doppler;
   FskDemodulationSettings *fsk_settings;
+  char *filename;
 };
 #define RX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rx_request__descriptor) \
-    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, 0, DEMOD_DESTINATION__FILE, NULL, NULL }
+    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, 0, DEMOD_DESTINATION__FILE, NULL, NULL, NULL }
 
 
 struct  TxRequest
@@ -119,10 +123,11 @@ struct  TxRequest
   uint32_t mod_baud_rate;
   DopplerSettings *doppler;
   FskModulationSettings *fsk_settings;
+  char *filename;
 };
 #define TX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&tx_request__descriptor) \
-    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, NULL, NULL }
+    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, NULL, NULL, NULL }
 
 
 struct  Response

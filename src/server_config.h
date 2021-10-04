@@ -7,9 +7,11 @@
 
 #define RX_SDR_TYPE_SDR_SERVER 0
 #define RX_SDR_TYPE_PLUTOSDR 1
+#define RX_SDR_TYPE_FILE 2
 
 #define TX_SDR_TYPE_NONE 0
 #define TX_SDR_TYPE_PLUTOSDR 1
+#define TX_SDR_TYPE_FILE 2
 
 struct server_config {
 	// socket settings
@@ -26,6 +28,9 @@ struct server_config {
 
 	// output settings
 	char *base_path;
+
+    char *rx_file_base_path;
+    char *tx_file_base_path;
 
 	uint8_t tx_sdr_type;
     double tx_plutosdr_gain;

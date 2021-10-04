@@ -121,6 +121,8 @@ int server_config_create(struct server_config **config, const char *path) {
             rx_sdr_type = RX_SDR_TYPE_SDR_SERVER;
         } else if (strcmp(rx_sdr_type_str, "plutosdr") == 0) {
             rx_sdr_type = RX_SDR_TYPE_PLUTOSDR;
+        } else if (strcmp(rx_sdr_type_str, "file") == 0) {
+            rx_sdr_type = RX_SDR_TYPE_FILE;
         } else {
             fprintf(stderr, "<3>unsupported rx_sdr_type: %s\n", rx_sdr_type_str);
             config_destroy(&libconfig);
@@ -160,6 +162,8 @@ int server_config_create(struct server_config **config, const char *path) {
             tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
         } else if (strcmp(tx_sdr_type_str, "none") == 0) {
             tx_sdr_type = TX_SDR_TYPE_NONE;
+        } else if (strcmp(tx_sdr_type_str, "file") == 0) {
+            tx_sdr_type = TX_SDR_TYPE_FILE;
         } else {
             fprintf(stderr, "<3>unsupported tx_sdr_type: %s\n", tx_sdr_type_str);
             config_destroy(&libconfig);
@@ -176,6 +180,29 @@ int server_config_create(struct server_config **config, const char *path) {
             server_config_destroy(result);
             return -1;
         }
+    }
+
+    setting = config_lookup(&libconfig, "rx_file_base_path");
+    char *rx_file_base_path = read_and_copy_str(setting, default_folder);
+    if (rx_file_base_path == NULL) {
+        config_destroy(&libconfig);
+        server_config_destroy(result);
+        return -ENOMEM;
+    }
+    result->rx_file_base_path = rx_file_base_path;
+    if (result->rx_sdr_type == RX_SDR_TYPE_FILE) {
+        fprintf(stdout, "rx file base path: %s\n", result->rx_file_base_path);
+    }
+    setting = config_lookup(&libconfig, "tx_file_base_path");
+    char *tx_file_base_path = read_and_copy_str(setting, default_folder);
+    if (tx_file_base_path == NULL) {
+        config_destroy(&libconfig);
+        server_config_destroy(result);
+        return -ENOMEM;
+    }
+    result->tx_file_base_path = tx_file_base_path;
+    if (result->tx_sdr_type == TX_SDR_TYPE_FILE) {
+        fprintf(stdout, "tx file base path: %s\n", result->tx_file_base_path);
     }
 
     setting = config_lookup(&libconfig, "tx_plutosdr_gain");

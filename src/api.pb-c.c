@@ -501,7 +501,7 @@ const ProtobufCMessageDescriptor fsk_modulation_settings__descriptor =
   (ProtobufCMessageInit) fsk_modulation_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
+static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
 {
   {
     "rx_center_freq",
@@ -623,6 +623,18 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[10] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "filename",
+    11,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(RxRequest, filename),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned rx_request__field_indices_by_name[] = {
   5,   /* field[5] = demod_baud_rate */
@@ -630,6 +642,7 @@ static const unsigned rx_request__field_indices_by_name[] = {
   7,   /* field[7] = demod_destination */
   4,   /* field[4] = demod_type */
   8,   /* field[8] = doppler */
+  10,   /* field[10] = filename */
   9,   /* field[9] = fsk_settings */
   0,   /* field[0] = rx_center_freq */
   2,   /* field[2] = rx_dump_file */
@@ -639,7 +652,7 @@ static const unsigned rx_request__field_indices_by_name[] = {
 static const ProtobufCIntRange rx_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 10 }
+  { 0, 11 }
 };
 const ProtobufCMessageDescriptor rx_request__descriptor =
 {
@@ -649,14 +662,14 @@ const ProtobufCMessageDescriptor rx_request__descriptor =
   "RxRequest",
   "",
   sizeof(RxRequest),
-  10,
+  11,
   rx_request__field_descriptors,
   rx_request__field_indices_by_name,
   1,  rx_request__number_ranges,
   (ProtobufCMessageInit) rx_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
+static const ProtobufCFieldDescriptor tx_request__field_descriptors[9] =
 {
   {
     "tx_center_freq",
@@ -754,9 +767,22 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[8] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "filename",
+    9,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(TxRequest, filename),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned tx_request__field_indices_by_name[] = {
   6,   /* field[6] = doppler */
+  8,   /* field[8] = filename */
   7,   /* field[7] = fsk_settings */
   5,   /* field[5] = mod_baud_rate */
   4,   /* field[4] = mod_type */
@@ -768,7 +794,7 @@ static const unsigned tx_request__field_indices_by_name[] = {
 static const ProtobufCIntRange tx_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 8 }
+  { 0, 9 }
 };
 const ProtobufCMessageDescriptor tx_request__descriptor =
 {
@@ -778,7 +804,7 @@ const ProtobufCMessageDescriptor tx_request__descriptor =
   "TxRequest",
   "",
   sizeof(TxRequest),
-  8,
+  9,
   tx_request__field_descriptors,
   tx_request__field_indices_by_name,
   1,  tx_request__number_ranges,

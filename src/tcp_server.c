@@ -26,6 +26,7 @@
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"
+#include "sdr/file_source.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -362,6 +363,17 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
             fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
+    } else if (server->server_config->tx_sdr_type == TX_SDR_TYPE_FILE) {
+        char filename[4096];
+        snprintf(filename, sizeof(filename), "%s/%s", server->server_config->tx_file_base_path, req->filename);
+        int samples_per_symbol = (int) ((double) req->tx_sampling_freq / req->mod_baud_rate);
+        uint32_t max_output_buffer = samples_per_symbol * server->server_config->buffer_size;
+        // tx offset handled in tx_data
+        int code = file_source_create(id, NULL, filename, req->tx_sampling_freq, 0, max_output_buffer, output);
+        if (code != 0) {
+            fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
+            return -RESPONSE_DETAILS_INTERNAL_ERROR;
+        }
     } else {
         fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->server_config->tx_sdr_type);
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -410,16 +422,32 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
-        rx_config->sampling_freq = tcp_worker->rx_req->rx_sampling_freq;
-        rx_config->center_freq = tcp_worker->rx_req->rx_center_freq + tcp_worker->rx_req->rx_offset;
+        rx_config->sampling_freq = rx->rx_sampling_freq;
+        rx_config->center_freq = rx->rx_center_freq + rx->rx_offset;
         rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
         rx_config->manual_gain = server->server_config->rx_plutosdr_gain;
-        rx_config->offset = tcp_worker->rx_req->rx_offset;
+        rx_config->offset = rx->rx_offset;
         sdr_device *rx_device = NULL;
         code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->server_config->tx_plutosdr_timeout_millis, server->server_config->buffer_size, server->server_config->iio, &rx_device);
         if (code != 0) {
             free(rx);
             fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);
+            return -RESPONSE_DETAILS_INTERNAL_ERROR;
+        }
+        sdr_worker *sdr = NULL;
+        code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
+        if (code != 0) {
+            return -RESPONSE_DETAILS_INTERNAL_ERROR;
+        }
+        tcp_worker->sdr = sdr;
+    } else if (server->server_config->rx_sdr_type == RX_SDR_TYPE_FILE) {
+        char filename[4096];
+        snprintf(filename, sizeof(filename), "%s/%s", server->server_config->rx_file_base_path, tcp_worker->rx_req->filename);
+        sdr_device *rx_device = NULL;
+        code = file_source_create(tcp_worker->id, filename, NULL, rx->rx_sampling_freq, rx->rx_offset, server->server_config->buffer_size, &rx_device);
+        if (code != 0) {
+            free(rx);
+            fprintf(stderr, "<3>[%d] unable to init file source\n", tcp_worker->id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         sdr_worker *sdr = NULL;
@@ -557,7 +585,8 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] mod: %s, tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sampling_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset,
+    fprintf(stdout, "[%d] mod: %s, tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sampling_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->tx_req->mod_type)->name, tcp_worker->tx_req->tx_center_freq,
+            tcp_worker->tx_req->tx_offset,
             tcp_worker->tx_req->tx_sampling_freq,
             tcp_worker->tx_req->mod_baud_rate);
 }
