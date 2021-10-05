@@ -167,7 +167,9 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
 
     // setup queue
     queue *client_queue = NULL;
-    code = create_queue(server_config->buffer_size, server_config->queue_size,
+    // process incoming file as fast as possible
+    // and don't discard any data => use blocking queue
+    code = create_queue(server_config->buffer_size, server_config->queue_size, server_config->rx_sdr_type == RX_SDR_TYPE_FILE,
                         &client_queue);
     if (code != 0) {
         dsp_worker_destroy(result);

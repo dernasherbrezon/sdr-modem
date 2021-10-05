@@ -444,6 +444,7 @@ START_TEST (test_file_data) {
     reconnect_client();
     tx_req = create_tx_request();
     tx_req->filename = utils_read_and_copy_str("tx.cf32");
+    tx_req->tx_sampling_freq = 48000;
     // keep test stable
     doppler_settings__free_unpacked(tx_req->doppler, NULL);
     tx_req->doppler = NULL;
@@ -453,13 +454,31 @@ START_TEST (test_file_data) {
     reconnect_client();
     req = create_rx_request();
     req->filename = utils_read_and_copy_str("tx.cf32");
+    req->rx_sampling_freq = 48000;
+    req->fsk_settings->demod_fsk_use_dc_block = false;
     // do not correct doppler - this will make test unstable and dependent on the
     // current satellite position
     doppler_settings__free_unpacked(req->doppler, NULL);
     req->doppler = NULL;
-    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, req);
-    //FIXME assert rx data
+    assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 1, req);
+
+    int8_t *output = NULL;
+    size_t expected_read = 399;
+    code = sdr_modem_client_read_stream(&output, expected_read, client0);
+    int8_t *actual = malloc(expected_read);
+    ck_assert(actual != NULL);
+    //convert to hard decision bits in order to make test stable
+    for (size_t i = 0; i < expected_read; i++) {
+        actual[i] = (int8_t) (output[i] > 0);
+    }
+    int8_t expected[389] = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0,
+                            0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1,
+                            0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                            1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
+                            1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1};
+    assert_byte_array(expected, 389, actual + 10, expected_read - 10);
 }
+
 END_TEST
 
 START_TEST (test_read_data) {
@@ -647,7 +666,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_plutosdr_failures);
     tcase_add_test(tc_core, test_plutosdr_failures2);
     tcase_add_test(tc_core, test_plutosdr_tx);
-//    tcase_add_test(tc_core, test_file_data);
+    tcase_add_test(tc_core, test_file_data);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

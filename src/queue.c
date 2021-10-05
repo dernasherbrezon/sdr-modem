@@ -26,6 +26,7 @@ struct queue_t {
 
     int poison_pill;
     uint32_t buffer_size;
+    bool blocking;
 };
 
 void destroy_nodes(struct queue_node *nodes) {
@@ -40,7 +41,7 @@ void destroy_nodes(struct queue_node *nodes) {
     }
 }
 
-int create_queue(uint32_t buffer_size, uint16_t queue_size, queue **queue) {
+int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue **queue) {
     if (queue_size == 0) {
         fprintf(stderr, "<3>invalid queue size: %d\n", queue_size);
         return -1;
@@ -85,6 +86,7 @@ int create_queue(uint32_t buffer_size, uint16_t queue_size, queue **queue) {
     result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     result->poison_pill = 0;
     result->buffer_size = buffer_size;
+    result->blocking = blocking;
 
     *queue = result;
     return 0;
@@ -99,6 +101,17 @@ void queue_put(const float complex *buffer, const size_t len, queue *queue) {
         return;
     }
     pthread_mutex_lock(&queue->mutex);
+    if (queue->blocking) {
+        while (queue->first_free_node == NULL) {
+            pthread_cond_wait(&queue->condition, &queue->mutex);
+            // destroy all queue data
+            // and return NULL buffer
+            if (queue->poison_pill == 1) {
+                pthread_mutex_unlock(&queue->mutex);
+                return;
+            }
+        }
+    }
     struct queue_node *to_fill;
     if (queue->first_free_node == NULL) {
         // queue is full

@@ -15,7 +15,7 @@ void assert_buffer(const float expected[], size_t expected_len) {
 }
 
 START_TEST(test_invalid_arguments) {
-    int code = create_queue(4, 10, &queue_obj);
+    int code = create_queue(4, 10, false, &queue_obj);
     ck_assert_int_eq(code, 0);
 
     // this should be ignored
@@ -33,7 +33,7 @@ START_TEST(test_invalid_arguments) {
 END_TEST
 
 START_TEST(test_more_than_max_buffer) {
-    int code = create_queue(4, 10, &queue_obj);
+    int code = create_queue(4, 10, false, &queue_obj);
     ck_assert_int_eq(code, 0);
 
     // this should be ignored
@@ -50,7 +50,7 @@ START_TEST(test_more_than_max_buffer) {
 END_TEST
 
 START_TEST (test_terminated_only_after_fully_processed) {
-    int code = create_queue(262144, 10, &queue_obj);
+    int code = create_queue(262144, 10, false, &queue_obj);
     ck_assert_int_eq(code, 0);
 
     const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -65,7 +65,7 @@ START_TEST (test_terminated_only_after_fully_processed) {
 END_TEST
 
 START_TEST (test_put_take) {
-    int code = create_queue(262144, 10, &queue_obj);
+    int code = create_queue(262144, 10, false, &queue_obj);
     ck_assert_int_eq(code, 0);
 
     const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -81,7 +81,7 @@ START_TEST (test_put_take) {
 END_TEST
 
 START_TEST (test_overflow) {
-    int code = create_queue(262144, 1, &queue_obj);
+    int code = create_queue(262144, 1, false, &queue_obj);
     ck_assert_int_eq(code, 0);
 
     const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
