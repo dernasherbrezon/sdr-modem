@@ -199,6 +199,7 @@ void complete_buffer_processing(queue *queue) {
     }
     queue->last_free_node = queue->detached_node;
     queue->detached_node = NULL;
+    pthread_cond_broadcast(&queue->condition);
     pthread_mutex_unlock(&queue->mutex);
 }
 

@@ -289,7 +289,6 @@ START_TEST (test_invalid_requests) {
     //do not assert anything here, just make sure request are coming through
     sdr_modem_client_send_header(client0, 255, TYPE_SHUTDOWN);
     sdr_modem_client_send_header(client0, PROTOCOL_VERSION, 255);
-    sdr_modem_client_send_header(client0, PROTOCOL_VERSION, TYPE_SHUTDOWN);
     sdr_modem_client_destroy_gracefully(client0);
     client0 = NULL;
 
@@ -555,10 +554,6 @@ START_TEST (test_read_data) {
     }
 
     //this will trigger flush of files
-    struct message_header header;
-    header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_SHUTDOWN;
-    sdr_modem_client_write_request(&header, req, client0);
     sdr_modem_client_destroy_gracefully(client0);
     client0 = NULL;
 

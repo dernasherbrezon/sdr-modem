@@ -367,7 +367,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
         char filename[4096];
         snprintf(filename, sizeof(filename), "%s/%s", server->server_config->tx_file_base_path, req->filename);
         int samples_per_symbol = (int) ((double) req->tx_sampling_freq / req->mod_baud_rate);
-        uint32_t max_output_buffer = samples_per_symbol * server->server_config->buffer_size;
+        uint32_t max_output_buffer = 8 * samples_per_symbol * server->server_config->buffer_size;
         // tx offset handled in tx_data
         int code = file_source_create(id, NULL, filename, req->tx_sampling_freq, 0, max_output_buffer, output);
         if (code != 0) {

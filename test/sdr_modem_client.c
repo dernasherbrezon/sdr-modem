@@ -190,16 +190,24 @@ void sdr_modem_client_destroy(sdr_modem_client *client) {
 }
 
 void sdr_modem_client_destroy_gracefully(sdr_modem_client *client) {
-    while (true) {
-        struct message_header header;
-        int code = tcp_utils_read_data(&header, sizeof(struct message_header), client->client_socket);
-        if (code < -1) {
-            // read timeout happened. it's ok.
-            // client already sent all information we need
-            continue;
-        }
-        if (code == -1) {
-            break;
+    struct message_header header;
+    header.protocol_version = PROTOCOL_VERSION;
+    header.type = TYPE_SHUTDOWN;
+    header.message_length = 0;
+    int code = tcp_utils_write_data((uint8_t *) &header, sizeof(struct message_header), client->client_socket);
+    if (code != 0) {
+        printf("invalid response while sending shutdown: %d\n", code);
+    } else {
+        while (true) {
+            code = tcp_utils_read_data(&header, sizeof(struct message_header), client->client_socket);
+            if (code < -1) {
+                // read timeout happened. it's ok.
+                // client already sent all information we need
+                continue;
+            }
+            if (code == -1) {
+                break;
+            }
         }
     }
     fprintf(stdout, "disconnected from the server..\n");

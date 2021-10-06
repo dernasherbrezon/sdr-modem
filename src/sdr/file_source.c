@@ -2,6 +2,8 @@
 #include "../dsp/sig_source.h"
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
+#include <stdbool.h>
 
 struct file_device_t {
     uint32_t id;
@@ -14,10 +16,18 @@ struct file_device_t {
 
     float complex *output;
     size_t output_len;
+
+    bool running;
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
 };
 
 void file_source_stop(void *plugin) {
-    // do nothing
+    file_device *device = (file_device *) plugin;
+    pthread_mutex_lock(&device->mutex);
+    device->running = false;
+    pthread_cond_broadcast(&device->condition);
+    pthread_mutex_unlock(&device->mutex);
 }
 
 int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sampling_freq, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **output) {
@@ -30,6 +40,9 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
     device->freq_offset = freq_offset;
     device->output_len = max_output_buffer_length;
     device->output = malloc(sizeof(float complex) * device->output_len);
+    device->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
+    device->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    device->running = true;
     if (device->output == NULL) {
         file_source_destroy(device);
         return -ENOMEM;
@@ -86,7 +99,18 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
         return -1;
     }
     size_t actually_read = fread(device->output, sizeof(float complex), device->output_len, device->rx_file);
-    if (actually_read <= 0) {
+    if (actually_read < 0) {
+        *output = NULL;
+        *output_len = 0;
+        return -1;
+    }
+    if (actually_read == 0) {
+        // wait until client disconnects
+        pthread_mutex_lock(&device->mutex);
+        while (device->running) {
+            pthread_cond_wait(&device->condition, &device->mutex);
+        }
+        pthread_mutex_unlock(&device->mutex);
         *output = NULL;
         *output_len = 0;
         return -1;

@@ -104,7 +104,7 @@ endforeach ()
 foreach (curPerfTest ${PERF_SOURCES})
     get_filename_component(curPerfTestName ${curPerfTest} NAME_WE)
     add_executable(${curPerfTestName} ${curPerfTest})
-    target_link_libraries(${curPerfTestName} sdr_modemLib ${PC_CHECK_LINK_LIBRARIES})
+    target_link_libraries(${curPerfTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LINK_LIBRARIES})
 endforeach ()
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
