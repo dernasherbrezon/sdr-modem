@@ -23,6 +23,7 @@ FILE *input_file = NULL;
 uint8_t *expected_buffer = NULL;
 uint8_t *actual_buffer = NULL;
 int16_t *expected_tx = NULL;
+int8_t *actual = NULL;
 
 uint8_t *data_to_modulate = NULL;
 
@@ -464,7 +465,8 @@ START_TEST (test_file_data) {
     int8_t *output = NULL;
     size_t expected_read = 399;
     code = sdr_modem_client_read_stream(&output, expected_read, client0);
-    int8_t *actual = malloc(expected_read);
+    ck_assert_int_eq(code, 0);
+    actual = malloc(sizeof(int8_t) * expected_read);
     ck_assert(actual != NULL);
     //convert to hard decision bits in order to make test stable
     for (size_t i = 0; i < expected_read; i++) {
@@ -616,6 +618,10 @@ void teardown() {
     if (actual_buffer != NULL) {
         free(actual_buffer);
         actual_buffer = NULL;
+    }
+    if (actual != NULL) {
+        free(actual);
+        actual = NULL;
     }
     if (output_file != NULL) {
         fclose(output_file);
