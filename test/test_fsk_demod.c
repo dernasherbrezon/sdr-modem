@@ -44,11 +44,7 @@ void assert_files_and_demod(const char *input_filename, const char *expected_fil
             // can't make test working across macbook, raspberrypi and travis
             // all of them have different float-precision issues
             // where results slightly different
-            // at least first 500 samples match before error accumulates
-            if (j == 500) {
-                break;
-            }
-            ck_assert_int_eq((int8_t) buffer[i], output[i]);
+            ck_assert(abs((int8_t) buffer[i] - output[i]) <= 2);
         }
     }
 }
