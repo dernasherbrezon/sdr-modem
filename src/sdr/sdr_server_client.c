@@ -45,7 +45,7 @@ int sdr_server_client_create_inner(uint32_t id, char *addr, int port, int read_t
     struct timeval tv;
     tv.tv_sec = read_timeout_seconds;
     tv.tv_usec = 0;
-    if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
+    if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
         close(client_socket);
         perror("setsockopt - SO_RCVTIMEO");
         sdr_server_client_destroy(result);
