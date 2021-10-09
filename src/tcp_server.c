@@ -261,7 +261,11 @@ static void *tcp_worker_callback(void *arg) {
     //terminate dsp_worker if any
     //terminate sdr_worker if no more dsp_workers there
     sdr_worker_destroy_by_dsp_worker_id(worker->id, worker->sdr);
-
+    //terminate tx device if any
+    if (worker->tx_device != NULL) {
+        worker->tx_device->destroy(worker->tx_device->plugin);
+        free(worker->tx_device);
+    }
     close(worker->client_socket);
 
     worker->is_running = false;
@@ -319,10 +323,6 @@ void tcp_worker_destroy(void *data) {
     }
     if (worker->tx_dump_file != NULL) {
         fclose(worker->tx_dump_file);
-    }
-    if (worker->tx_device != NULL) {
-        worker->tx_device->destroy(worker->tx_device->plugin);
-        free(worker->tx_device);
     }
     uint32_t id = worker->id;
     free(worker);
