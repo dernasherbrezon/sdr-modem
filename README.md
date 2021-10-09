@@ -17,6 +17,7 @@ Modem based on software defined radios.
  * Supported SDRs:
    * [sdr-server](https://github.com/dernasherbrezon/sdr-server)
    * [plutosdr](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/adalm-pluto.html)
+   * file
  * Misc:
    * Doppler's correction for satellites using SGP4 model
    * Save intermittent data onto disk for future analysis/replay
