@@ -156,7 +156,7 @@ int sdr_modem_client_create(const char *addr, int port, uint32_t max_buffer_leng
     struct timeval tv;
     tv.tv_sec = read_timeout_seconds;
     tv.tv_usec = 0;
-    if (setsockopt(result->client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
+    if (setsockopt(result->client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
         perror("setsockopt - SO_RCVTIMEO");
         sdr_modem_client_destroy(result);
         return -1;

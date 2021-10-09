@@ -89,7 +89,7 @@ static void *acceptor_worker(void *arg) {
         struct timeval tv;
         tv.tv_sec = 5000;
         tv.tv_usec = 0;
-        if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof tv)) {
+        if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
             close(client_socket);
             perror("setsockopt - SO_RCVTIMEO");
             continue;
