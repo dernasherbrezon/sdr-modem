@@ -450,6 +450,8 @@ START_TEST (test_file_data) {
     assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
     assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
 
+    sdr_modem_client_destroy_gracefully(client0);
+    client0 = NULL;
     reconnect_client();
     req = create_rx_request();
     req->filename = utils_read_and_copy_str("tx.cf32");
@@ -495,7 +497,7 @@ START_TEST (test_read_data) {
     code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
     ck_assert_int_eq(code, 0);
     req = create_rx_request();
-    // do not correct doppler - this will make test unstable and dependant on the
+    // do not correct doppler - this will make test unstable and dependent on the
     // current satellite position
     doppler_settings__free_unpacked(req->doppler, NULL);
     req->doppler = NULL;
