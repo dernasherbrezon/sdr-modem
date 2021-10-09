@@ -145,7 +145,7 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
 
     int result = 0;
     while (left > 0) {
-        int received = fread(output, sizeof(uint8_t), left, file);
+        size_t received = fread(output, sizeof(uint8_t), left, file);
         if (received < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 return -errno;
