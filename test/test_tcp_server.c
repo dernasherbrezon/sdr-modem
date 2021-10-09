@@ -535,14 +535,7 @@ START_TEST (test_read_data) {
             break;
         }
         int8_t *output = NULL;
-        while (true) {
-            code = sdr_modem_client_read_stream(&output, actual_read, client0);
-            if (code < -1) {
-                //read timeout. server is not ready to send data
-                continue;
-            }
-            break;
-        }
+        code = sdr_modem_client_read_stream(&output, actual_read, client0);
         ck_assert_int_eq(code, 0);
         assert_byte_array((const int8_t *) expected_buffer, actual_read, output, actual_read);
         total_read += actual_read;
