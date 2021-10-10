@@ -40,13 +40,13 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
     device->freq_offset = freq_offset;
     device->output_len = max_output_buffer_length;
     device->output = malloc(sizeof(float complex) * device->output_len);
-    device->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
-    device->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-    device->running = true;
     if (device->output == NULL) {
         file_source_destroy(device);
         return -ENOMEM;
     }
+    device->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
+    device->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    device->running = true;
 
     if (freq_offset != 0) {
         int code = sig_source_create(1.0F, sampling_freq, max_output_buffer_length, &device->signal);
@@ -99,12 +99,13 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
         return -1;
     }
     size_t actually_read = fread(device->output, sizeof(float complex), device->output_len, device->rx_file);
-    if (actually_read < 0) {
-        *output = NULL;
-        *output_len = 0;
-        return -1;
-    }
     if (actually_read == 0) {
+        // on any error terminate early
+        if (ferror(device->rx_file) != 0) {
+            *output = NULL;
+            *output_len = 0;
+            return -1;
+        }
         // wait until client disconnects
         pthread_mutex_lock(&device->mutex);
         while (device->running) {

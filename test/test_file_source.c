@@ -8,18 +8,56 @@ const char *tmp_folder;
 sdr_device *device = NULL;
 char filename[4096];
 
+START_TEST(test_rx_invalid_arguments) {
+    int max_output_buffer_length = 2000;
+    int code = file_source_create(1, "/non-existing-file", NULL, 48000, 1000, max_output_buffer_length, &device);
+    ck_assert_int_eq(code, -1);
+
+    code = file_source_create(1, filename, NULL, 48000, 1000, max_output_buffer_length, &device);
+    ck_assert_int_eq(code, 0);
+
+    const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
+    code = device->sdr_process_tx((complex float *) buffer, buffer_len, device->plugin);
+    ck_assert_int_eq(code, -1);
+}
+END_TEST
+
+START_TEST(test_tx_invalid_arguments) {
+    int max_output_buffer_length = 2000;
+    int code = file_source_create(1, NULL, "/", 48000, 1000, max_output_buffer_length, &device);
+    ck_assert_int_eq(code, -1);
+
+    code = file_source_create(1, NULL, filename, 48000, 1000, max_output_buffer_length, &device);
+    ck_assert_int_eq(code, 0);
+
+    const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
+    code = device->sdr_process_tx((complex float *) buffer, max_output_buffer_length + 1, device->plugin);
+    ck_assert_int_eq(code, -1);
+
+    complex float *output = NULL;
+    size_t output_len = 0;
+    code = device->sdr_process_rx(&output, &output_len, device->plugin);
+    ck_assert_int_eq(code, -1);
+}
+
+END_TEST
+
 START_TEST (test_rx_offset) {
     int code = file_source_create(1, "tx.cf32", NULL, 48000, 1000, 2000, &device);
     ck_assert_int_eq(code, 0);
 
     complex float *output = NULL;
     size_t output_len = 0;
-    device->sdr_process_rx(&output, &output_len, device->plugin);
+    code = device->sdr_process_rx(&output, &output_len, device->plugin);
+    ck_assert_int_eq(code, 0);
 
     const float expected[10] = {1.000000F, 2.000000F, 2.452230F, 4.357358F, 3.276715F, 7.089650F, 3.405689F, 10.069820F, 2.794229F, 13.160254F};
     size_t expected_len = sizeof(expected) / sizeof(float) / 2;
     assert_complex_array(expected, expected_len, output, output_len);
 }
+
 END_TEST
 
 START_TEST (test_success) {
@@ -28,9 +66,8 @@ START_TEST (test_success) {
 
     const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
-    device->sdr_process_tx((complex float *) buffer, buffer_len, device->plugin);
-    code = device->sdr_process_tx((complex float *) buffer, 4000, device->plugin);
-    ck_assert_int_eq(code, -1);
+    code = device->sdr_process_tx((complex float *) buffer, buffer_len, device->plugin);
+    ck_assert_int_eq(code, 0);
     device->destroy(device->plugin);
     free(device);
     device = NULL;
@@ -72,6 +109,8 @@ Suite *common_suite(void) {
 
     tcase_add_test(tc_core, test_success);
     tcase_add_test(tc_core, test_rx_offset);
+    tcase_add_test(tc_core, test_tx_invalid_arguments);
+    tcase_add_test(tc_core, test_rx_invalid_arguments);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);
