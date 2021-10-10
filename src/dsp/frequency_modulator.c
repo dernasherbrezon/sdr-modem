@@ -79,9 +79,8 @@ void frequency_modulator_process(float *input, size_t input_len, float complex *
 
     volk_32f_sin_32f(mod->sin, mod->temp, (unsigned int) input_len);
     volk_32f_cos_32f(mod->cos, mod->temp, (unsigned int) input_len);
-    for (size_t i = 0; i < input_len; i++) {
-        mod->output[i] = mod->cos[i] + I * mod->sin[i];
-    }
+
+    volk_32f_x2_interleave_32fc(mod->output, mod->cos, mod->sin, (unsigned int) input_len);
 
     *output = mod->output;
     *output_len = input_len;
