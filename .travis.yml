@@ -13,7 +13,6 @@ addons:
       secure: "p3FKO4q/yBx+hlxdALzxxWyewVUdH0GtPw+jrYN7Pi/UFMz9/jC0AdN0MeaZTduoUs8xjoR72cIoxBxK8Q62cPNYE/iNCJX4rKquKNHv7ArqAz9BTzT+tObJfppTLPFASHLDchHcAo131tsM61Ri70LVfVbXNQOC8j/1RiSge2m5dmVQKayVXZM/CkSbmTrmZ3sboDuFNvCAYYUO6csJSnLoprxVJIDYayo24kNWzL9SMrMB9WoDEETds9WIPJ8YVe4a9K6nEXx7bPlLgNeUmJhevUXT3RcQVfmnFS8ydO4p0pchWVKssmSGY2x2dhUyorGVGYyaoBOciuqiHtTa7ud4vWE9u5w0CzS+v0F3Y76Ug0tpDx6FnrXB+gxsVCLA32rZ+7A/MJBSgrhayyMz4IK22W1Uu2RQmxTOmZchRBH2WFkQy//eie7OqiUD1DsdFQtHyDUHFOj13098EC9p1S8ocFSvwJO56Jg21ytbv3EBKf83YvZfLqObXGPaGxe96vBamjmgp5XCxgbuRlZFQWyRk7uroRbhwuUVixGu5TukGbsnApn20JIJ8Eeqxk5g0Yohjlejc1fP+N5Rjb3wSYSgJriDr/6Z6mnUrkK64FCVPCJlp7j8yDPhbHiF24DLMWeE1u1rS3PLXhZhiUsZeN+2+gL5VxmYG/YNOdZo3t0="
 
 before_install:
-  - sudo apt-get install -yq --allow-downgrades libc6=2.31-0ubuntu9.2 libc6-dev=2.31-0ubuntu9.2
   - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --allow-downgrades --allow-remove-essential --allow-change-held-packages install libconfig-dev valgrind check cmake pkg-config libvolk2-dev libiio-dev libprotobuf-c-dev -o Debug::pkgProblemResolver=yes
 
 script:
