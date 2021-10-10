@@ -58,6 +58,12 @@ void perf_gfsk_mod() {
     // tuned kernel:
     // completed in: 0.044478 seconds
 
+    // Raspberry pi 3 mod B
+    // VOLK_GENERIC=1:
+    // completed in: 9.711632 seconds
+    // tuned kernel:
+    // completed in: 0.851478 seconds
+
     printf("gfsk mod completed (average): %f seconds\n", (totalTime / total));
 }
 
@@ -96,6 +102,12 @@ void perf_fsk_demod() {
     // completed in: 0.037171 seconds
     // tuned kernel:
     // completed in: 0.036825 seconds
+
+    // Raspberry pi 3 mod B
+    // VOLK_GENERIC=1:
+    // completed in: 0.640384 seconds
+    // tuned kernel:
+    // completed in: 0.655575 seconds
 
     printf("fsk demod completed (average): %f seconds\n", (totalTime / total));
 }
