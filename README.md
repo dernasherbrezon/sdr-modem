@@ -51,7 +51,8 @@ All dependencies can be easily installed from [r2cloud APT repository](https://r
 ```
 sudo apt-get install dirmngr lsb-release
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A5A70917
-sudo bash -c "echo \"deb http://s3.amazonaws.com/r2cloud $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
+sudo bash -c "echo \"deb http://apt.r2server.ru $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
+sudo bash -c "echo \"deb http://apt.r2server.ru/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
 sudo apt-get update
 sudo apt-get install libvolk2-dev libprotobuf-c-dev libconfig-dev check libiio
 ```
