@@ -49,7 +49,7 @@ void sig_source_process(int64_t freq, size_t expected_output_len, float complex 
     *output_len = expected_output_len;
 }
 
-void sig_source_multiply(int64_t freq, float complex *input, size_t input_len, float complex **output, size_t *output_len, sig_source *source) {
+void sig_source_multiply(int64_t freq, const float complex *input, size_t input_len, float complex **output, size_t *output_len, sig_source *source) {
     if (input_len > source->output_len) {
         fprintf(stderr, "<3>requested buffer %zu is more than max: %u\n", input_len, source->output_len);
         *output = NULL;

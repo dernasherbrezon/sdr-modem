@@ -99,7 +99,7 @@ int gfsk_mod_create(float samples_per_symbol, float sensitivity, float bt, uint3
     return 0;
 }
 
-void gfsk_mod_process(uint8_t *input, size_t input_len, float complex **output, size_t *output_len, gfsk_mod *mod) {
+void gfsk_mod_process(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, gfsk_mod *mod) {
     if (input_len > mod->temp_input_len / 8) {
         fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, mod->temp_input_len / 8);
         *output = NULL;
