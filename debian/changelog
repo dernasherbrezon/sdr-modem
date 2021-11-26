@@ -1,3 +1,9 @@
+sdr-modem (1.0.0-4~bullseye) unstable; urgency=medium
+
+  * bullseye build
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Fri, 26 Nov 2021 10:17:21 +0100
+
 sdr-modem (1.0.0-3~bullseye) unstable; urgency=medium
 
   * bullseye build
