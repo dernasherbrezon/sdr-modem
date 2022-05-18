@@ -8,6 +8,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#define M_2PI ((float) (2 * M_PI))
+
 struct sig_source_t {
     float phase;
     float amplitude;
@@ -39,10 +41,16 @@ int sig_source_create(float amplitude, uint64_t rx_sampling_freq, uint32_t max_o
 }
 
 void sig_source_process(int64_t freq, size_t expected_output_len, float complex **output, size_t *output_len, sig_source *source) {
-    double adjusted_freq = (double) freq / (double) source->rx_sampling_freq;
+    float adjusted_freq = M_2PI * (float) freq / source->rx_sampling_freq;
     for (size_t i = 0; i < expected_output_len; i++) {
-        source->output[i] = cosf(source->phase) * source->amplitude + sinf(source->phase) * source->amplitude * I;
-        source->phase += (float) (2 * M_PI * adjusted_freq);
+        source->output[i] = cos(source->phase) * source->amplitude + sin(source->phase) * source->amplitude * I;
+        source->phase += adjusted_freq;
+        if (source->phase < -M_2PI) {
+            source->phase += M_2PI;
+        }
+        if (source->phase > M_2PI) {
+            source->phase -= M_2PI;
+        }
     }
 
     *output = source->output;
