@@ -371,7 +371,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
         // tx offset handled in tx_data
         int code = file_source_create(id, NULL, filename, req->tx_sampling_freq, 0, max_output_buffer, output);
         if (code != 0) {
-            fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
+            fprintf(stderr, "<3>[%d] unable to init file tx\n", id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         fprintf(stdout, "[%d] mod file output at: %s\n", id, filename);
@@ -442,10 +442,8 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         }
         tcp_worker->sdr = sdr;
     } else if (server->server_config->rx_sdr_type == RX_SDR_TYPE_FILE) {
-        char filename[4096];
-        snprintf(filename, sizeof(filename), "%s/%s", server->server_config->rx_file_base_path, tcp_worker->rx_req->filename);
         sdr_device *rx_device = NULL;
-        code = file_source_create(tcp_worker->id, filename, NULL, rx->rx_sampling_freq, rx->rx_offset, server->server_config->buffer_size, &rx_device);
+        code = file_source_create(tcp_worker->id, tcp_worker->rx_req->filename, NULL, rx->rx_sampling_freq, rx->rx_offset, server->server_config->buffer_size, &rx_device);
         if (code != 0) {
             free(rx);
             fprintf(stderr, "<3>[%d] unable to init file source\n", tcp_worker->id);
@@ -457,7 +455,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
-        fprintf(stdout, "[%d] demod file input at: %s\n", tcp_worker->id, filename);
+        fprintf(stdout, "[%d] demod file input at: %s\n", tcp_worker->id, tcp_worker->rx_req->filename);
     } else {
         free(rx);
         return -1;
@@ -658,9 +656,9 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     }
 
     api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-    fprintf(stdout, "[%d] demod: %s, rx freq: %" PRIu64 ", rx offset: %" PRId64 ", rx sampling_rate: %" PRIu64 ", baud: %d, destination: %s\n", tcp_worker->id,
+    fprintf(stdout, "[%d] demod: %s, rx freq: %" PRIu64 ", rx offset: %" PRId64 ", rx sampling_rate: %" PRIu64 ", baud: %d, destination: %s doppler: %d\n", tcp_worker->id,
             protobuf_c_enum_descriptor_get_value(&modem_type__descriptor, tcp_worker->rx_req->demod_type)->name, tcp_worker->rx_req->rx_center_freq, tcp_worker->rx_req->rx_offset,
-            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name);
+            tcp_worker->rx_req->rx_sampling_freq, tcp_worker->rx_req->demod_baud_rate, protobuf_c_enum_descriptor_get_value(&demod_destination__descriptor, tcp_worker->rx_req->demod_destination)->name, tcp_worker->rx_req->doppler != NULL);
 }
 
 static void *acceptor_worker(void *arg) {
