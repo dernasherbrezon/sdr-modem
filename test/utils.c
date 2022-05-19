@@ -31,6 +31,10 @@ struct RxRequest *create_rx_request() {
     result.demod_decimation = 2;
     result.demod_baud_rate = 4800;
     result.fsk_settings = &fsk_settings;
+    struct FileSettings rx_file_settings = FILE_SETTINGS__INIT;
+    rx_file_settings.filename = utils_read_and_copy_str("tx.cf32");
+    rx_file_settings.start_time_seconds = 0L;
+    result.file_settings = &rx_file_settings;
 
     size_t len = rx_request__get_packed_size(&result);
     uint8_t *buffer = malloc(sizeof(uint8_t) * len);
@@ -67,6 +71,10 @@ struct TxRequest *create_tx_request() {
     struct FskModulationSettings fsk_settings = FSK_MODULATION_SETTINGS__INIT;
     fsk_settings.mod_fsk_deviation = 5000;
     result.fsk_settings = &fsk_settings;
+    struct FileSettings fs = FILE_SETTINGS__INIT;
+    fs.filename = utils_read_and_copy_str("tx.cf32");
+    fs.start_time_seconds = 0L;
+    result.file_settings = &fs;
 
     size_t len = tx_request__get_packed_size(&result);
     uint8_t *buffer = malloc(sizeof(uint8_t) * len);

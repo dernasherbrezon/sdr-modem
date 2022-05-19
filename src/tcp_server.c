@@ -111,10 +111,16 @@ int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const s
         fprintf(stderr, "<3>[%d] invalid tle supplied\n", client_id);
         return -1;
     }
+    if (config->tx_sdr_type == TX_SDR_TYPE_FILE) {
+        if (req->file_settings == NULL) {
+            fprintf(stderr, "<3>[%d] missing file_settings parameter\n", client_id);
+            return -1;
+        }
+    }
     return 0;
 }
 
-int validate_rx_request(const struct RxRequest *req, uint32_t client_id) {
+int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const struct server_config *config) {
     if (req->demod_type != MODEM_TYPE__GMSK) {
         fprintf(stderr, "<3>[%d] unknown demod_type: %d\n", client_id, req->demod_type);
         return -1;
@@ -142,6 +148,12 @@ int validate_rx_request(const struct RxRequest *req, uint32_t client_id) {
     if (req->demod_destination != DEMOD_DESTINATION__FILE && req->demod_destination != DEMOD_DESTINATION__SOCKET && req->demod_destination != DEMOD_DESTINATION__BOTH) {
         fprintf(stderr, "<3>[%d] unknown demod_destination: %d\n", client_id, req->demod_destination);
         return -1;
+    }
+    if (config->rx_sdr_type == RX_SDR_TYPE_FILE) {
+        if (req->file_settings == NULL) {
+            fprintf(stderr, "<3>[%d] missing file_settings parameter\n", client_id);
+            return -1;
+        }
     }
     if (req->demod_type == MODEM_TYPE__GMSK) {
         if (req->fsk_settings == NULL) {
@@ -364,17 +376,15 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
     } else if (server->server_config->tx_sdr_type == TX_SDR_TYPE_FILE) {
-        char filename[4096];
-        snprintf(filename, sizeof(filename), "%s/%s", server->server_config->tx_file_base_path, req->filename);
         int samples_per_symbol = (int) ((double) req->tx_sampling_freq / req->mod_baud_rate);
         uint32_t max_output_buffer = 8 * samples_per_symbol * server->server_config->buffer_size;
         // tx offset handled in tx_data
-        int code = file_source_create(id, NULL, filename, req->tx_sampling_freq, 0, max_output_buffer, output);
+        int code = file_source_create(id, NULL, req->file_settings->filename, req->tx_sampling_freq, 0, max_output_buffer, output);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to init file tx\n", id);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
-        fprintf(stdout, "[%d] mod file output at: %s\n", id, filename);
+        fprintf(stdout, "[%d] mod file output at: %s\n", id, req->file_settings->filename);
     } else {
         fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->server_config->tx_sdr_type);
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -443,7 +453,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         tcp_worker->sdr = sdr;
     } else if (server->server_config->rx_sdr_type == RX_SDR_TYPE_FILE) {
         sdr_device *rx_device = NULL;
-        code = file_source_create(tcp_worker->id, tcp_worker->rx_req->filename, NULL, rx->rx_sampling_freq, rx->rx_offset, server->server_config->buffer_size, &rx_device);
+        code = file_source_create(tcp_worker->id, tcp_worker->rx_req->file_settings->filename, NULL, rx->rx_sampling_freq, rx->rx_offset, server->server_config->buffer_size, &rx_device);
         if (code != 0) {
             free(rx);
             fprintf(stderr, "<3>[%d] unable to init file source\n", tcp_worker->id);
@@ -455,7 +465,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
-        fprintf(stdout, "[%d] demod file input at: %s\n", tcp_worker->id, tcp_worker->rx_req->filename);
+        fprintf(stdout, "[%d] demod file input at: %s\n", tcp_worker->id, tcp_worker->rx_req->file_settings->filename);
     } else {
         free(rx);
         return -1;
@@ -524,10 +534,16 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     int samples_per_symbol = (int) ((double) tcp_worker->tx_req->tx_sampling_freq / tcp_worker->tx_req->mod_baud_rate);
     uint32_t max_output_buffer = samples_per_symbol * server->server_config->buffer_size;
     if (tcp_worker->tx_req->doppler != NULL) {
+        time_t start;
+        if (tcp_worker->tx_req->file_settings != NULL) {
+            start = tcp_worker->tx_req->file_settings->start_time_seconds;
+        } else {
+            start = 0;
+        }
         struct DopplerSettings *doppler_settings = tcp_worker->tx_req->doppler;
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
-        code = doppler_create(doppler_settings->latitude / 10E6, doppler_settings->longitude / 10E6, doppler_settings->altitude / 10E3, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, 0, max_output_buffer,
+        code = doppler_create(doppler_settings->latitude / 10E6, doppler_settings->longitude / 10E6, doppler_settings->altitude / 10E3, tcp_worker->tx_req->tx_sampling_freq, tcp_worker->tx_req->tx_center_freq, tcp_worker->tx_req->tx_offset, start, max_output_buffer,
                               tle, &tcp_worker->dopp);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create tx doppler correction block\n", tcp_worker->id);
@@ -619,7 +635,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
         return;
     }
 
-    if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id) < 0) {
+    if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id, server->server_config) < 0) {
         tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
         tcp_worker_destroy(tcp_worker);
         return;

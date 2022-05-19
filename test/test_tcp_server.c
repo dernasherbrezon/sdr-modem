@@ -442,7 +442,6 @@ START_TEST (test_file_data) {
 
     reconnect_client();
     tx_req = create_tx_request();
-    tx_req->filename = utils_read_and_copy_str("tx.cf32");
     tx_req->tx_sampling_freq = 48000;
     // keep test stable
     doppler_settings__free_unpacked(tx_req->doppler, NULL);
@@ -454,7 +453,6 @@ START_TEST (test_file_data) {
     client0 = NULL;
     reconnect_client();
     req = create_rx_request();
-    req->filename = utils_read_and_copy_str("tx.cf32");
     req->rx_sampling_freq = 48000;
     req->fsk_settings->demod_fsk_use_dc_block = false;
     // do not correct doppler - this will make test unstable and dependent on the

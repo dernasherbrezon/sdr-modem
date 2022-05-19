@@ -122,8 +122,8 @@ int dsp_worker_create(uint32_t id, int client_socket, struct server_config *serv
         char tle[3][80];
         api_utils_convert_tle(doppler_settings->tle, tle);
         time_t start;
-        if( req->has_start_time_seconds ) {
-            start = req->start_time_seconds;
+        if (req->file_settings != NULL) {
+            start = req->file_settings->start_time_seconds;
         } else {
             start = 0;
         }
