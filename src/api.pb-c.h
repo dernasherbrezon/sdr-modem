@@ -106,10 +106,12 @@ struct  RxRequest
   DopplerSettings *doppler;
   FskDemodulationSettings *fsk_settings;
   char *filename;
+  protobuf_c_boolean has_start_time_seconds;
+  uint64_t start_time_seconds;
 };
 #define RX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rx_request__descriptor) \
-    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, 0, DEMOD_DESTINATION__FILE, NULL, NULL, NULL }
+    , 0, 0, 0, 0, MODEM_TYPE__GMSK, 0, 0, DEMOD_DESTINATION__FILE, NULL, NULL, NULL, 0, 0 }
 
 
 struct  TxRequest

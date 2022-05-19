@@ -501,7 +501,7 @@ const ProtobufCMessageDescriptor fsk_modulation_settings__descriptor =
   (ProtobufCMessageInit) fsk_modulation_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
+static const ProtobufCFieldDescriptor rx_request__field_descriptors[12] =
 {
   {
     "rx_center_freq",
@@ -635,6 +635,18 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "start_time_seconds",
+    12,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_UINT64,
+    offsetof(RxRequest, has_start_time_seconds),
+    offsetof(RxRequest, start_time_seconds),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned rx_request__field_indices_by_name[] = {
   5,   /* field[5] = demod_baud_rate */
@@ -648,11 +660,12 @@ static const unsigned rx_request__field_indices_by_name[] = {
   2,   /* field[2] = rx_dump_file */
   3,   /* field[3] = rx_offset */
   1,   /* field[1] = rx_sampling_freq */
+  11,   /* field[11] = start_time_seconds */
 };
 static const ProtobufCIntRange rx_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 11 }
+  { 0, 12 }
 };
 const ProtobufCMessageDescriptor rx_request__descriptor =
 {
@@ -662,7 +675,7 @@ const ProtobufCMessageDescriptor rx_request__descriptor =
   "RxRequest",
   "",
   sizeof(RxRequest),
-  11,
+  12,
   rx_request__field_descriptors,
   rx_request__field_indices_by_name,
   1,  rx_request__number_ranges,
