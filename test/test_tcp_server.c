@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <check.h>
+#include <signal.h>
 #include "../src/tcp_server.h"
 #include "sdr_modem_client.h"
 #include "utils.h"
