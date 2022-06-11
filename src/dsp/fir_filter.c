@@ -96,16 +96,13 @@ void fir_filter_process_float(const float *input, size_t input_len, float *worki
     size_t working_len = filter->history_offset + input_len;
     size_t i = 0;
     size_t produced = 0;
+    float *output_pointer = (float *) filter->output;
     size_t max_index = working_len - (filter->taps_len - 1);
     for (; i < max_index; i += filter->decimation, produced++) {
-        const float *buf = (const float *) (working_buffer + i);
-
-        const float *aligned_buffer = (const float *) ((size_t) buf & ~(filter->alignment - 1));
-        size_t align_index = buf - aligned_buffer;
-
-        volk_32f_x2_dot_prod_32f_a(filter->volk_output, aligned_buffer, filter->taps[align_index],
-                                   (unsigned int) (filter->taps_len + align_index));
-        ((float *) filter->output)[produced] = *(float *) filter->volk_output;
+        volk_32f_x2_dot_prod_32f_u(filter->volk_output, working_buffer + i, filter->taps[0],
+                                   filter->taps_len);
+        *output_pointer = *(float *) filter ->volk_output;
+        output_pointer++;
     }
     filter->history_offset = working_len - i;
     if (i > 0) {
@@ -129,16 +126,13 @@ void fir_filter_process_complex(const float complex *input, size_t input_len, fl
     size_t working_len = filter->history_offset + input_len;
     size_t i = 0;
     size_t produced = 0;
+    float complex *output_pointer = (float complex *) filter->output;
     size_t max_index = working_len - (filter->taps_len - 1);
     for (; i < max_index; i += filter->decimation, produced++) {
-        const lv_32fc_t *buf = (const lv_32fc_t *) (working_buffer + i);
-
-        const lv_32fc_t *aligned_buffer = (const lv_32fc_t *) ((size_t) buf & ~(filter->alignment - 1));
-        size_t align_index = buf - aligned_buffer;
-
-        volk_32fc_32f_dot_prod_32fc_a(filter->volk_output, aligned_buffer, filter->taps[align_index],
-                                      (unsigned int) (filter->taps_len + align_index));
-        ((float complex *) filter->output)[produced] = *(float complex *) filter->volk_output;
+        volk_32fc_32f_dot_prod_32fc_u(filter->volk_output, working_buffer + i, filter->taps[0],
+                                      filter->taps_len);
+        *output_pointer = *(float complex *) filter->volk_output;
+        output_pointer++;
     }
     filter->history_offset = working_len - i;
     if (i > 0) {
