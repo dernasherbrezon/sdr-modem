@@ -32,7 +32,13 @@ struct RxRequest *create_rx_request() {
     result.demod_baud_rate = 4800;
     result.fsk_settings = &fsk_settings;
     struct FileSettings rx_file_settings = FILE_SETTINGS__INIT;
-    rx_file_settings.filename = utils_read_and_copy_str("tx.cf32");
+    const char *tmp_folder = getenv("TMPDIR");
+    if (tmp_folder == NULL) {
+        tmp_folder = "/tmp";
+    }
+    char filename[4096];
+    snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
+    rx_file_settings.filename = utils_read_and_copy_str(filename);
     rx_file_settings.start_time_seconds = 0L;
     result.file_settings = &rx_file_settings;
 
@@ -72,7 +78,13 @@ struct TxRequest *create_tx_request() {
     fsk_settings.mod_fsk_deviation = 5000;
     result.fsk_settings = &fsk_settings;
     struct FileSettings fs = FILE_SETTINGS__INIT;
-    fs.filename = utils_read_and_copy_str("tx.cf32");
+    const char *tmp_folder = getenv("TMPDIR");
+    if (tmp_folder == NULL) {
+        tmp_folder = "/tmp";
+    }
+    char filename[4096];
+    snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
+    fs.filename = utils_read_and_copy_str(filename);
     fs.start_time_seconds = 0L;
     result.file_settings = &fs;
 
