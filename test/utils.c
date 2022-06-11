@@ -38,7 +38,7 @@ struct RxRequest *create_rx_request() {
     }
     char filename[4096];
     snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
-    rx_file_settings.filename = utils_read_and_copy_str(filename);
+    rx_file_settings.filename = filename;
     rx_file_settings.start_time_seconds = 0L;
     result.file_settings = &rx_file_settings;
 
@@ -84,7 +84,7 @@ struct TxRequest *create_tx_request() {
     }
     char filename[4096];
     snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
-    fs.filename = utils_read_and_copy_str(filename);
+    fs.filename = filename;
     fs.start_time_seconds = 0L;
     result.file_settings = &fs;
 
