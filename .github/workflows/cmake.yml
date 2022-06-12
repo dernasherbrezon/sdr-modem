@@ -48,15 +48,15 @@ jobs:
           curl -sSLo $HOME/.sonar/build-wrapper-linux-x86.zip ${{ env.BUILD_WRAPPER_DOWNLOAD_URL }}
           unzip -o $HOME/.sonar/build-wrapper-linux-x86.zip -d $HOME/.sonar/
           echo "$HOME/.sonar/build-wrapper-linux-x86" >> $GITHUB_PATH
+      - name: install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y valgrind libconfig-dev check pkg-config libvolk2-dev libiio-dev libprotobuf-c-dev
       - name: Run build-wrapper
         run: |
           mkdir build
           cmake -S . -B build
           build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Release
-      - name: install valgrind
-        run: |
-          sudo apt update
-          sudo apt install -y valgrind
       - name: run tests
         run: |
           bash build/run_tests.sh
@@ -80,6 +80,7 @@ jobs:
     # You can convert this to a matrix build if you need cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{ matrix.os }}
+    needs: build
 
     steps:
     - uses: actions/checkout@v3
