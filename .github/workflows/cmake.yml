@@ -55,8 +55,8 @@ jobs:
       - name: Run build-wrapper
         run: |
           mkdir build
-          cmake -S . -B build
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ -DCMAKE_BUILD_TYPE=Debug
+          cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/ --config Debug
       - name: run tests & coverage
         run: |
           cd build
