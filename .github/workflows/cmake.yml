@@ -102,6 +102,6 @@ jobs:
           git merge origin/main
           git config user.email "gpg@r2cloud.ru"
           git config user.name "r2cloud"
-          gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
+          gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
