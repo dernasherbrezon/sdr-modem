@@ -1,3 +1,13 @@
+sdr-modem (1.0.24~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build
+  * move debian config to OS branches
+  * re-enable debian
+  * bump the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 14 Jun 2022 21:45:19 +0100
+
 sdr-modem (1.0.22-22~bullseye) unstable; urgency=medium
 
   * fix signal generation
