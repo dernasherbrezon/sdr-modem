@@ -72,6 +72,36 @@ jobs:
         run: |
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
           git config user.name "$GITHUB_ACTOR"
-          git tag ${{ env.BASE_VERSION }}.${{ github.run_id }}
-          git push "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY.git" --follow-tags
-          git push "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY.git" --tags
+          git tag ${{ env.BASE_VERSION }}.${{ github.run_number }}
+          git push origin ${{ env.BASE_VERSION }}.${{ github.run_number }}
+  deploy:
+    name: Build, package and deploy
+    runs-on: [self-hosted, bullseye]
+    needs: build
+    strategy:
+      matrix:
+        cpu: [generic]
+    steps:
+      - name: Set env
+        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+          ref: '${{ env.OS_CODENAME }}'
+      - name: install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git-buildpackage
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Generate and commit changelog
+        run: |
+          git merge origin/main
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          git config user.name "$GITHUB_ACTOR"
+          gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
+          git push origin
+          gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=A5A70917
