@@ -31,6 +31,16 @@ struct RxRequest *create_rx_request() {
     result.demod_decimation = 2;
     result.demod_baud_rate = 4800;
     result.fsk_settings = &fsk_settings;
+    struct FileSettings rx_file_settings = FILE_SETTINGS__INIT;
+    const char *tmp_folder = getenv("TMPDIR");
+    if (tmp_folder == NULL) {
+        tmp_folder = "/tmp";
+    }
+    char filename[4096];
+    snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
+    rx_file_settings.filename = filename;
+    rx_file_settings.start_time_seconds = 0L;
+    result.file_settings = &rx_file_settings;
 
     size_t len = rx_request__get_packed_size(&result);
     uint8_t *buffer = malloc(sizeof(uint8_t) * len);
@@ -67,6 +77,16 @@ struct TxRequest *create_tx_request() {
     struct FskModulationSettings fsk_settings = FSK_MODULATION_SETTINGS__INIT;
     fsk_settings.mod_fsk_deviation = 5000;
     result.fsk_settings = &fsk_settings;
+    struct FileSettings fs = FILE_SETTINGS__INIT;
+    const char *tmp_folder = getenv("TMPDIR");
+    if (tmp_folder == NULL) {
+        tmp_folder = "/tmp";
+    }
+    char filename[4096];
+    snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
+    fs.filename = filename;
+    fs.start_time_seconds = 0L;
+    result.file_settings = &fs;
 
     size_t len = tx_request__get_packed_size(&result);
     uint8_t *buffer = malloc(sizeof(uint8_t) * len);
@@ -133,10 +153,10 @@ void assert_float_array(const float expected[], size_t expected_size, float *act
     }
 }
 
-void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size) {
+void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size, int tolerance) {
     ck_assert_int_eq(expected_size, actual_size);
     for (size_t i = 0; i < expected_size; i++) {
-        ck_assert_int_eq(expected[i], actual[i]);
+        ck_assert(abs((int8_t) expected[i] - actual[i]) <= tolerance);
     }
 }
 
@@ -166,7 +186,7 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
     return result;
 }
 
-void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual) {
+void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual, int tolerance) {
     ck_assert(expected != NULL);
     ck_assert(actual != NULL);
     size_t total_read = 0;
@@ -182,7 +202,7 @@ void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffe
             //the very last batch of file can return code=-1 and some partial batch
             ck_assert_int_eq(code, 0);
         }
-        assert_byte_array((const int8_t *) expected_buffer, expected_read, (int8_t *) actual_buffer, actual_read);
+        assert_byte_array((const int8_t *) expected_buffer, expected_read, (int8_t *) actual_buffer, actual_read, tolerance);
 
         total_read += expected_read;
         if (expected_total != 0 && total_read > expected_total) {

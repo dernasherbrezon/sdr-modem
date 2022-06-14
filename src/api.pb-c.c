@@ -142,6 +142,51 @@ void   fsk_modulation_settings__free_unpacked
   assert(message->base.descriptor == &fsk_modulation_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   file_settings__init
+                     (FileSettings         *message)
+{
+  static const FileSettings init_value = FILE_SETTINGS__INIT;
+  *message = init_value;
+}
+size_t file_settings__get_packed_size
+                     (const FileSettings *message)
+{
+  assert(message->base.descriptor == &file_settings__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t file_settings__pack
+                     (const FileSettings *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &file_settings__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t file_settings__pack_to_buffer
+                     (const FileSettings *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &file_settings__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+FileSettings *
+       file_settings__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (FileSettings *)
+     protobuf_c_message_unpack (&file_settings__descriptor,
+                                allocator, len, data);
+}
+void   file_settings__free_unpacked
+                     (FileSettings *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &file_settings__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   rx_request__init
                      (RxRequest         *message)
 {
@@ -501,6 +546,57 @@ const ProtobufCMessageDescriptor fsk_modulation_settings__descriptor =
   (ProtobufCMessageInit) fsk_modulation_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor file_settings__field_descriptors[2] =
+{
+  {
+    "filename",
+    1,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(FileSettings, filename),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "start_time_seconds",
+    2,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(FileSettings, start_time_seconds),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned file_settings__field_indices_by_name[] = {
+  0,   /* field[0] = filename */
+  1,   /* field[1] = start_time_seconds */
+};
+static const ProtobufCIntRange file_settings__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor file_settings__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "file_settings",
+  "FileSettings",
+  "FileSettings",
+  "",
+  sizeof(FileSettings),
+  2,
+  file_settings__field_descriptors,
+  file_settings__field_indices_by_name,
+  1,  file_settings__number_ranges,
+  (ProtobufCMessageInit) file_settings__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
 {
   {
@@ -624,13 +720,13 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "filename",
+    "file_settings",
     11,
     PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
+    PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
-    offsetof(RxRequest, filename),
-    NULL,
+    offsetof(RxRequest, file_settings),
+    &file_settings__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -642,7 +738,7 @@ static const unsigned rx_request__field_indices_by_name[] = {
   7,   /* field[7] = demod_destination */
   4,   /* field[4] = demod_type */
   8,   /* field[8] = doppler */
-  10,   /* field[10] = filename */
+  10,   /* field[10] = file_settings */
   9,   /* field[9] = fsk_settings */
   0,   /* field[0] = rx_center_freq */
   2,   /* field[2] = rx_dump_file */
@@ -768,13 +864,13 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "filename",
+    "file_settings",
     9,
     PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
+    PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
-    offsetof(TxRequest, filename),
-    NULL,
+    offsetof(TxRequest, file_settings),
+    &file_settings__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -782,7 +878,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[9] =
 };
 static const unsigned tx_request__field_indices_by_name[] = {
   6,   /* field[6] = doppler */
-  8,   /* field[8] = filename */
+  8,   /* field[8] = file_settings */
   7,   /* field[7] = fsk_settings */
   5,   /* field[5] = mod_baud_rate */
   4,   /* field[4] = mod_type */

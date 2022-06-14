@@ -36,13 +36,13 @@ START_TEST (test_invalid_arguments) {
 
 END_TEST
 
-START_TEST (test_success_rx) {
-    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, max_buffer_length, tle, &dopp);
+void assert_success_rx(int buffer_length, const char *expected_filename) {
+    int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, buffer_length, tle, &dopp);
     ck_assert_int_eq(code, 0);
 
     input_file = fopen("lucky7.cf32", "rb");
     ck_assert(input_file != NULL);
-    expected_file = fopen("lucky7.expected.cf32", "rb");
+    expected_file = fopen(expected_filename, "rb");
     ck_assert(expected_file != NULL);
 
     input_buffer = malloc(max_buffer_length * sizeof(float complex));
@@ -64,7 +64,25 @@ START_TEST (test_success_rx) {
         assert_complex_array((const float *) expected_buffer, actually_expected_read, output, output_len);
     }
 }
+
+START_TEST (test_success_rx) {
+    assert_success_rx(max_buffer_length, "lucky7.expected.cf32");
+}
+
 END_TEST
+
+START_TEST (test_success_rx_47000) {
+    assert_success_rx(47000, "lucky7.expected.47000.cf32");
+}
+
+END_TEST
+
+START_TEST (test_success_rx_95000) {
+    assert_success_rx(95000, "lucky7.expected.95000.cf32");
+}
+
+END_TEST
+
 
 START_TEST (test_success_tx) {
     int code = doppler_create(53.72F, 47.57F, 0.0F, 48000, 437525000, 0, 1583840449, max_buffer_length, tle, &dopp);
@@ -95,6 +113,7 @@ START_TEST (test_success_tx) {
         assert_complex_array((const float *) expected_buffer, actually_expected_read, output, output_len);
     }
 }
+
 END_TEST
 
 void teardown() {
@@ -134,6 +153,8 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_success_rx);
+    tcase_add_test(tc_core, test_success_rx_47000);
+    tcase_add_test(tc_core, test_success_rx_95000);
     tcase_add_test(tc_core, test_success_tx);
     tcase_add_test(tc_core, test_invalid_arguments);
 

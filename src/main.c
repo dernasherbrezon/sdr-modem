@@ -28,6 +28,7 @@ int main(int argc, char **argv) {
 	signal(SIGINT, sdrmodem_stop_async);
 	signal(SIGHUP, sdrmodem_stop_async);
 	signal(SIGTERM, sdrmodem_stop_async);
+    signal(SIGPIPE, SIG_IGN);
 
 	code = tcp_server_create(server_config, &server);
 	if (code != 0) {
