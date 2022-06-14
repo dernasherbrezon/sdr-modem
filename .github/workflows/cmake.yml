@@ -83,7 +83,7 @@ jobs:
         cpu: [generic]
     steps:
       - name: Set env
-          run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
