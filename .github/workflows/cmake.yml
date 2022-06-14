@@ -77,6 +77,7 @@ jobs:
   deploy:
     name: Build, package and deploy
     runs-on: self-hosted, bullseye
+    needs: build
     env:
       OS_VERSION: "bullseye"
     strategy:
