@@ -1,8 +1,9 @@
-name: CMake
+name: build-deb
 
 on:
-  create:
-    tags: [ "*" ]
+  push:
+    tags:
+      - '*'
 
 env:
   OS_VERSION: "bullseye"
@@ -34,6 +35,6 @@ jobs:
           git merge main
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
           git config user.name "$GITHUB_ACTOR"
-          gbp dch --debian-branch=bullseye --upstream-branch=main --new-version=${{ env.TAG_NAME }}-${{ github.run_id }}~${{ env.OS_VERSION }} --git-author --distribution=unstable --commit
+          gbp dch --debian-branch=bullseye --upstream-branch=main --new-version=${{ env.TAG_NAME }}-${{ github.run_number }}~${{ env.OS_VERSION }} --git-author --distribution=unstable --commit
           git push origin
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.TAG_NAME }} --git-keyid=A5A70917
