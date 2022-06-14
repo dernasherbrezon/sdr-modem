@@ -99,7 +99,7 @@ jobs:
           passphrase: ${{ secrets.PASSPHRASE }}
       - name: Generate and commit changelog
         run: |
-          git merge main
+          git merge origin/main
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
           git config user.name "$GITHUB_ACTOR"
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
