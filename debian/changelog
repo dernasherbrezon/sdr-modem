@@ -1,3 +1,11 @@
+sdr-modem (1.0.26-26~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing the build
+  * fixing the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 14 Jun 2022 23:17:18 +0100
+
 sdr-modem (1.0.24~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
