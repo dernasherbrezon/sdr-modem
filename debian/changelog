@@ -1,3 +1,37 @@
+sdr-modem (1.0.22-22~bullseye) unstable; urgency=medium
+
+  * fix signal generation
+  * specify start time for file-based processing
+  * use absolute path for file-based processing
+  * fix sample interval for doppler correction
+  * fix fsk demod test
+  * move settings to separate message
+  * bump debian package version
+  * Create cmake.yml
+  * trying matrix build
+  * trying matrix build
+  * make tests stable
+  * make tests stable
+  * explicitly include singal.h
+  * fix memory leak
+  * configuring sonar build on github actions
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * preparing upstream branch
+  * building and signing deb
+  * fixing the build
+  * triggering tag builds
+  * running deploy within the same workflow
+  * fix dependency for jobs
+  * fix the build
+  * fix the build
+  * fix the build
+
+ -- dernasherbrezon <dernasherbrezon@users.noreply.github.com>  Tue, 14 Jun 2022 20:55:18 +0100
+
 sdr-modem (1.0.0-4~bullseye) unstable; urgency=medium
 
   * bullseye build
