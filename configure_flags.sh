@@ -30,6 +30,6 @@ echo "CFLAGS   - ${CFLAGS}"
 echo "ASMFLAGS - ${ASMFLAGS}"
 echo "CXXFLAGS - ${CXXFLAGS}"
 
-echo "export CFLAGS=${CFLAGS}" >> $GITHUB_ENV
-echo "export ASMFLAGS=${ASMFLAGS}" >> $GITHUB_ENV
-echo "export CXXFLAGS=${CXXFLAGS}" >> $GITHUB_ENV
+echo "CFLAGS=${CFLAGS}" >> $GITHUB_ENV
+echo "ASMFLAGS=${ASMFLAGS}" >> $GITHUB_ENV
+echo "CXXFLAGS=${CXXFLAGS}" >> $GITHUB_ENV
