@@ -112,7 +112,7 @@ jobs:
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=${{ env.GPG_KEYNAME }}
       - name: Deploy
         run: |
-          cat ${{ secrets.PASSPHRASE }} > secret.txt
+          echo ${{ secrets.PASSPHRASE }} > secret.txt
           if [ ! -f ${APT_CLI_VERSION}.jar ]; then
             wget -O ${APT_CLI_VERSION}.jar.temp https://github.com/dernasherbrezon/apt-cli/releases/download/${APT_CLI_VERSION}/apt-cli.jar
             mv ${APT_CLI_VERSION}.jar.temp ${APT_CLI_VERSION}.jar
