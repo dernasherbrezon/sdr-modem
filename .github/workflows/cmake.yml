@@ -113,9 +113,9 @@ jobs:
       - name: Deploy
         run: |
           echo ${{ secrets.PASSPHRASE }} > secret.txt
-          if [ ! -f ${APT_CLI_VERSION}.jar ]; then
-            wget -O ${APT_CLI_VERSION}.jar.temp https://github.com/dernasherbrezon/apt-cli/releases/download/${APT_CLI_VERSION}/apt-cli.jar
-            mv ${APT_CLI_VERSION}.jar.temp ${APT_CLI_VERSION}.jar
-          fi
           cd ..
-          java -jar ${APT_CLI_VERSION}.jar --url s3://${{ env.BUCKET }} --component main --codename ${{ env.OS_CODENAME }} --gpg-keyname ${{ env.GPG_KEYNAME }} --gpg-passphrase-file secret.txt --gpg-arguments "--pinentry-mode,loopback" save --patterns ./*.deb,./*.ddeb
+          if [ ! -f ${{ env.APT_CLI_VERSION }}.jar ]; then
+            wget -O ${{ env.APT_CLI_VERSION }}.jar.temp https://github.com/dernasherbrezon/apt-cli/releases/download/${{ env.APT_CLI_VERSION }}/apt-cli.jar
+            mv ${{ env.APT_CLI_VERSION }}.jar.temp ${{ env.APT_CLI_VERSION }}.jar
+          fi
+          java -jar ${{ env.APT_CLI_VERSION }}.jar --url s3://${{ env.BUCKET }} --component main --codename ${{ env.OS_CODENAME }} --gpg-keyname ${{ env.GPG_KEYNAME }} --gpg-passphrase-file secret.txt --gpg-arguments "--pinentry-mode,loopback" save --patterns ./*.deb,./*.ddeb
