@@ -85,25 +85,25 @@ jobs:
       - name: Set env
         run: |
           echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-          if [ "${{ maxtrix.cpu }}" = "arm1176jzf-s" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ maxtrix.cpu }} -mfpu=vfp -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ maxtrix.cpu }}" = "cortex-a53" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ maxtrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ maxtrix.cpu }}" = "cortex-a7" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ maxtrix.cpu }} -mfpu=neon-vfpv4 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ maxtrix.cpu }}" = "cortex-a72" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ maxtrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ maxtrix.cpu }}" = "generic" ]; then
+          if [ "${{ matrix.cpu }}" = "arm1176jzf-s" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=vfp -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a53" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a7" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-vfpv4 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a72" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "generic" ]; then
              echo "export CXXFLAGS=\"\"" >> $GITHUB_ENV
           else
-             echo "unknown core: ${{ maxtrix.cpu }}"
+             echo "unknown core: ${{ matrix.cpu }}"
              exit 1
           fi
 
-          if [[ '${{ maxtrix.cpu }}' == 'generic' ]]; then
+          if [[ '${{ matrix.cpu }}' == 'generic' ]]; then
              echo "BUCKET=r2cloud" >> $GITHUB_ENV
           else
-             echo "BUCKET=\"r2cloud/cpu-${{ maxtrix.cpu }}\"" >> $GITHUB_ENV
+             echo "BUCKET=\"r2cloud/cpu-${{ matrix.cpu }}\"" >> $GITHUB_ENV
           fi
 
           echo "export ASMFLAGS=\"\${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
