@@ -80,10 +80,35 @@ jobs:
     needs: build
     strategy:
       matrix:
-        cpu: [generic]
+        cpu: ["generic", "cortex-a53"]
     steps:
       - name: Set env
-        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+        run: |
+          echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+          if [ "${{ matrix.cpu }}" = "arm1176jzf-s" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=vfp -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a53" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a7" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-vfpv4 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "cortex-a72" ]; then
+             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          elif [ "${{ matrix.cpu }}" = "generic" ]; then
+             echo "export CXXFLAGS=\"\"" >> $GITHUB_ENV
+          else
+             echo "unknown core: ${{ matrix.cpu }}"
+             exit 1
+          fi
+
+          if [[ '${{ matrix.cpu }}' == 'generic' ]]; then
+             echo "BUCKET=r2cloud" >> $GITHUB_ENV
+          else
+             echo "BUCKET=\"r2cloud/cpu-${{ matrix.cpu }}\"" >> $GITHUB_ENV
+          fi
+
+          echo "export ASMFLAGS=\"\${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
+          echo "export CFLAGS=\${CXXFLAGS}" >> $GITHUB_ENV
+
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
