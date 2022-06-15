@@ -83,32 +83,7 @@ jobs:
         cpu: ["generic", "cortex-a53"]
     steps:
       - name: Set env
-        run: |
-          echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-          if [ "${{ matrix.cpu }}" = "arm1176jzf-s" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=vfp -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ matrix.cpu }}" = "cortex-a53" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ matrix.cpu }}" = "cortex-a7" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-vfpv4 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ matrix.cpu }}" = "cortex-a72" ]; then
-             echo "export CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
-          elif [ "${{ matrix.cpu }}" = "generic" ]; then
-             echo "export CXXFLAGS=\"\"" >> $GITHUB_ENV
-          else
-             echo "unknown core: ${{ matrix.cpu }}"
-             exit 1
-          fi
-
-          if [[ '${{ matrix.cpu }}' == 'generic' ]]; then
-             echo "BUCKET=r2cloud" >> $GITHUB_ENV
-          else
-             echo "BUCKET=\"r2cloud/cpu-${{ matrix.cpu }}\"" >> $GITHUB_ENV
-          fi
-
-          echo "export ASMFLAGS=\"${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
-          echo "export CFLAGS=${CXXFLAGS}" >> $GITHUB_ENV
-
+        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
@@ -129,8 +104,6 @@ jobs:
           git config user.name "r2cloud"
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
-          export CXXFLAGS=${{ env.CXXFLAGS }}
-          export ASMFLAGS=${{ env.ASMFLAGS }}
-          export CFLAGS=${{ env.CFLAGS }}
+          bash ./configure_flags.sh
           echo "CFLAGS - ${CFLAGS}"
-          CFLAGS=${{ env.CFLAGS }} gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
+          gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
