@@ -1,6 +1,13 @@
 sdr-modem (1.0.28-28~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:08:14 +0100
+
+sdr-modem (1.0.28-28~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
   * make release build
   * support compilation flags
   * support compilation flags
