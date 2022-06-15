@@ -86,6 +86,7 @@ jobs:
         run: |
           echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
           bash ./configure_flags.sh ${{ matrix.cpu }}
+          echo "export CFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
