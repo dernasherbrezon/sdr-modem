@@ -83,7 +83,9 @@ jobs:
         cpu: ["generic", "cortex-a53"]
     steps:
       - name: Set env
-        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+        run: |
+          echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
+          bash ./configure_flags.sh ${{ matrix.cpu }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
@@ -104,6 +106,5 @@ jobs:
           git config user.name "r2cloud"
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
-          bash ./configure_flags.sh ${{ matrix.cpu }}
-          echo "CFLAGS - ${{ env.CFLAGS }}"
+          echo "CFLAGS - ${{ env.CFLAGS }} - ${CFLAGS}"
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
