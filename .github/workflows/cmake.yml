@@ -106,8 +106,8 @@ jobs:
              echo "BUCKET=\"r2cloud/cpu-${{ matrix.cpu }}\"" >> $GITHUB_ENV
           fi
 
-          echo "export ASMFLAGS=\"\${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
-          echo "export CFLAGS=\${CXXFLAGS}" >> $GITHUB_ENV
+          echo "export ASMFLAGS=\"${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
+          echo "export CFLAGS=${CXXFLAGS}\"" >> $GITHUB_ENV
 
       - uses: actions/checkout@v3
         with:
