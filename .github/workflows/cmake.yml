@@ -105,5 +105,5 @@ jobs:
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
           bash ./configure_flags.sh ${{ matrix.cpu }}
-          echo "CFLAGS - ${CFLAGS}"
+          echo "CFLAGS - ${{ env.CFLAGS }}"
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
