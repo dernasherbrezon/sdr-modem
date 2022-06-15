@@ -78,6 +78,9 @@ jobs:
     name: Build, package and deploy
     runs-on: [self-hosted, bullseye]
     needs: build
+    env:
+      APT_CLI_VERSION: "apt-cli-1.2"
+      GPG_KEYNAME: "F2DCBFDCA5A70917"
     strategy:
       matrix:
         cpu: ["generic", "cortex-a53"]
@@ -106,5 +109,13 @@ jobs:
           git config user.name "r2cloud"
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
-          echo "CFLAGS - ${{ env.CFLAGS }} - ${CFLAGS}"
-          gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=F2DCBFDCA5A70917
+          gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=${{ env.GPG_KEYNAME }}
+      - name: Deploy
+        run: |
+          cat ${{ secrets.PASSPHRASE }} > secret.txt
+          if [ ! -f ${APT_CLI_VERSION}.jar ]; then
+            wget -O ${APT_CLI_VERSION}.jar.temp https://github.com/dernasherbrezon/apt-cli/releases/download/${APT_CLI_VERSION}/apt-cli.jar
+            mv ${APT_CLI_VERSION}.jar.temp ${APT_CLI_VERSION}.jar
+          fi
+          cd ..
+          java -jar ${APT_CLI_VERSION}.jar --url s3://${{ env.BUCKET }} --component main --codename ${{ env.OS_CODENAME }} --gpg-keyname ${{ env.GPG_KEYNAME }} --gpg-passphrase-file secret.txt --gpg-arguments "--pinentry-mode,loopback" save --patterns ./*.deb,./*.ddeb
