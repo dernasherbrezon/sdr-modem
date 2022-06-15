@@ -85,7 +85,9 @@ jobs:
       - name: Set env
         run: |
           echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-          bash ./configure_flags.sh ${{ matrix.cpu }}
+          echo "CXXFLAGS=\"-mcpu=${{ matrix.cpu }} -mfpu=neon-fp-armv8 -mfloat-abi=hard\"" >> $GITHUB_ENV
+          echo "CFLAGS=\"${CXXFLAGS}\"" >> $GITHUB_ENV
+          echo "ASMFLAGS=\"${CXXFLAGS} -mthumb -g\"" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
