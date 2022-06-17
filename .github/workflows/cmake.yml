@@ -83,7 +83,7 @@ jobs:
       GPG_KEYNAME: "F2DCBFDCA5A70917"
     strategy:
       matrix:
-        cpu: ["generic", "cortex-a53"]
+        cpu: ["generic"]
     steps:
       - name: Set env
         run: |
@@ -111,6 +111,11 @@ jobs:
           git push origin
           rm -f ../${GITHUB_REPOSITORY#*/}_*
           gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=${{ env.GPG_KEYNAME }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::635556721183:role/github-oids
+          aws-region: us-east-1
       - name: Deploy
         run: |
           cd ..
