@@ -1,3 +1,10 @@
+sdr-modem (1.0.49-49~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * configure aws credentials
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 17 Jun 2022 22:33:06 +0100
+
 sdr-modem (1.0.48-48~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
