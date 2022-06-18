@@ -76,13 +76,13 @@ jobs:
           git push origin ${{ env.BASE_VERSION }}.${{ github.run_number }}
   deploy:
     name: Build, package and deploy
-    runs-on: [self-hosted, bullseye]
     needs: build
     env:
       APT_CLI_VERSION: "apt-cli-1.4"
       GPG_KEYNAME: "F2DCBFDCA5A70917"
     strategy:
       matrix:
+        runs-on: [[self-hosted, bullseye], [self-hosted, buster], ubuntu-18.04, ubuntu-20.04]
         cpu: ["generic"]
     steps:
       - name: Set env
