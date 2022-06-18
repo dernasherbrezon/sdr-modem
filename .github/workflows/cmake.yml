@@ -87,9 +87,7 @@ jobs:
     runs-on: ${{ matrix.hosts }}
     steps:
       - name: Set env
-        run: |
-          echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-          bash ./configure_flags.sh ${{ matrix.cpu }}
+        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
@@ -103,6 +101,8 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Set compilation flags
+        run: bash ./configure_flags.sh ${{ matrix.cpu }}
       - name: Generate and commit changelog
         run: |
           git merge origin/main
