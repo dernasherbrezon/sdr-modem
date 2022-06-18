@@ -27,6 +27,11 @@ message fsk_modulation_settings {
     required int64 mod_fsk_deviation = 1;
 }
 
+message file_settings {
+    required string filename = 1;
+    required uint64 start_time_seconds = 2;
+}
+
 message RxRequest {
     required uint64 rx_center_freq = 1;
     required uint64 rx_sampling_freq = 2;
@@ -40,7 +45,7 @@ message RxRequest {
 
     optional doppler_settings doppler = 9;
     optional fsk_demodulation_settings fsk_settings = 10;
-    optional string filename = 11;
+    optional file_settings file_settings = 11;
 }
 
 message TxRequest {
@@ -53,7 +58,7 @@ message TxRequest {
 
     optional doppler_settings doppler = 7;
     optional fsk_modulation_settings fsk_settings = 8;
-    optional string filename = 9;
+    optional file_settings file_settings = 9;
 }
 
 enum response_status {

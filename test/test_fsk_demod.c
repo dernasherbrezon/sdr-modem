@@ -40,7 +40,7 @@ void assert_files_and_demod(const char *input_filename, const char *expected_fil
         code = read_data(buffer, &actual_read, output_len, expected);
         ck_assert_int_eq(code, 0);
         ck_assert_int_eq(actual_read, output_len);
-        for (size_t i = 0; i < actual_read; i++, j++) {
+        for (size_t i = 0; i < actual_read; i++) {
             // can't make test working across macbook, raspberrypi and travis
             // all of them have different float-precision issues
             // where results slightly different

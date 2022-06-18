@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <check.h>
+#include <signal.h>
 #include "../src/tcp_server.h"
 #include "sdr_modem_client.h"
 #include "utils.h"
@@ -442,7 +443,6 @@ START_TEST (test_file_data) {
 
     reconnect_client();
     tx_req = create_tx_request();
-    tx_req->filename = utils_read_and_copy_str("tx.cf32");
     tx_req->tx_sampling_freq = 48000;
     // keep test stable
     doppler_settings__free_unpacked(tx_req->doppler, NULL);
@@ -454,7 +454,6 @@ START_TEST (test_file_data) {
     client0 = NULL;
     reconnect_client();
     req = create_rx_request();
-    req->filename = utils_read_and_copy_str("tx.cf32");
     req->rx_sampling_freq = 48000;
     req->fsk_settings->demod_fsk_use_dc_block = false;
     // do not correct doppler - this will make test unstable and dependent on the
@@ -476,7 +475,7 @@ START_TEST (test_file_data) {
                             0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
                             1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
                             1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1};
-    assert_byte_array(expected, 389, output + 10, expected_read - 10);
+    assert_byte_array(expected, 389, output + 10, expected_read - 10, 0);
 }
 
 END_TEST
@@ -537,7 +536,7 @@ START_TEST (test_read_data) {
         int8_t *output = NULL;
         code = sdr_modem_client_read_stream(&output, actual_read, client0);
         ck_assert_int_eq(code, 0);
-        assert_byte_array((const int8_t *) expected_buffer, actual_read, output, actual_read);
+        assert_byte_array((const int8_t *) expected_buffer, actual_read, output, actual_read, 2);
         total_read += actual_read;
         // there is not enough data in the sdr input
         // if 500 numbers matched, then I consider test passed
@@ -555,12 +554,12 @@ START_TEST (test_read_data) {
     char file_path[4096];
     snprintf(file_path, sizeof(file_path), "%s/rx.demod2client.%d.s8", config->base_path, 0);
     demod_file = fopen(file_path, "rb");
-    assert_files(output_file, 500, expected_buffer, actual_buffer, batch_size, demod_file);
+    assert_files(output_file, 500, expected_buffer, actual_buffer, batch_size, demod_file, 2);
 
     fseek(input_file, 0, SEEK_SET);
     snprintf(file_path, sizeof(file_path), "%s/rx.sdr2demod.%d.cf32", config->base_path, 0);
     sdr_file = fopen(file_path, "rb");
-    assert_files(input_file, 76000, expected_buffer, actual_buffer, batch_size, sdr_file);
+    assert_files(input_file, 76000, expected_buffer, actual_buffer, batch_size, sdr_file, 2);
 
 }
 
@@ -664,6 +663,7 @@ Suite *common_suite(void) {
 }
 
 int main(void) {
+    signal(SIGPIPE, SIG_IGN);
     // this is especially important here
     // env variable is defined in run_tests.sh, but also here
     // to run this test from IDE
@@ -678,7 +678,7 @@ int main(void) {
     sr = srunner_create(s);
 
     srunner_set_fork_status(sr, CK_NOFORK);
-    srunner_run_all(sr, CK_NORMAL);
+    srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
