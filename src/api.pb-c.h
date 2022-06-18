@@ -18,6 +18,7 @@ PROTOBUF_C__BEGIN_DECLS
 typedef struct DopplerSettings DopplerSettings;
 typedef struct FskDemodulationSettings FskDemodulationSettings;
 typedef struct FskModulationSettings FskModulationSettings;
+typedef struct FileSettings FileSettings;
 typedef struct RxRequest RxRequest;
 typedef struct TxRequest TxRequest;
 typedef struct Response Response;
@@ -89,6 +90,17 @@ struct  FskModulationSettings
     , 0 }
 
 
+struct  FileSettings
+{
+  ProtobufCMessage base;
+  char *filename;
+  uint64_t start_time_seconds;
+};
+#define FILE_SETTINGS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&file_settings__descriptor) \
+    , NULL, 0 }
+
+
 struct  RxRequest
 {
   ProtobufCMessage base;
@@ -105,7 +117,7 @@ struct  RxRequest
   DemodDestination demod_destination;
   DopplerSettings *doppler;
   FskDemodulationSettings *fsk_settings;
-  char *filename;
+  FileSettings *file_settings;
 };
 #define RX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rx_request__descriptor) \
@@ -123,7 +135,7 @@ struct  TxRequest
   uint32_t mod_baud_rate;
   DopplerSettings *doppler;
   FskModulationSettings *fsk_settings;
-  char *filename;
+  FileSettings *file_settings;
 };
 #define TX_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&tx_request__descriptor) \
@@ -207,6 +219,25 @@ FskModulationSettings *
                       const uint8_t       *data);
 void   fsk_modulation_settings__free_unpacked
                      (FskModulationSettings *message,
+                      ProtobufCAllocator *allocator);
+/* FileSettings methods */
+void   file_settings__init
+                     (FileSettings         *message);
+size_t file_settings__get_packed_size
+                     (const FileSettings   *message);
+size_t file_settings__pack
+                     (const FileSettings   *message,
+                      uint8_t             *out);
+size_t file_settings__pack_to_buffer
+                     (const FileSettings   *message,
+                      ProtobufCBuffer     *buffer);
+FileSettings *
+       file_settings__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   file_settings__free_unpacked
+                     (FileSettings *message,
                       ProtobufCAllocator *allocator);
 /* RxRequest methods */
 void   rx_request__init
@@ -295,6 +326,9 @@ typedef void (*FskDemodulationSettings_Closure)
 typedef void (*FskModulationSettings_Closure)
                  (const FskModulationSettings *message,
                   void *closure_data);
+typedef void (*FileSettings_Closure)
+                 (const FileSettings *message,
+                  void *closure_data);
 typedef void (*RxRequest_Closure)
                  (const RxRequest *message,
                   void *closure_data);
@@ -319,6 +353,7 @@ extern const ProtobufCEnumDescriptor    response_status__descriptor;
 extern const ProtobufCMessageDescriptor doppler_settings__descriptor;
 extern const ProtobufCMessageDescriptor fsk_demodulation_settings__descriptor;
 extern const ProtobufCMessageDescriptor fsk_modulation_settings__descriptor;
+extern const ProtobufCMessageDescriptor file_settings__descriptor;
 extern const ProtobufCMessageDescriptor rx_request__descriptor;
 extern const ProtobufCMessageDescriptor tx_request__descriptor;
 extern const ProtobufCMessageDescriptor response__descriptor;
