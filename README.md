@@ -1,6 +1,6 @@
 ## sdr-modem
 
-[![Build Status](https://app.travis-ci.com/dernasherbrezon/sdr-modem.svg?branch=main)](https://app.travis-ci.com/github/dernasherbrezon/sdr-modem) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
+[![CMake](https://github.com/dernasherbrezon/sdr-modem/actions/workflows/cmake.yml/badge.svg?branch=main)](https://github.com/dernasherbrezon/sdr-modem/actions/workflows/cmake.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
 
 Modem based on software defined radios.
 
