@@ -82,13 +82,12 @@ jobs:
       GPG_KEYNAME: "F2DCBFDCA5A70917"
     strategy:
       matrix:
-        runs-on: [[self-hosted, bullseye], [self-hosted, buster], ubuntu-18.04, ubuntu-20.04]
+        hosts: [[self-hosted, bullseye], [self-hosted, buster], ubuntu-18.04, ubuntu-20.04]
         cpu: ["generic"]
+    runs-on: ${{ matrix.hosts }}
     steps:
       - name: Set env
-        run: |
-          echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-          bash ./configure_flags.sh ${{ matrix.cpu }}
+        run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
@@ -102,11 +101,13 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Set compilation flags
+        run: bash ./configure_flags.sh ${{ matrix.cpu }}
       - name: Generate and commit changelog
         run: |
-          git merge origin/main
           git config user.email "gpg@r2cloud.ru"
           git config user.name "r2cloud"
+          git merge origin/main
           gbp dch --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
           git push origin
           rm -f ../${GITHUB_REPOSITORY#*/}_*
