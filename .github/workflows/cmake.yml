@@ -95,7 +95,12 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git-buildpackage
+          sudo apt install -y dirmngr lsb-release
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A5A70917
+          sudo bash -c "echo \"deb http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
+          sudo bash -c "echo \"deb http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
+          sudo apt update
+          sudo apt install -y git-buildpackage cmake libvolk2-dev libprotobuf-c-dev libconfig-dev check libiio
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v5
         with:
