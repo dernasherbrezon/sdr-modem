@@ -1,3 +1,15 @@
+sdr-modem (1.0.54-54~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+  * fix the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 19 Jun 2022 19:02:22 +0000
+
 sdr-modem (1.0.0-3) unstable; urgency=medium
 
   * multiple fixes
