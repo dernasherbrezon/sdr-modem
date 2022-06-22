@@ -1,6 +1,6 @@
 ## sdr-modem
 
-[![Build Status](https://app.travis-ci.com/dernasherbrezon/sdr-modem.svg?branch=main)](https://app.travis-ci.com/github/dernasherbrezon/sdr-modem) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
+[![CMake](https://github.com/dernasherbrezon/sdr-modem/actions/workflows/cmake.yml/badge.svg?branch=main)](https://github.com/dernasherbrezon/sdr-modem/actions/workflows/cmake.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dernasherbrezon_sdr-modem&metric=alert_status)](https://sonarcloud.io/dashboard?id=dernasherbrezon_sdr-modem)
 
 Modem based on software defined radios.
 
@@ -51,8 +51,8 @@ All dependencies can be easily installed from [r2cloud APT repository](https://r
 ```
 sudo apt-get install dirmngr lsb-release
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A5A70917
-sudo bash -c "echo \"deb http://apt.r2server.ru $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
-sudo bash -c "echo \"deb http://apt.r2server.ru/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
+sudo bash -c "echo \"deb http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
+sudo bash -c "echo \"deb http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
 sudo apt-get update
 sudo apt-get install libvolk2-dev libprotobuf-c-dev libconfig-dev check libiio
 ```
