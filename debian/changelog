@@ -1,3 +1,10 @@
+sdr-modem (1.0.60-60~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * explicitly add link directories
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 20:03:09 +0100
+
 sdr-modem (1.0.59-59~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
