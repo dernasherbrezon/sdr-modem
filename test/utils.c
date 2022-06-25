@@ -134,8 +134,8 @@ void setup_input_complex_data(float complex **input, size_t input_offset, size_t
 void assert_complex_array(const float expected[], size_t expected_size, float complex *actual, size_t actual_size) {
     ck_assert_int_eq(expected_size, actual_size);
     for (size_t i = 0, j = 0; i < expected_size * 2; i += 2, j++) {
-        ck_assert(fabsl(expected[i] - crealf(actual[j])) < 0.001);
-        ck_assert(fabsl(expected[i + 1] - cimagf(actual[j])) < 0.001);
+        ck_assert(fabsl(expected[i] - crealf(actual[j])) < 0.01);
+        ck_assert(fabsl(expected[i + 1] - cimagf(actual[j])) < 0.01);
     }
 }
 
