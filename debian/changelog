@@ -1,3 +1,94 @@
+sdr-modem (1.0.63-63~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix runtime package name
+  * fixing travis build
+  * add some tests for file source
+  * update apt repository in the readme
+  * speed up a build on travis
+  * speed up sonar analysis
+  * remove alignment from the filter
+  * add raspberry pi perf numbers
+  * fixing code smells
+  * use dev package dependency for build
+  * fix signal generation
+  * specify start time for file-based processing
+  * use absolute path for file-based processing
+  * fix sample interval for doppler correction
+  * fix fsk demod test
+  * move settings to separate message
+  * bump debian package version
+  * Create cmake.yml
+  * trying matrix build
+  * trying matrix build
+  * make tests stable
+  * make tests stable
+  * explicitly include singal.h
+  * fix memory leak
+  * configuring sonar build on github actions
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * preparing upstream branch
+  * building and signing deb
+  * fixing the build
+  * triggering tag builds
+  * running deploy within the same workflow
+  * fix dependency for jobs
+  * fix the build
+  * fix the build
+  * fix the build
+  * fix the build
+  * move debian config to OS branches
+  * bump the build
+  * fixing the build
+  * fixing the build
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * support compilation flags
+  * fixing deploy
+  * fixing deploy
+  * use gpg-agent for passphrase
+  * configure aws credentials
+  * configure aws credentials
+  * build on additional OS
+  * prepare buster configs
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+  * fix the build
+  * fix the build
+  * fix the build
+  * fix the build
+  * fix warning
+  * fix the build
+  * fix the build
+  * explicitly add link directories
+  * make tests a little bit stable
+  * make tests a little bit stable
+  * switch over to manual sin/cos
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 25 Jun 2022 10:22:29 +0100
+
 sdr-modem (1.0.0-3~buster) unstable; urgency=medium
 
   * multiple fixes
