@@ -1,3 +1,39 @@
+sdr-modem (1.0.63-63~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * switch over to manual sin/cos
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 25 Jun 2022 10:16:00 +0100
+
+sdr-modem (1.0.62-62~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * make tests a little bit stable
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 21:02:20 +0100
+
+sdr-modem (1.0.61-61~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * make tests a little bit stable
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 20:47:52 +0100
+
+sdr-modem (1.0.60-60~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * explicitly add link directories
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 20:03:09 +0100
+
+sdr-modem (1.0.59-59~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix warning
+  * fix the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 23 Jun 2022 08:36:36 +0100
+
 sdr-modem (1.0.57-57~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
