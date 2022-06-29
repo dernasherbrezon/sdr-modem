@@ -1,3 +1,13 @@
+sdr-modem (1.0.64-64~bionic) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build under macos
+  * make tests a little more stable
+  * make main repo builds explicit
+  * let debian build control type
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 16:26:05 +0000
+
 sdr-modem (1.0.63-63~bionic) unstable; urgency=medium
 
   [ dernasherbrezon ]
