@@ -25,3 +25,4 @@ script:
   - mkdir release && cd release
   - cmake ..
   - make
+
