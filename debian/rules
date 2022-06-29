@@ -4,9 +4,6 @@ override_dh_shlibdeps:
 %:
 	dh $@ --with=systemd
 
-override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release
-
 override_dh_installinit:
 	dh_installinit --noscripts
 	
