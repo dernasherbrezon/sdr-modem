@@ -44,25 +44,22 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/solar.c
         )
 
-add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
-target_link_libraries(sdr_modem sdr_modemLib)
-
-install(TARGETS sdr_modem DESTINATION /usr/bin/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
-
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(PC_VOLK REQUIRED volk)
 include_directories(${PC_VOLK_INCLUDE_DIRS})
-target_link_libraries(sdr_modemLib ${PC_VOLK_LINK_LIBRARIES})
+link_directories(${PC_VOLK_LIBRARY_DIRS})
+target_link_libraries(sdr_modemLib ${PC_VOLK_LIBRARIES})
 
 pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
 include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
-target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LINK_LIBRARIES})
+link_directories(${PC_LIBCONFIG_LIBRARY_DIRS})
+target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LIBRARIES})
 
 pkg_check_modules(PC_LIBPROTOBUFC REQUIRED libprotobuf-c)
 include_directories(${PC_LIBPROTOBUFC_INCLUDE_DIRS})
-target_link_libraries(sdr_modemLib ${PC_LIBPROTOBUFC_LINK_LIBRARIES})
+link_directories(${PC_LIBPROTOBUFC_LIBRARY_DIRS})
+target_link_libraries(sdr_modemLib ${PC_LIBPROTOBUFC_LIBRARIES})
 
 if (APPLE)
     find_path(LIBIIO_INCLUDE_DIRS iio.h)
@@ -76,6 +73,12 @@ endif ()
 find_package(Threads REQUIRED)
 target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(sdr_modemLib m ${CMAKE_DL_LIBS})
+
+add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
+target_link_libraries(sdr_modem sdr_modemLib)
+
+install(TARGETS sdr_modem DESTINATION /usr/bin/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
 
 enable_testing()
 
@@ -93,18 +96,19 @@ add_library(sdr_modemTestLib ${AUX_TEST_SOURCES})
 
 pkg_check_modules(PC_CHECK REQUIRED check)
 include_directories(${PC_CHECK_INCLUDE_DIRS})
+link_directories(${PC_CHECK_LIBRARY_DIRS})
 
 foreach (curTest ${TEST_SOURCES})
     get_filename_component(curTestName ${curTest} NAME_WE)
     add_test(NAME ${curTestName} COMMAND ${curTestName} ${curTest})
     add_executable(${curTestName} ${curTest})
-    target_link_libraries(${curTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LINK_LIBRARIES})
+    target_link_libraries(${curTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LIBRARIES})
 endforeach ()
 
 foreach (curPerfTest ${PERF_SOURCES})
     get_filename_component(curPerfTestName ${curPerfTest} NAME_WE)
     add_executable(${curPerfTestName} ${curPerfTest})
-    target_link_libraries(${curPerfTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LINK_LIBRARIES})
+    target_link_libraries(${curPerfTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LIBRARIES})
 endforeach ()
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
