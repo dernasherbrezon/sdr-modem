@@ -1,3 +1,10 @@
+sdr-modem (1.0.69-69~bionic) unstable; urgency=medium
+
+  [ runner@fv-az372-53.fpurzmrfq4yepahtqlmhmwc2oh.dx.internal.cloudapp.net ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 18:59:57 +0000
+
 sdr-modem (1.0.68-68~bionic) unstable; urgency=medium
 
   [ dernasherbrezon ]
