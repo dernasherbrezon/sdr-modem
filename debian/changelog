@@ -1,3 +1,10 @@
+sdr-modem (1.0.66-66~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add manually debug and optimization flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:11:43 +0100
+
 sdr-modem (1.0.65-65~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
