@@ -12,12 +12,14 @@ elif [ "${CPU}" = "cortex-a72" ]; then
    CXXFLAGS="-mcpu=${CPU} -mfpu=neon-fp-armv8 -mfloat-abi=hard"
 elif [ "${CPU}" = "generic" ]; then
    CXXFLAGS=""
+elif [ "${CPU}" = "nocpuspecific" ]; then
+   CXXFLAGS=""
 else
    echo "unknown core: ${CPU}"
    exit 1
 fi
 
-if [[ "${CPU}" = "generic" ]]; then
+if [[ "${CPU}" = "nocpuspecific" ]]; then
    export BUCKET=r2cloud
 else
    export BUCKET="r2cloud/cpu-${CPU}"
