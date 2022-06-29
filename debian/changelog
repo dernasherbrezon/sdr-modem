@@ -1,3 +1,11 @@
+sdr-modem (1.0.69-69~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix path during debug
+  * fix path during debug
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 20:00:51 +0100
+
 sdr-modem (1.0.67-67~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
