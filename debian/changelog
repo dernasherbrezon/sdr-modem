@@ -1,3 +1,10 @@
+sdr-modem (1.0.67-67~bionic) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix sym package upload
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 18:39:30 +0000
+
 sdr-modem (1.0.66-66~bionic) unstable; urgency=medium
 
   [ dernasherbrezon ]
