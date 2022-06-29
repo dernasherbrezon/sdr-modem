@@ -1,3 +1,10 @@
+sdr-modem (1.0.67-67~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix sym package upload
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:40:19 +0100
+
 sdr-modem (1.0.66-66~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
