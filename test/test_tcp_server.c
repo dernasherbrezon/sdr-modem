@@ -116,8 +116,6 @@ void init_server_with_plutosdr_support(size_t expected_tx_len) {
     ck_assert(expected_tx != NULL);
     code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
     ck_assert_int_eq(code, 0);
-    // speed up test a bit
-    config->read_timeout_seconds = 2;
     config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
     code = tcp_server_create(config, &server);
     ck_assert_int_eq(code, 0);

@@ -83,7 +83,7 @@ jobs:
     strategy:
       matrix:
         hosts: [[self-hosted, bullseye], [self-hosted, buster], ubuntu-18.04]
-        cpu: ["generic"]
+        cpu: ["nocpuspecific"]
     runs-on: ${{ matrix.hosts }}
     steps:
       - name: Set env
