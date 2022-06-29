@@ -44,12 +44,6 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sgpsdp/solar.c
         )
 
-add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
-target_link_libraries(sdr_modem sdr_modemLib)
-
-install(TARGETS sdr_modem DESTINATION /usr/bin/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
-
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(PC_VOLK REQUIRED volk)
@@ -79,6 +73,12 @@ endif ()
 find_package(Threads REQUIRED)
 target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(sdr_modemLib m ${CMAKE_DL_LIBS})
+
+add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
+target_link_libraries(sdr_modem sdr_modemLib)
+
+install(TARGETS sdr_modem DESTINATION /usr/bin/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
 
 enable_testing()
 
