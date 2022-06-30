@@ -1,3 +1,12 @@
+sdr-modem (1.0.72-72~bionic) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * graceful shutdown
+  * fix memory leaks in tests
+  * fix memory leaks in tests
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 30 Jun 2022 21:43:27 +0000
+
 sdr-modem (1.0.69-69~bionic) unstable; urgency=medium
 
   [ runner@fv-az372-53.fpurzmrfq4yepahtqlmhmwc2oh.dx.internal.cloudapp.net ]
