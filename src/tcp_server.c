@@ -811,6 +811,7 @@ int tcp_server_create(struct server_config *config, tcp_server **server) {
 
 void tcp_server_join_thread(tcp_server *server) {
     pthread_join(server->acceptor_thread, NULL);
+    free(server);
 }
 
 void tcp_server_destroy(tcp_server *server) {
@@ -825,7 +826,4 @@ void tcp_server_destroy(tcp_server *server) {
     if (code != 0) {
         close(server->server_socket);
     }
-    pthread_join(server->acceptor_thread, NULL);
-
-    free(server);
 }
