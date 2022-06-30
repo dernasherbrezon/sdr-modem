@@ -338,6 +338,7 @@ START_TEST (test_invalid_requests) {
 
     //re-create server with plutosdr support
     tcp_server_destroy(server);
+    tcp_server_join_thread(server);
     server = NULL;
     config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
     code = tcp_server_create(config, &server);
@@ -586,6 +587,7 @@ void teardown() {
     }
     if (server != NULL) {
         tcp_server_destroy(server);
+        tcp_server_join_thread(server);
         server = NULL;
     }
     if (config != NULL) {
