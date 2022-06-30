@@ -1,3 +1,13 @@
+sdr-modem (1.0.72-72~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * graceful shutdown
+  * speed-up upgrades
+  * fix memory leaks in tests
+  * fix memory leaks in tests
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 30 Jun 2022 22:43:52 +0100
+
 sdr-modem (1.0.69-69~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
