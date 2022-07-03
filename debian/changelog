@@ -1,3 +1,10 @@
+sdr-modem (1.0.73-73~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * handle NaN in the input data
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 03 Jul 2022 19:40:04 +0100
+
 sdr-modem (1.0.72-72~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
