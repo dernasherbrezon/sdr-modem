@@ -1,3 +1,10 @@
+sdr-modem (1.0.74-74~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * run on stretch
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 06 Jul 2022 22:29:46 +0100
+
 sdr-modem (1.0.73-73~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
