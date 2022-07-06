@@ -82,7 +82,7 @@ jobs:
       GPG_KEYNAME: "F2DCBFDCA5A70917"
     strategy:
       matrix:
-        hosts: [[self-hosted, bullseye], [self-hosted, buster], ubuntu-18.04]
+        hosts: [[self-hosted, bullseye], [self-hosted, buster], [self-hosted, stretch2], ubuntu-18.04]
         cpu: ["nocpuspecific"]
     runs-on: ${{ matrix.hosts }}
     steps:
