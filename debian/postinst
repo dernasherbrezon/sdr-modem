@@ -1,0 +1,33 @@
+#!/bin/sh
+
+set -e
+
+mkdir -p /etc/sdr-modem/volk
+FINAL_NAME="/etc/sdr-modem/volk/volk_config"
+
+updateVolkConfig() {
+  case $(grep $1 ${FINAL_NAME} 2>&1 > /dev/null; echo $?) in
+   0)
+          return;
+          ;;
+   *)
+          volk_profile -R $1 --path $1
+          cat $1/volk_config >> ${FINAL_NAME}
+          rm -r $1
+          ;;
+  esac
+}
+
+# only these volk methods are being used
+updateVolkConfig volk_32f_x2_dot_prod_32f
+updateVolkConfig volk_32fc_32f_dot_prod_32fc
+updateVolkConfig volk_32f_sin_32f
+updateVolkConfig volk_32f_cos_32f
+updateVolkConfig volk_32f_s32f_convert_8i
+updateVolkConfig volk_32fc_x2_multiply_conjugate_32fc
+updateVolkConfig volk_32fc_x2_multiply_32fc
+updateVolkConfig volk_32f_s32f_convert_16i
+updateVolkConfig volk_16i_s32f_convert_32f
+updateVolkConfig volk_32f_x2_interleave_32fc
+
+#DEBHELPER#
