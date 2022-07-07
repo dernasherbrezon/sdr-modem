@@ -3,17 +3,17 @@
 CPU=$1
 
 if [ "${CPU}" = "arm1176jzf-s" ]; then
-   CXXFLAGS="-mcpu=${CPU} -mfpu=vfp -mfloat-abi=hard"
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=. -mcpu=${CPU} -mfpu=vfp -mfloat-abi=hard"
 elif [ "${CPU}" = "cortex-a53" ]; then
-   CXXFLAGS="-mcpu=${CPU} -mfpu=neon-fp-armv8 -mfloat-abi=hard"
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=. -mcpu=${CPU} -mfpu=neon-fp-armv8 -mfloat-abi=hard"
 elif [ "${CPU}" = "cortex-a7" ]; then
-   CXXFLAGS="-mcpu=${CPU} -mfpu=neon-vfpv4 -mfloat-abi=hard"
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=. -mcpu=${CPU} -mfpu=neon-vfpv4 -mfloat-abi=hard"
 elif [ "${CPU}" = "cortex-a72" ]; then
-   CXXFLAGS="-mcpu=${CPU} -mfpu=neon-fp-armv8 -mfloat-abi=hard"
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=. -mcpu=${CPU} -mfpu=neon-fp-armv8 -mfloat-abi=hard"
 elif [ "${CPU}" = "generic" ]; then
-   CXXFLAGS=""
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=."
 elif [ "${CPU}" = "nocpuspecific" ]; then
-   CXXFLAGS=""
+   CXXFLAGS="-g -O2 -fdebug-prefix-map=$(pwd)=."
 else
    echo "unknown core: ${CPU}"
    exit 1
@@ -25,7 +25,7 @@ else
    export BUCKET="r2cloud/cpu-${CPU}"
 fi
 
-ASMFLAGS="${CXXFLAGS} -mthumb -g"
+ASMFLAGS="${CXXFLAGS} -mthumb"
 CFLAGS=${CXXFLAGS}
 
 echo "CFLAGS=${CFLAGS}" >> $GITHUB_ENV
