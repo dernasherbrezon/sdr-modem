@@ -1,3 +1,10 @@
+sdr-modem (1.0.75-75~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying to fix stretch build
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 08 Jul 2022 23:34:32 +0100
+
 sdr-modem (1.0.74-74~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
