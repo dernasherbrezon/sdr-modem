@@ -1,27 +1,3 @@
-sdr-modem (1.0.1-2~stretch) unstable; urgency=medium
-
-  * fix signal generator
-
- -- Andrey Rodionov <info@r2cloud.ru>  Mon, 6 Jun 2022 10:17:21 +0100
-
-sdr-modem (1.0.1-1) unstable; urgency=medium
-
-  * fix signal generator
-
- -- Andrey Rodionov <info@r2cloud.ru>  Mon, 6 Jun 2022 10:17:21 +0100
-
-sdr-modem (1.0.0-4~stretch) unstable; urgency=medium
-
-  * make tests stable
-
- -- Andrey Rodionov <info@r2cloud.ru>  Sun, 10 Oct 2021 10:17:21 +0100
-
-sdr-modem (1.0.0-3~stretch) unstable; urgency=medium
-
-  * file-based sdr
-
- -- Andrey Rodionov <info@r2cloud.ru>  Sat, 09 Oct 2021 10:17:21 +0100
-
 sdr-modem (1.0.0-2) unstable; urgency=medium
 
   * fix test
