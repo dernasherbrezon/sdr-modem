@@ -110,7 +110,7 @@ jobs:
         run: |
           git config user.email "gpg@r2cloud.ru"
           git config user.name "r2cloud"
-          git merge origin/main
+          git merge origin/main --no-edit
       - name: Set compilation flags
         run: bash ./configure_flags.sh ${{ matrix.cpu }}
       - name: build debian package
