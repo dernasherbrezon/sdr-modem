@@ -94,6 +94,20 @@ START_TEST (test_overflow) {
 
 END_TEST
 
+START_TEST (test_putskipped) {
+    int code = create_queue(262144, 1, true, &queue_obj);
+    ck_assert_int_eq(code, 0);
+
+    const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    queue_put((const float complex *) buffer, sizeof(buffer) / sizeof(float) / 2, queue_obj);
+
+    interrupt_waiting_the_data(queue_obj);
+
+    queue_put((const float complex *) buffer, sizeof(buffer) / sizeof(float) / 2, queue_obj);
+    //shouldn't block here
+}
+END_TEST
+
 void teardown() {
     destroy_queue(queue_obj);
 }
@@ -116,6 +130,7 @@ Suite *common_suite(void) {
     tcase_add_test(tc_core, test_terminated_only_after_fully_processed);
     tcase_add_test(tc_core, test_more_than_max_buffer);
     tcase_add_test(tc_core, test_invalid_arguments);
+    tcase_add_test(tc_core, test_putskipped);
 
     tcase_add_checked_fixture(tc_core, setup, teardown);
     suite_add_tcase(s, tc_core);

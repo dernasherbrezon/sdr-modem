@@ -102,6 +102,10 @@ void queue_put(const float complex *buffer, const size_t len, queue *queue) {
     }
     pthread_mutex_lock(&queue->mutex);
     if (queue->blocking) {
+        if (queue->poison_pill == 1) {
+            pthread_mutex_unlock(&queue->mutex);
+            return;
+        }
         while (queue->first_free_node == NULL) {
             pthread_cond_wait(&queue->condition, &queue->mutex);
             // destroy all queue data

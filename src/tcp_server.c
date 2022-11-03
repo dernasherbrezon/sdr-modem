@@ -414,6 +414,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
             // take id from the first tcp client
             code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
             if (code != 0) {
+                free(rx);
                 return -RESPONSE_DETAILS_INTERNAL_ERROR;
             }
             tcp_worker->sdr = sdr;
@@ -448,6 +449,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         sdr_worker *sdr = NULL;
         code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
         if (code != 0) {
+            free(rx);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
@@ -462,6 +464,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
         sdr_worker *sdr = NULL;
         code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
         if (code != 0) {
+            free(rx);
             return -RESPONSE_DETAILS_INTERNAL_ERROR;
         }
         tcp_worker->sdr = sdr;
