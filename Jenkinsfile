@@ -1,9 +1,16 @@
 pipeline {
-    agent any
+    agent stretch
     stages {
-        stage('Stage 1') {
+        stage('Build') {
             steps {
-                echo 'Hello world!'
+                sh 'mkdir build'
+                sh 'cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build'
+                sh 'cmake --build build/ --config Debug'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'cd build && bash ./run_tests.sh'
             }
         }
     }
