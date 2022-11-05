@@ -1,3 +1,11 @@
+sdr-modem (1.0.77-77~bionic) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * discard all input if queue is terminating
+  * better tests for queue
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 05 Nov 2022 16:12:10 +0000
+
 sdr-modem (1.0.76-76~bionic) unstable; urgency=medium
 
   [ dernasherbrezon ]
