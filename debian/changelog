@@ -1,3 +1,10 @@
+sdr-modem (1.0.100-100~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 21:24:17 +0000
+
 sdr-modem (1.0.99-99~bullseye) unstable; urgency=medium
 
   [ pi@rasp-bullseye ]
