@@ -32,7 +32,7 @@ pipeline {
                     }
                     stage('build debian package') {
                         steps {
-                            sh 'GITHUB_ENV=env ./configure_flags.sh ${CPU} && ls -lh && . env'
+                            sh 'GITHUB_ENV=env.sh ./configure_flags.sh ${CPU} && . env.sh'
                             sh 'gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${params.VERSION}~${OS_CODENAME} --git-author --distribution=unstable --commit'
                             sh 'git push origin'
                             sh 'rm -f ../sdr-modem*deb'
