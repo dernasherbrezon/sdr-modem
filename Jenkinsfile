@@ -32,7 +32,7 @@ pipeline {
                     }
                     stage('build and deploy') {
                         steps {
-                            sh "bash ./configure_flags.sh ${CPU} ${OS_CODENAME} ${params.BASE_VERSION} ${params.BUILD_NUMBER}"
+                            sh "bash ./build_and_deploy.sh ${CPU} ${OS_CODENAME} ${params.BASE_VERSION} ${params.BUILD_NUMBER}"
                         }
                     }
                 }
