@@ -23,7 +23,6 @@ pipeline {
                 stages {
                     stage('Checkout') {
                         steps {
-                            sh 'echo "checking out ${OS_CODENAME}"'
                             git(url: 'git@github.com:dernasherbrezon/sdr-modem.git', branch: "${OS_CODENAME}", credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', changelog: false)
                             sh 'git config user.email "gpg@r2cloud.ru"'
                             sh 'git config user.name "r2cloud"'
