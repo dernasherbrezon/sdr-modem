@@ -27,15 +27,12 @@ pipeline {
                     stage('Checkout') {
                         steps {
                             deleteDir()
-                            checkout([$class: 'GitSCM',
-                                      branches: [[name: "${OS_CODENAME}"]],
-                                      extensions: [[$class: 'CloneOption', noTags: true]],
-                                      userRemoteConfigs: [[url: 'git@github.com:dernasherbrezon/sdr-modem.git', credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5']]])
+                            git(url: 'git@github.com:dernasherbrezon/sdr-modem.git', branch: "${OS_CODENAME}", credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', changelog: false)
                         }
                     }
                     stage('build and deploy') {
                         steps {
-                            sh "echo ${GPG_PSW} | /usr/lib/gnupg2/gpg-preset-passphrase -c ${GPG_USR}"
+                            sh 'echo $GPG_PSW | /usr/lib/gnupg2/gpg-preset-passphrase -c $GPG_USR'
                             sh "bash ./build_and_deploy.sh ${CPU} ${OS_CODENAME} ${params.BASE_VERSION} ${params.BUILD_NUMBER} ${GPG_USR}"
                         }
                     }
