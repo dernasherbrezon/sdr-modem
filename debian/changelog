@@ -1,5 +1,12 @@
 sdr-modem (1.0.99-99~buster) unstable; urgency=medium
 
+  [ pi@rasp-buster ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 20:49:20 +0000
+
+sdr-modem (1.0.99-99~buster) unstable; urgency=medium
+
   [ dernasherbrezon ]
   * discard all input if queue is terminating
   * better tests for queue
