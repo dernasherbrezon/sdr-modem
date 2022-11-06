@@ -1,5 +1,7 @@
 pipeline {
-    agent stretch
+    agent {
+        label 'stretch'
+    }
     stages {
         stage('Build') {
             steps {
