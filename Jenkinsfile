@@ -24,7 +24,20 @@ pipeline {
                     stage('Checkout') {
                         steps {
                             sh 'echo "checking out ${OS_CODENAME}"'
-                            git(url: 'git@github.com:dernasherbrezon/sdr-modem.git', branch: "${OS_CODENAME}", credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', changelog: false)
+                            checkout([
+                              $class: 'GitSCM',
+                              branches: [[name: "*/${OS_CODENAME}"]],
+                              extensions: [[
+                                $class: 'CloneOption',
+                                shallow: true,
+                                depth:   1,
+                                timeout: 30
+                              ]],
+                              userRemoteConfigs: [[
+                                url:           'git@github.com:dernasherbrezon/sdr-modem.git',
+                                credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5'
+                              ]]
+                            ])
                             sh 'git config user.email "gpg@r2cloud.ru"'
                             sh 'git config user.name "r2cloud"'
                             sh 'git merge origin/main --no-edit'
@@ -32,7 +45,7 @@ pipeline {
                     }
                     stage('build debian package') {
                         steps {
-                            sh 'export GITHUB_ENV=.env && ./configure_flags.sh ${CPU} && ls -lh && . $GITHUB_ENV'
+                            sh 'GITHUB_ENV=env ./configure_flags.sh ${CPU} && ls -lh && . env'
                             sh 'gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${params.VERSION}~${OS_CODENAME} --git-author --distribution=unstable --commit'
                             sh 'git push origin'
                             sh 'rm -f ../sdr-modem*deb'
