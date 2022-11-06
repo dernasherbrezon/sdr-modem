@@ -108,4 +108,4 @@ jobs:
       - name: Configure agent
         run: bash ./configure_agent.sh
       - name: Build and deploy
-        run: bash ./build_and_deploy.sh ${{ matrix.cpu }} ${{ env.OS_CODENAME }} ${{ env.BASE_VERSION }} ${{ github.run_number }}
+        run: bash ./build_and_deploy.sh ${{ matrix.cpu }} ${{ env.OS_CODENAME }} ${{ env.BASE_VERSION }} ${{ github.run_number }} F2DCBFDCA5A70917
