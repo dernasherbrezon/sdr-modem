@@ -1,8 +1,8 @@
 pipeline {
     agent none
     parameters {
-        string(name: 'VERSION', defaultValue: '1.0.77-77', description: 'From https://github.com/dernasherbrezon/sdr-modem/actions')
-        string(name: 'UPSTREAM_VERSION', defaultValue: '1.0.77', description: 'From https://github.com/dernasherbrezon/sdr-modem/actions')
+        string(name: 'BASE_VERSION', defaultValue: '1.0', description: 'From https://github.com/dernasherbrezon/sdr-modem/actions')
+        string(name: 'BUILD_NUMBER', defaultValue: '77', description: 'From https://github.com/dernasherbrezon/sdr-modem/actions')
     }
     stages {
         stage('Package and deploy') {
@@ -30,18 +30,9 @@ pipeline {
                             sh 'git merge origin/main --no-edit'
                         }
                     }
-                    stage('build debian package') {
+                    stage('build and deploy') {
                         steps {
-                            sh 'rm -f env.sh && GITHUB_ENV=env.sh ./configure_flags.sh ${CPU} && ls -lh && . ./env.sh'
-                            sh 'gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${params.VERSION}~${OS_CODENAME} --git-author --distribution=unstable --commit'
-                            sh 'git push origin'
-                            sh 'rm -f ../sdr-modem*deb'
-                            sh 'gbp buildpackage --git-ignore-new --git-upstream-tag=${params.UPSTREAM_VERSION} --git-keyid=${GPG_KEYNAME}'
-                        }
-                    }
-                    stage('deploy') {
-                        steps {
-                            sh 'cd .. && java -jar ${HOME}/${APT_CLI_VERSION}.jar --url s3://${BUCKET} --component main --codename ${OS_CODENAME} --gpg-keyname ${GPG_KEYNAME} --gpg-arguments "--pinentry-mode,loopback" save --patterns ./*.deb,./*.ddeb'
+                            sh "bash ./configure_flags.sh ${CPU} ${OS_CODENAME} ${params.BASE_VERSION} ${params.BUILD_NUMBER}"
                         }
                     }
                 }
