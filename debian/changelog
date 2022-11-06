@@ -1,3 +1,86 @@
+sdr-modem (1.0.76-76~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying to fix stretch build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 09 Jul 2022 17:44:38 +0100
+
+sdr-modem (1.0.75-75~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying to fix stretch build
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 08 Jul 2022 23:35:07 +0100
+
+sdr-modem (1.0.74-74~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * run on stretch
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 06 Jul 2022 22:29:46 +0100
+
+sdr-modem (1.0.73-73~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * handle NaN in the input data
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 03 Jul 2022 19:12:35 +0100
+
+sdr-modem (1.0.72-72~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * graceful shutdown
+  * fix memory leaks in tests
+  * fix memory leaks in tests
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 30 Jun 2022 22:43:24 +0100
+
+sdr-modem (1.0.69-69~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:59:39 +0100
+
+sdr-modem (1.0.68-68~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix path during debug
+  * fix path during debug
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:57:48 +0100
+
+sdr-modem (1.0.67-67~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix sym package upload
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:39:06 +0100
+
+sdr-modem (1.0.66-66~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add manually debug and optimization flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:11:04 +0100
+
+sdr-modem (1.0.65-65~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add manually debug and optimization flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 18:50:41 +0100
+
+sdr-modem (1.0.64-64~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build under macos
+  * make tests a little more stable
+  * make main repo builds explicit
+  * let debian build control type
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 17:26:48 +0100
+
 sdr-modem (1.0.63-63~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
