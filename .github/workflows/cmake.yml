@@ -96,14 +96,14 @@ jobs:
           aws-region: us-east-1
       - name: Set env
         run: echo "OS_CODENAME=$(lsb_release --codename --short)" >> $GITHUB_ENV
-      - name: Configure environment
-        run: bash ./configure_flags.sh ${{ matrix.cpu }}
-      - name: Configure agent
-        run: bash ./configure_agent.sh
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
           ref: '${{ env.OS_CODENAME }}'
+      - name: Configure environment
+        run: bash ./configure_flags.sh ${{ matrix.cpu }}
+      - name: Configure agent
+        run: bash ./configure_agent.sh
       - name: merge from upstream
         run: |
           git config user.email "gpg@r2cloud.ru"
