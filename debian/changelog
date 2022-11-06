@@ -1,5 +1,12 @@
 sdr-modem (1.0.99-99~bullseye) unstable; urgency=medium
 
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 20:49:52 +0000
+
+sdr-modem (1.0.99-99~bullseye) unstable; urgency=medium
+
   [ dernasherbrezon ]
   * discard all input if queue is terminating
   * better tests for queue
