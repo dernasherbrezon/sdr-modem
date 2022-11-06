@@ -12,7 +12,7 @@ APT_CLI_VERSION="apt-cli-1.4"
 . ./configure_flags.sh ${CPU}
 
 gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${BASE_VERSION}.${BUILD_NUMBER}-${BUILD_NUMBER}~${OS_CODENAME} --git-author --distribution=unstable --commit
-git push --set-upstream origin buster
+git push --set-upstream origin ${OS_CODENAME}
 rm -f ../sdr-modem*deb
 gbp buildpackage --git-ignore-new --git-upstream-tag=${BASE_VERSION}.${BUILD_NUMBER} --git-keyid=${GPG_KEYNAME}
 
