@@ -105,17 +105,7 @@ jobs:
           git config user.email "gpg@r2cloud.ru"
           git config user.name "r2cloud"
           git merge origin/main --no-edit
-      - name: Configure environment
-        run: bash ./configure_flags.sh ${{ matrix.cpu }}
       - name: Configure agent
         run: bash ./configure_agent.sh
-      - name: build debian package
-        run: |
-          gbp dch --auto --debian-branch=${{ env.OS_CODENAME }} --upstream-branch=main --new-version=${{ env.BASE_VERSION }}.${{ github.run_number }}-${{ github.run_number }}~${{ env.OS_CODENAME }} --git-author --distribution=unstable --commit
-          git push origin
-          rm -f ../${GITHUB_REPOSITORY#*/}*deb
-          gbp buildpackage --git-ignore-new --git-upstream-tag=${{ env.BASE_VERSION }}.${{ github.run_number }} --git-keyid=${{ env.GPG_KEYNAME }}
-      - name: Deploy
-        run: |
-          cd ..
-          java -jar ${HOME}/${{ env.APT_CLI_VERSION }}.jar --url s3://${{ env.BUCKET }} --component main --codename ${{ env.OS_CODENAME }} --gpg-keyname ${{ env.GPG_KEYNAME }} --gpg-arguments "--pinentry-mode,loopback" save --patterns ./*.deb,./*.ddeb
+      - name: Build and deploy
+        run: bash ./build_and_deploy.sh ${{ matrix.cpu }} ${{ env.OS_CODENAME }} ${{ env.BASE_VERSION }} ${{ github.run_number }}
