@@ -1,3 +1,40 @@
+sdr-modem (1.0.99-99~stretch) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * discard all input if queue is terminating
+  * better tests for queue
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * remove self-hosted github actions runners
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+
+  [ r2cloud ]
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 20:42:28 +0000
+
 sdr-modem (1.0.76-76~stretch) unstable; urgency=medium
 
   [ dernasherbrezon ]
