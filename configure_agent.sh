@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 sudo apt-get update
 sudo apt-get install -y dirmngr lsb-release
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A5A70917

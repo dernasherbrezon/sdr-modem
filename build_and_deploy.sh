@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 CPU=$1
 OS_CODENAME=$2
 BASE_VERSION=$3
