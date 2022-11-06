@@ -23,7 +23,7 @@ pipeline {
                 stages {
                     stage('Checkout') {
                         steps {
-                            checkout changelog: false, poll: false, scm: [$class: 'GitSCM', shallow: true, branches: [[name: '*/${OS_CODENAME}']], extensions: [], userRemoteConfigs: [[credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', url: 'git@github.com:dernasherbrezon/sdr-modem.git']]]
+                            checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/${OS_CODENAME}']], extensions: [], userRemoteConfigs: [[credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', url: 'git@github.com:dernasherbrezon/sdr-modem.git']]]
                             sh 'git config user.email "gpg@r2cloud.ru"'
                             sh 'git config user.name "r2cloud"'
                             sh 'git merge origin/main --no-edit'

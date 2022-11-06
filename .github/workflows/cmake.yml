@@ -103,7 +103,9 @@ jobs:
       - name: Configure environment
         run: bash ./configure_flags.sh ${{ matrix.cpu }}
       - name: Configure agent
-        run: bash ./configure_agent.sh
+        run: |
+          ls -lh
+          bash ./configure_agent.sh
       - name: merge from upstream
         run: |
           git config user.email "gpg@r2cloud.ru"
