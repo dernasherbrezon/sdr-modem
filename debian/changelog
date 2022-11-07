@@ -3,6 +3,13 @@ sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
   [ pi@rasp-bullseye ]
   * UNRELEASED
 
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 22:04:10 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
  -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 22:00:00 +0000
 
 sdr-modem (1.0.102-102~bullseye) unstable; urgency=medium
