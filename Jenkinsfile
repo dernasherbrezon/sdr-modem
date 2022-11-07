@@ -13,7 +13,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_CODENAME'
-                        values 'bullseye', 'buster', 'stretch'
+                        values 'bullseye'
                     }
                     axis {
                         name 'CPU'
@@ -26,7 +26,6 @@ pipeline {
                 stages {
                     stage('Checkout') {
                         steps {
-                            deleteDir()
                             git(url: 'git@github.com:dernasherbrezon/sdr-modem.git', branch: "${OS_CODENAME}", credentialsId: '5c8b3e93-0551-475c-9e54-1266242c8ff5', changelog: false)
                         }
                     }
