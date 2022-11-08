@@ -15,7 +15,7 @@ git config user.email "gpg@r2cloud.ru"
 git config user.name "r2cloud"
 git merge origin/main --no-edit
 
-rm ../sdr-modem_*
+rm -f ../sdr-modem_*
 gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${BASE_VERSION}.${BUILD_NUMBER}-${BUILD_NUMBER}~${OS_CODENAME} --git-author --distribution=unstable --commit
 git push --set-upstream origin ${OS_CODENAME}
 gbp buildpackage --git-ignore-new --git-upstream-tag=${BASE_VERSION}.${BUILD_NUMBER} --git-keyid=${GPG_KEYNAME}
