@@ -100,11 +100,6 @@ jobs:
         with:
           fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
           ref: '${{ env.OS_CODENAME }}'
-      - name: merge from upstream
-        run: |
-          git config user.email "gpg@r2cloud.ru"
-          git config user.name "r2cloud"
-          git merge origin/main --no-edit
       - name: Configure agent
         run: bash ./configure_agent.sh
       - name: Build and deploy
