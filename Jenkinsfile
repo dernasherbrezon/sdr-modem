@@ -31,7 +31,8 @@ pipeline {
                     }
                     stage('build and deploy') {
                         steps {
-                            sh 'echo $GPG_PSW | /usr/lib/gnupg2/gpg-preset-passphrase -c $GPG_USR'
+                            sh 'echo $GPG_PSW | /usr/lib/gnupg2/gpg-preset-passphrase -c C4646FB23638AE9010EB1F7F37A0505CF4C5B746'
+                            sh 'echo $GPG_PSW | /usr/lib/gnupg2/gpg-preset-passphrase -c 9B66E29FF6DDAD62FA3F2570E02775B6EFAF6609'
                             sh "bash ./build_and_deploy.sh ${CPU} ${OS_CODENAME} ${params.BASE_VERSION} ${params.BUILD_NUMBER} ${GPG_USR}"
                         }
                     }
