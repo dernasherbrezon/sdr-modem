@@ -1,3 +1,10 @@
+sdr-modem (1.0.108-108~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins - remove unused
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 08 Nov 2022 21:27:35 +0000
+
 sdr-modem (1.0.107-107~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
