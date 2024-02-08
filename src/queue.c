@@ -46,6 +46,10 @@ int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue
         fprintf(stderr, "<3>invalid queue size: %d\n", queue_size);
         return -1;
     }
+    if (buffer_size == 0) {
+        fprintf(stderr, "<3>invalid buffer size: %u\n", buffer_size);
+        return -1;
+    }
     struct queue_t *result = malloc(sizeof(struct queue_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -92,23 +96,27 @@ int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue
     return 0;
 }
 
-void queue_put(const float complex *buffer, const size_t len, queue *queue) {
+int queue_put(const float complex *buffer, const size_t len, queue *queue) {
     if (buffer == NULL || len == 0) {
-        return;
+        return -1;
     }
     if (len > queue->buffer_size) {
         fprintf(stderr, "<3>requested buffer %zu is more than max: %d\n", len, queue->buffer_size);
-        return;
+        return -1;
     }
     pthread_mutex_lock(&queue->mutex);
     if (queue->blocking) {
+        if (queue->poison_pill == 1) {
+            pthread_mutex_unlock(&queue->mutex);
+            return -1;
+        }
         while (queue->first_free_node == NULL) {
             pthread_cond_wait(&queue->condition, &queue->mutex);
             // destroy all queue data
             // and return NULL buffer
             if (queue->poison_pill == 1) {
                 pthread_mutex_unlock(&queue->mutex);
-                return;
+                return -1;
             }
         }
     }
@@ -142,6 +150,7 @@ void queue_put(const float complex *buffer, const size_t len, queue *queue) {
     pthread_cond_broadcast(&queue->condition);
 
     pthread_mutex_unlock(&queue->mutex);
+    return 0;
 }
 
 void destroy_queue(queue *queue) {

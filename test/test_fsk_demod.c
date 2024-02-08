@@ -57,6 +57,13 @@ START_TEST(test_normal) {
 
 END_TEST
 
+START_TEST(test_nan) {
+    int code = fsk_demod_create(240000, 9600, 5000, 1, 2000, true, max_buffer_length, &demod);
+    ck_assert_int_eq(code, 0);
+    assert_files_and_demod("inputnan.cf32", "nan.s8");
+}
+END_TEST
+
 START_TEST(test_handle_lucky7) {
     int code = fsk_demod_create(48000, 4800, 5000, 2, 2000, true, max_buffer_length, &demod);
     ck_assert_int_eq(code, 0);
@@ -106,6 +113,7 @@ Suite *common_suite(void) {
     tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_normal);
+    tcase_add_test(tc_core, test_nan);
     tcase_add_test(tc_core, test_handle_lucky7);
     tcase_add_test(tc_core, test_no_dc);
 

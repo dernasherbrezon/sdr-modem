@@ -100,10 +100,18 @@ void clock_mm_process(const float *input, size_t input_len, float **output, size
     size_t max_index = working_len - (taps_len - 1);
     float mm_val;
 
-    while (ii < max_index) {
+    while (ii < max_index && oo < clock->output_len) {
         // produce output sample
         clock->output[oo] = mmse_fir_interpolator_process(clock->working_buffer + ii, clock->mu,
                                                           clock->interp);
+        if (isnan(clock->output[oo])) {
+            clock->output[oo] = 0.0f;
+            previous = ii;
+            ii += (int) floorf(clock->omega);
+            oo++;
+            continue;
+        }
+
         mm_val = slice(clock->last_sample) * clock->output[oo] - slice(clock->output[oo]) * clock->last_sample;
         clock->last_sample = clock->output[oo];
         previous = ii;
