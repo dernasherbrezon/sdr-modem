@@ -7,7 +7,7 @@ OS_CODENAME=$2
 BASE_VERSION=$3
 BUILD_NUMBER=$4
 GPG_KEYNAME=$5
-APT_CLI_VERSION="apt-cli-1.4"
+APT_CLI_VERSION="apt-cli-1.7"
 
 . ./configure_flags.sh ${CPU}
 
