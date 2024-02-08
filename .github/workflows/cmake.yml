@@ -79,7 +79,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        hosts: [ubuntu-18.04]
+        hosts: [ubuntu-18.04, ubuntu-20.04, ubuntu-22.04]
         cpu: ["nocpuspecific"]
     runs-on: ${{ matrix.hosts }}
     steps:
