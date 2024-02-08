@@ -13,7 +13,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_CODENAME'
-                        values 'bullseye'
+                        values 'bullseye', 'stretch', 'buster', 'bookworm'
                     }
                     axis {
                         name 'CPU'
