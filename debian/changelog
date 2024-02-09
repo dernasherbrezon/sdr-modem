@@ -1,3 +1,78 @@
+sdr-modem (1.0.114-114~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build
+  * fix the build
+  * fix the build
+  * fix warning
+  * fix the build
+  * fix the build
+  * explicitly add link directories
+  * make tests a little bit stable
+  * make tests a little bit stable
+  * switch over to manual sin/cos
+  * fix the build under macos
+  * make tests a little more stable
+  * make main repo builds explicit
+  * let debian build control type
+  * add manually debug and optimization flags
+  * add manually debug and optimization flags
+  * fix sym package upload
+  * fix path during debug
+  * fix path during debug
+  * graceful shutdown
+  * fix memory leaks in tests
+  * fix memory leaks in tests
+  * handle NaN in the input data
+  * run on stretch
+  * trying to fix stretch build
+  * trying to fix stretch build
+  * discard all input if queue is terminating
+  * better tests for queue
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * remove self-hosted github actions runners
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins - remove unused
+  * bump apt-cli and ready for bookworm deployment
+  * add more ubuntu versions + temp disable valgrind
+  * fix sonar build
+  * fix sonar build
+  * fix sonar build
+  * bump the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 09 Feb 2024 09:15:46 +0000
+
 sdr-modem (1.0.54-54~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
