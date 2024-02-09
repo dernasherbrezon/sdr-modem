@@ -1,3 +1,12 @@
+sdr-modem (1.0.117-117~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing the build
+  * fixing the build
+  * rollback jammy deployment. it simply broken
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 09 Feb 2024 09:51:26 +0000
+
 sdr-modem (1.0.114-114~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
