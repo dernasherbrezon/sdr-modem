@@ -8,7 +8,10 @@ BASE_VERSION=$3
 BUILD_NUMBER=$4
 GPG_KEYNAME=$5
 APT_CLI_VERSION="apt-cli-1.7"
-export DEBEMAIL="gpg@r2cloud.ru"
+
+DEBEMAIL="gpg@r2cloud.ru"
+DEBFULLNAME="r2cloud"
+export DEBEMAIL DEBFULLNAME
 
 . ./configure_flags.sh ${CPU}
 
