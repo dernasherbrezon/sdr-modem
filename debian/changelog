@@ -1,0 +1,630 @@
+sdr-modem (1.0.108-108~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins - remove unused
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 08 Nov 2022 21:27:35 +0000
+
+sdr-modem (1.0.107-107~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 08 Nov 2022 16:45:38 +0000
+
+sdr-modem (1.0.106-106~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 08 Nov 2022 01:08:05 +0000
+
+sdr-modem (1.0.105-105~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 08 Nov 2022 00:45:04 +0000
+
+sdr-modem (1.0.104-104~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Mon, 07 Nov 2022 22:30:02 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Mon, 07 Nov 2022 22:21:19 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Mon, 07 Nov 2022 22:12:01 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 22:07:08 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 22:04:10 +0000
+
+sdr-modem (1.0.103-103~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 22:00:00 +0000
+
+sdr-modem (1.0.102-102~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 14:59:35 +0000
+
+sdr-modem (1.0.102-102~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 14:58:02 +0000
+
+sdr-modem (1.0.102-102~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 14:49:04 +0000
+
+sdr-modem (1.0.102-102~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Mon, 07 Nov 2022 00:08:13 +0000
+
+sdr-modem (1.0.100-100~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 21:24:17 +0000
+
+sdr-modem (1.0.99-99~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 20:49:52 +0000
+
+sdr-modem (1.0.99-99~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * discard all input if queue is terminating
+  * better tests for queue
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * remove self-hosted github actions runners
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+  * trying jenkins
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 06 Nov 2022 20:39:30 +0000
+
+sdr-modem (1.0.76-76~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying to fix stretch build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 09 Jul 2022 17:44:38 +0100
+
+sdr-modem (1.0.75-75~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * trying to fix stretch build
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 08 Jul 2022 23:35:07 +0100
+
+sdr-modem (1.0.74-74~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * run on stretch
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 06 Jul 2022 22:29:46 +0100
+
+sdr-modem (1.0.73-73~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * handle NaN in the input data
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 03 Jul 2022 19:12:35 +0100
+
+sdr-modem (1.0.72-72~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * graceful shutdown
+  * fix memory leaks in tests
+  * fix memory leaks in tests
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 30 Jun 2022 22:43:24 +0100
+
+sdr-modem (1.0.69-69~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:59:39 +0100
+
+sdr-modem (1.0.68-68~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix path during debug
+  * fix path during debug
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:57:48 +0100
+
+sdr-modem (1.0.67-67~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix sym package upload
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:39:06 +0100
+
+sdr-modem (1.0.66-66~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add manually debug and optimization flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 19:11:04 +0100
+
+sdr-modem (1.0.65-65~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add manually debug and optimization flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 18:50:41 +0100
+
+sdr-modem (1.0.64-64~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build under macos
+  * make tests a little more stable
+  * make main repo builds explicit
+  * let debian build control type
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 29 Jun 2022 17:26:48 +0100
+
+sdr-modem (1.0.63-63~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * switch over to manual sin/cos
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 25 Jun 2022 10:16:00 +0100
+
+sdr-modem (1.0.62-62~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * make tests a little bit stable
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 21:02:20 +0100
+
+sdr-modem (1.0.61-61~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * make tests a little bit stable
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 20:47:52 +0100
+
+sdr-modem (1.0.60-60~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * explicitly add link directories
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 24 Jun 2022 20:03:09 +0100
+
+sdr-modem (1.0.59-59~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix warning
+  * fix the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 23 Jun 2022 08:36:36 +0100
+
+sdr-modem (1.0.57-57~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build
+  * fix the build
+  * fix the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 22 Jun 2022 21:43:48 +0100
+
+sdr-modem (1.0.54-54~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fix the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 19 Jun 2022 20:02:27 +0100
+
+sdr-modem (1.0.53-53~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * build on additional OS
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+  * bump build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 18 Jun 2022 20:01:00 +0100
+
+sdr-modem (1.0.49-49~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 17 Jun 2022 22:35:12 +0100
+
+sdr-modem (1.0.49-49~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * configure aws credentials
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 17 Jun 2022 22:33:06 +0100
+
+sdr-modem (1.0.48-48~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * configure aws credentials
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 17 Jun 2022 22:22:12 +0100
+
+sdr-modem (1.0.47-47~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 16 Jun 2022 21:10:09 +0100
+
+sdr-modem (1.0.47-47~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * use gpg-agent for passphrase
+
+ -- r2cloud <gpg@r2cloud.ru>  Thu, 16 Jun 2022 21:07:29 +0100
+
+sdr-modem (1.0.46-46~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 19:47:38 +0100
+
+sdr-modem (1.0.46-46~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing deploy
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 19:44:50 +0100
+
+sdr-modem (1.0.45-45~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing deploy
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 19:36:11 +0100
+
+sdr-modem (1.0.44-44~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:54:03 +0100
+
+sdr-modem (1.0.43-43~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:46:33 +0100
+
+sdr-modem (1.0.43-43~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:41:17 +0100
+
+sdr-modem (1.0.42-42~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:16:13 +0100
+
+sdr-modem (1.0.42-42~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:13:31 +0100
+
+sdr-modem (1.0.41-41~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 18:04:11 +0100
+
+sdr-modem (1.0.40-40~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 17:58:45 +0100
+
+sdr-modem (1.0.39-39~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 17:50:28 +0100
+
+sdr-modem (1.0.38-38~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 17:43:47 +0100
+
+sdr-modem (1.0.38-38~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 17:41:13 +0100
+
+sdr-modem (1.0.37-37~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 17:22:26 +0100
+
+sdr-modem (1.0.36-36~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:58:57 +0100
+
+sdr-modem (1.0.36-36~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:56:30 +0100
+
+sdr-modem (1.0.35-35~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:33:38 +0100
+
+sdr-modem (1.0.35-35~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:31:04 +0100
+
+sdr-modem (1.0.34-34~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:19:10 +0100
+
+sdr-modem (1.0.34-34~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:16:28 +0100
+
+sdr-modem (1.0.33-33~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:02:53 +0100
+
+sdr-modem (1.0.33-33~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 16:00:17 +0100
+
+sdr-modem (1.0.33-33~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 15:53:38 +0100
+
+sdr-modem (1.0.32-32~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 15:21:38 +0100
+
+sdr-modem (1.0.31-31~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 14:59:47 +0100
+
+sdr-modem (1.0.31-31~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 14:57:02 +0100
+
+sdr-modem (1.0.30-30~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 14:04:06 +0100
+
+sdr-modem (1.0.30-30~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 14:01:53 +0100
+
+sdr-modem (1.0.29-29~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:24:12 +0100
+
+sdr-modem (1.0.29-29~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:21:50 +0100
+
+sdr-modem (1.0.28-28~bullseye) unstable; urgency=medium
+
+  [ pi@rasp-bullseye ]
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:10:35 +0100
+
+sdr-modem (1.0.28-28~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:08:14 +0100
+
+sdr-modem (1.0.28-28~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * make release build
+  * support compilation flags
+  * support compilation flags
+
+ -- r2cloud <gpg@r2cloud.ru>  Wed, 15 Jun 2022 12:04:25 +0100
+
+sdr-modem (1.0.26-26~bullseye) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing the build
+  * fixing the build
+
+ -- r2cloud <gpg@r2cloud.ru>  Tue, 14 Jun 2022 23:17:18 +0100
+
+sdr-modem (1.0.22-22~bullseye) unstable; urgency=medium
+
+  * fix signal generation
+  * specify start time for file-based processing
+  * use absolute path for file-based processing
+  * fix sample interval for doppler correction
+  * fix fsk demod test
+  * move settings to separate message
+  * bump debian package version
+  * Create cmake.yml
+  * trying matrix build
+  * trying matrix build
+  * make tests stable
+  * make tests stable
+  * explicitly include singal.h
+  * fix memory leak
+  * configuring sonar build on github actions
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * configure the build
+  * preparing upstream branch
+  * building and signing deb
+  * fixing the build
+  * triggering tag builds
+  * running deploy within the same workflow
+  * fix dependency for jobs
+  * fix the build
+  * fix the build
+  * fix the build
+
+ -- dernasherbrezon <dernasherbrezon@users.noreply.github.com>  Tue, 14 Jun 2022 20:55:18 +0100
+
+sdr-modem (1.0.0-4~bullseye) unstable; urgency=medium
+
+  * bullseye build
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Fri, 26 Nov 2021 10:17:21 +0100
+
+sdr-modem (1.0.0-3~bullseye) unstable; urgency=medium
+
+  * bullseye build
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Fri, 26 Nov 2021 10:17:21 +0100
+
+sdr-modem (1.0.0-2) unstable; urgency=medium
+
+  * fix test
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Sat, 25 Sep 2021 10:17:21 +0100
+
+sdr-modem (1.0.0-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #1)
+  * improve rotator performance
+
+ -- Andrey Rodionov <info@r2cloud.ru>  Fri, 17 Sep 2021 10:17:21 +0100

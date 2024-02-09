@@ -1,0 +1,13 @@
+Source: sdr-modem
+Maintainer: Andrey Rodionov <info@r2cloud.ru>
+Section: comm
+Priority: optional
+Standards-Version: 4.5.1
+Build-Depends: debhelper (>= 9.0.0), cmake, libvolk2-dev, libprotobuf-c-dev, libiio-dev (>= 0.21), libconfig-dev, check, pkg-config
+Homepage: https://github.com/dernasherbrezon/sdr-modem
+
+Package: sdr-modem
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libvolk2.4, libprotobuf-c1, libconfig9
+Description: Modem based on software defined radios
+ SDR-agnostic GMSK modulator/demodulator
