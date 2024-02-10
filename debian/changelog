@@ -1,3 +1,10 @@
+sdr-modem (1.0.121-121~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add support for jammy
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 10 Feb 2024 14:54:13 +0000
+
 sdr-modem (1.0.120-120~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
