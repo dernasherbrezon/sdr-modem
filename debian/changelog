@@ -1,3 +1,12 @@
+sdr-modem (1.0.125-125~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * fixing jenkins build
+  * fixing jenkins build
+  * bump the version
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 19:45:13 +0000
+
 sdr-modem (1.0.122-122~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
