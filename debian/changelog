@@ -1,3 +1,27 @@
+sdr-modem (1.0.126-126~buster) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * bump apt-cli and ready for bookworm deployment
+  * add more ubuntu versions + temp disable valgrind
+  * fix sonar build
+  * fix sonar build
+  * fix sonar build
+  * bump the build
+  * fixing the build
+  * fixing the build
+  * rollback jammy deployment. it simply broken
+  * I can fix it.
+  * I can fix it 2
+  * Almost there several more deprecations and removals
+  * add support for jammy
+  * add support for jammy
+  * fixing jenkins build
+  * fixing jenkins build
+  * bump the version
+  * fixing jenkins build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 20:52:34 +0000
+
 sdr-modem (1.0.108-108~buster) unstable; urgency=medium
 
   [ dernasherbrezon ]
