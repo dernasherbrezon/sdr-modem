@@ -6,6 +6,8 @@ pipeline {
     }
     environment {
         GPG = credentials("GPG")
+        DEBEMAIL = 'gpg@r2cloud.ru'
+        DEBFULLNAME = 'r2cloud'
     }
     stages {
         stage('Package and deploy') {
@@ -13,7 +15,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_CODENAME'
-                        values 'bullseye', 'stretch', 'buster'
+                        values 'bullseye', 'stretch', 'buster', 'bookworm'
                     }
                     axis {
                         name 'CPU'
