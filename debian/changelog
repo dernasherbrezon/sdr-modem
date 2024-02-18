@@ -1,3 +1,41 @@
+sdr-modem (1.0.122-122~jammy) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add support for jammy
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 10 Feb 2024 20:38:04 +0000
+
+sdr-modem (1.0.121-121~jammy) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add support for jammy
+
+ -- r2cloud <gpg@r2cloud.ru>  Sat, 10 Feb 2024 14:53:52 +0000
+
+sdr-modem (1.0.120-120~jammy) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * Almost there several more deprecations and removals
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 09 Feb 2024 11:50:31 +0000
+
+sdr-modem (1.0.119-119~jammy) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * bump apt-cli and ready for bookworm deployment
+  * add more ubuntu versions + temp disable valgrind
+  * fix sonar build
+  * fix sonar build
+  * fix sonar build
+  * bump the build
+  * fixing the build
+  * fixing the build
+  * rollback jammy deployment. it simply broken
+  * I can fix it.
+  * I can fix it 2
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 09 Feb 2024 11:39:34 +0000
+
 sdr-modem (1.0.108-108~bullseye) unstable; urgency=medium
 
   [ dernasherbrezon ]
