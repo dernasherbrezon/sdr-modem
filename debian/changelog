@@ -1,5 +1,11 @@
 sdr-modem (1.0.126-126~buster) unstable; urgency=medium
 
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 21:17:20 +0000
+
+sdr-modem (1.0.126-126~buster) unstable; urgency=medium
+
   [ dernasherbrezon ]
   * bump apt-cli and ready for bookworm deployment
   * add more ubuntu versions + temp disable valgrind
