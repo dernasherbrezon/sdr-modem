@@ -1,3 +1,13 @@
+sdr-modem (1.0.124-124~jammy) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * Almost there several more deprecations and removals
+  * fixing jenkins build
+  * fixing jenkins build
+  * fixing jenkins build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 19:35:36 +0000
+
 sdr-modem (1.0.122-122~jammy) unstable; urgency=medium
 
   [ dernasherbrezon ]
