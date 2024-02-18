@@ -7,7 +7,7 @@ OS_CODENAME=$2
 BASE_VERSION=$3
 BUILD_NUMBER=$4
 GPG_KEYNAME=$5
-APT_CLI_VERSION="apt-cli-1.7"
+APT_CLI_VERSION="apt-cli-1.8"
 
 . ./configure_flags.sh ${CPU}
 
@@ -16,7 +16,7 @@ git config user.name "r2cloud"
 git merge origin/main --no-edit
 
 rm -f ../sdr-modem_*
-gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${BASE_VERSION}.${BUILD_NUMBER}-${BUILD_NUMBER}~${OS_CODENAME} --git-author --distribution=unstable --commit
+gbp dch --auto --debian-branch=${OS_CODENAME} --upstream-branch=main --new-version=${BASE_VERSION}.${BUILD_NUMBER}-${BUILD_NUMBER}~${OS_CODENAME} --git-author --distribution=unstable --commit  < /dev/null
 git push --set-upstream origin ${OS_CODENAME}
 gbp buildpackage --git-ignore-new --git-upstream-tag=${BASE_VERSION}.${BUILD_NUMBER} --git-keyid=${GPG_KEYNAME}
 
