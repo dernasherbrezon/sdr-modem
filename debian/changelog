@@ -1,3 +1,10 @@
+sdr-modem (1.0.127-127~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * update gpg instructions
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 04 Oct 2024 20:36:40 +0000
+
 sdr-modem (1.0.126-126~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
