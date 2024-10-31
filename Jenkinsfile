@@ -6,6 +6,8 @@ pipeline {
     }
     environment {
         GPG = credentials("GPG")
+        DEBEMAIL = 'gpg@r2cloud.ru'
+        DEBFULLNAME = 'r2cloud'
     }
     stages {
         stage('Package and deploy') {

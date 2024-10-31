@@ -1,3 +1,21 @@
+sdr-modem (1.0.126-126~bookworm) unstable; urgency=medium
+
+  * UNRELEASED
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 21:17:08 +0000
+
+sdr-modem (1.0.126-126~bookworm) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * add support for jammy
+  * add support for jammy
+  * fixing jenkins build
+  * fixing jenkins build
+  * bump the version
+  * fixing jenkins build
+
+ -- r2cloud <gpg@r2cloud.ru>  Sun, 18 Feb 2024 20:52:28 +0000
+
 sdr-modem (1.0.121-121~bookworm) unstable; urgency=medium
 
   * add bookworm configs
