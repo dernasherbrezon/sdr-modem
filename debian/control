@@ -8,6 +8,6 @@ Homepage: https://github.com/dernasherbrezon/sdr-modem
 
 Package: sdr-modem
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libvolk2.4, libprotobuf-c1, libconfig9
+Depends: ${shlibs:Depends}, ${misc:Depends}, libvolk2.5, libprotobuf-c1, libconfig9
 Description: Modem based on software defined radios
  SDR-agnostic GMSK modulator/demodulator
