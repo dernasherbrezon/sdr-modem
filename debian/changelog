@@ -1,3 +1,10 @@
+sdr-modem (1.0.129-129~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * switch to CPack for debian packages
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 01 Nov 2024 08:56:50 +0000
+
 sdr-modem (1.0.128-128~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
