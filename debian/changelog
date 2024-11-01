@@ -1,3 +1,10 @@
+sdr-modem (1.0.128-128~focal) unstable; urgency=medium
+
+  [ dernasherbrezon ]
+  * docker images for cross compilation
+
+ -- r2cloud <gpg@r2cloud.ru>  Fri, 01 Nov 2024 08:39:49 +0000
+
 sdr-modem (1.0.127-127~focal) unstable; urgency=medium
 
   [ dernasherbrezon ]
