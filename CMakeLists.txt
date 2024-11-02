@@ -79,6 +79,7 @@ target_link_libraries(sdr_modem sdr_modemLib)
 
 install(TARGETS sdr_modem DESTINATION /usr/bin/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/config.conf DESTINATION /etc/sdr-modem/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/sdr-modem.service DESTINATION /lib/systemd/system/)
 
 enable_testing()
 
@@ -115,3 +116,15 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_custom_target("coverage")
     add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/dsp/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/math/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/sdr/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/sgpsdp/*.c.o)
 endif ()
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_NAME "sdr-modem")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libvolk2-bin, libprotobuf-c1, libconfig9, zlib1g")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Andrey Rodionov <dernasherbrezon@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Modem based on software defined radios")
+set(CPACK_DEBIAN_PACKAGE_SECTION "comm")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/dernasherbrezon/sdr-modem")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/prerm;${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm")
+set(CPACK_DEBIAN_DEBUGINFO_PACKAGE ON)
+set(CPACK_DEBIAN_FILE_NAME "sdr-modem_${CPACK_DEBIAN_PACKAGE_VERSION}_${CUSTOM_ARCHITECTURE}.deb")
+include(CPack)
