@@ -49,10 +49,10 @@ sdr-modem depends on several libraries:
 All dependencies can be easily installed from [r2cloud APT repository](https://r2server.ru/apt.html):
 
 ```
-sudo apt-get install dirmngr lsb-release
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A5A70917
-sudo bash -c "echo \"deb http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
-sudo bash -c "echo \"deb http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
+sudo apt-get install curl lsb-release
+curl -fsSL https://leosatdata.com/r2cloud.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/r2cloud.gpg
+sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
+sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
 sudo apt-get update
 sudo apt-get install libvolk2-dev libprotobuf-c-dev libconfig-dev check libiio
 ```
