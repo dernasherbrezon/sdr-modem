@@ -1,122 +1,83 @@
 #include <stdlib.h>
-#include <check.h>
+#include <unity.h>
 #include <math.h>
 #include "../src/server_config.h"
 
 struct server_config *config = NULL;
 
-START_TEST (test_missing_file) {
-    int code = server_config_create(&config, "non-existing-configuration-file.conf");
-    ck_assert_int_eq(code, -1);
+void test_missing_file() {
+  int code = server_config_create(&config, "non-existing-configuration-file.conf");
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-END_TEST
-
-START_TEST (test_invalid_format) {
-    int code = server_config_create(&config, "invalid.format.conf");
-    ck_assert_int_eq(code, -1);
+void test_invalid_format() {
+  int code = server_config_create(&config, "invalid.format.conf");
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-END_TEST
-
-START_TEST (test_invalid_timeout) {
-    int code = server_config_create(&config, "invalid.timeout.conf");
-    ck_assert_int_eq(code, -1);
+void test_invalid_timeout() {
+  int code = server_config_create(&config, "invalid.timeout.conf");
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-END_TEST
-
-START_TEST (test_unknown_tx_sdr_type) {
-    int code = server_config_create(&config, "invalid.tx_sdr_type.conf");
-    ck_assert_int_eq(code, -1);
-}
-END_TEST
-
-START_TEST (test_unknown_rx_sdr_type) {
-    int code = server_config_create(&config, "invalid.rx_sdr_type.conf");
-    ck_assert_int_eq(code, -1);
-}
-END_TEST
-
-START_TEST (test_minimal_config) {
-    int code = server_config_create(&config, "minimal.conf");
-    ck_assert_int_eq(code, 0);
+void test_unknown_tx_sdr_type() {
+  int code = server_config_create(&config, "invalid.tx_sdr_type.conf");
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-END_TEST
-
-START_TEST (test_pluto_enabled) {
-    int code = server_config_create(&config, "pluto_enabled.conf");
-    ck_assert_int_eq(code, 0);
-    ck_assert_int_eq(config->tx_sdr_type, TX_SDR_TYPE_PLUTOSDR);
-    ck_assert(config->iio != NULL);
-    ck_assert(fabsl(10.0 - config->tx_plutosdr_gain) < 0.001);
-    ck_assert_int_eq(config->tx_plutosdr_timeout_millis, 20000);
-}
-END_TEST
-
-START_TEST (test_success) {
-    int code = server_config_create(&config, "full.conf");
-    ck_assert_int_eq(code, 0);
-    ck_assert_str_eq(config->bind_address, "127.0.0.1");
-    ck_assert_int_eq(config->port, 8091);
-    ck_assert_int_eq(config->read_timeout_seconds, 10);
-    ck_assert_int_eq(config->buffer_size, 2048);
-    ck_assert_int_eq(config->rx_sdr_type, RX_SDR_TYPE_SDR_SERVER);
-    ck_assert_str_eq(config->base_path, "/tmp/");
-    ck_assert_int_eq(config->queue_size, 64);
-    ck_assert_int_eq(config->tx_sdr_type, TX_SDR_TYPE_NONE);
-    ck_assert(config->iio == NULL);
-    ck_assert(fabsl(0.0 - config->tx_plutosdr_gain) < 0.001);
-    ck_assert_int_eq(config->tx_plutosdr_timeout_millis, 10000);
+void test_unknown_rx_sdr_type() {
+  int code = server_config_create(&config, "invalid.rx_sdr_type.conf");
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-END_TEST
-
-void teardown() {
-    server_config_destroy(config);
-    config = NULL;
+void test_minimal_config() {
+  int code = server_config_create(&config, "minimal.conf");
+  TEST_ASSERT_EQUAL_INT(0, code);
 }
 
-void setup() {
-    //do nothing
+void test_pluto_enabled() {
+  int code = server_config_create(&config, "pluto_enabled.conf");
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(TX_SDR_TYPE_PLUTOSDR, config->tx_sdr_type);
+  TEST_ASSERT(config->iio != NULL);
+  TEST_ASSERT(fabsl(10.0 - config->tx_plutosdr_gain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(20000, config->tx_plutosdr_timeout_millis);
 }
 
-Suite *common_suite(void) {
-    Suite *s;
-    TCase *tc_core;
+void test_success() {
+  int code = server_config_create(&config, "full.conf");
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->bind_address);
+  TEST_ASSERT_EQUAL_INT(8091, config->port);
+  TEST_ASSERT_EQUAL_INT(10, config->read_timeout_seconds);
+  TEST_ASSERT_EQUAL_INT(2048, config->buffer_size);
+  TEST_ASSERT_EQUAL_INT(RX_SDR_TYPE_SDR_SERVER, config->rx_sdr_type);
+  TEST_ASSERT_EQUAL_STRING("/tmp/", config->base_path);
+  TEST_ASSERT_EQUAL_INT(64, config->queue_size);
+  TEST_ASSERT_EQUAL_INT(TX_SDR_TYPE_NONE, config->tx_sdr_type);
+  TEST_ASSERT(config->iio == NULL);
+  TEST_ASSERT(fabsl(0.0 - config->tx_plutosdr_gain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(10000, config->tx_plutosdr_timeout_millis);
+}
 
-    s = suite_create("server_config");
+void tearDown() {
+  server_config_destroy(config);
+  config = NULL;
+}
 
-    /* Core test case */
-    tc_core = tcase_create("Core");
-
-    tcase_add_test(tc_core, test_success);
-    tcase_add_test(tc_core, test_minimal_config);
-    tcase_add_test(tc_core, test_invalid_timeout);
-    tcase_add_test(tc_core, test_invalid_format);
-    tcase_add_test(tc_core, test_missing_file);
-    tcase_add_test(tc_core, test_unknown_tx_sdr_type);
-    tcase_add_test(tc_core, test_unknown_rx_sdr_type);
-    tcase_add_test(tc_core, test_pluto_enabled);
-
-    tcase_add_checked_fixture(tc_core, setup, teardown);
-    suite_add_tcase(s, tc_core);
-
-    return s;
+void setUp() {
+  //do nothing
 }
 
 int main(void) {
-    int number_failed;
-    Suite *s;
-    SRunner *sr;
-
-    s = common_suite();
-    sr = srunner_create(s);
-
-    srunner_set_fork_status(sr, CK_NOFORK);
-    srunner_run_all(sr, CK_NORMAL);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+  UNITY_BEGIN();
+  RUN_TEST(test_success);
+  RUN_TEST(test_minimal_config);
+  RUN_TEST(test_invalid_timeout);
+  RUN_TEST(test_invalid_format);
+  RUN_TEST(test_missing_file);
+  RUN_TEST(test_unknown_tx_sdr_type);
+  RUN_TEST(test_unknown_rx_sdr_type);
+  RUN_TEST(test_pluto_enabled);
+  return UNITY_END();
 }
