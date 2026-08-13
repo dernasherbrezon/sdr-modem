@@ -88,6 +88,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/)
 # speed up test compilation.
 add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_server_mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_modem_client.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
