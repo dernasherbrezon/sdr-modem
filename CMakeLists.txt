@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 project(sdr-modem)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -83,34 +83,110 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/sdr-modem.service DESTIN
 
 enable_testing()
 
-file(GLOB TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/test_*.c)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/)
+
+# speed up test compilation.
+add_library(sdr_modemTestLib
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_server_mock.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_modem_client.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
+)
+
+add_test(NAME test_clock_recovery_mm COMMAND test_clock_recovery_mm)
+add_executable(test_clock_recovery_mm ${CMAKE_CURRENT_SOURCE_DIR}/test/test_clock_recovery_mm.c)
+target_link_libraries(test_clock_recovery_mm sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_dc_blocker COMMAND test_dc_blocker)
+add_executable(test_dc_blocker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dc_blocker.c)
+target_link_libraries(test_dc_blocker sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_doppler COMMAND test_doppler)
+add_executable(test_doppler ${CMAKE_CURRENT_SOURCE_DIR}/test/test_doppler.c)
+target_link_libraries(test_doppler sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_dsp_worker COMMAND test_dsp_worker)
+add_executable(test_dsp_worker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dsp_worker.c)
+target_link_libraries(test_dsp_worker sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_file_source COMMAND test_file_source)
+add_executable(test_file_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_file_source.c)
+target_link_libraries(test_file_source sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_frequency_modulator COMMAND test_frequency_modulator)
+add_executable(test_frequency_modulator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_frequency_modulator.c)
+target_link_libraries(test_frequency_modulator sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_fsk_demod COMMAND test_fsk_demod)
+add_executable(test_fsk_demod ${CMAKE_CURRENT_SOURCE_DIR}/test/test_fsk_demod.c)
+target_link_libraries(test_fsk_demod sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_gaussian_taps COMMAND test_gaussian_taps)
+add_executable(test_gaussian_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gaussian_taps.c)
+target_link_libraries(test_gaussian_taps sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_gfsk_mod COMMAND test_gfsk_mod)
+add_executable(test_gfsk_mod ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_mod.c)
+target_link_libraries(test_gfsk_mod sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_interp_fir_filter COMMAND test_interp_fir_filter)
+add_executable(test_interp_fir_filter ${CMAKE_CURRENT_SOURCE_DIR}/test/test_interp_fir_filter.c)
+target_link_libraries(test_interp_fir_filter sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_linked_list COMMAND test_linked_list)
+add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)
+target_link_libraries(test_linked_list sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_lpf COMMAND test_lpf)
+add_executable(test_lpf ${CMAKE_CURRENT_SOURCE_DIR}/test/test_lpf.c)
+target_link_libraries(test_lpf sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_lpf_taps COMMAND test_lpf_taps)
+add_executable(test_lpf_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_lpf_taps.c)
+target_link_libraries(test_lpf_taps sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_mmse_fir_interpolator COMMAND test_mmse_fir_interpolator)
+add_executable(test_mmse_fir_interpolator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_mmse_fir_interpolator.c)
+target_link_libraries(test_mmse_fir_interpolator sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_plutosdr COMMAND test_plutosdr)
+add_executable(test_plutosdr ${CMAKE_CURRENT_SOURCE_DIR}/test/test_plutosdr.c)
+target_link_libraries(test_plutosdr sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_quadrature_demod COMMAND test_quadrature_demod)
+add_executable(test_quadrature_demod ${CMAKE_CURRENT_SOURCE_DIR}/test/test_quadrature_demod.c)
+target_link_libraries(test_quadrature_demod sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_queue COMMAND test_queue)
+add_executable(test_queue ${CMAKE_CURRENT_SOURCE_DIR}/test/test_queue.c)
+target_link_libraries(test_queue sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_server_config COMMAND test_server_config)
+add_executable(test_server_config ${CMAKE_CURRENT_SOURCE_DIR}/test/test_server_config.c)
+target_link_libraries(test_server_config sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_sgp4_001 COMMAND test_sgp4_001)
+add_executable(test_sgp4_001 ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sgp4_001.c)
+target_link_libraries(test_sgp4_001 sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_sgp4_002 COMMAND test_sgp4_002)
+add_executable(test_sgp4_002 ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sgp4_002.c)
+target_link_libraries(test_sgp4_002 sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_sig_source COMMAND test_sig_source)
+add_executable(test_sig_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sig_source.c)
+target_link_libraries(test_sig_source sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_tcp_server COMMAND test_tcp_server)
+add_executable(test_tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_server.c)
+target_link_libraries(test_tcp_server sdr_modemLib sdr_modemTestLib)
+
 file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
-file(GLOB PERF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_*.c)
 
-file(GLOB AUX_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c)
-list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "test_.*\\.c")
-list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "perf_.*\\.c")
-list(FILTER AUX_TEST_SOURCES EXCLUDE REGEX "mock_.*\\.c")
-
-add_library(sdr_modemTestLib ${AUX_TEST_SOURCES})
-
-pkg_check_modules(PC_CHECK REQUIRED check)
-include_directories(${PC_CHECK_INCLUDE_DIRS})
-link_directories(${PC_CHECK_LIBRARY_DIRS})
-
-foreach (curTest ${TEST_SOURCES})
-    get_filename_component(curTestName ${curTest} NAME_WE)
-    add_test(NAME ${curTestName} COMMAND ${curTestName} ${curTest})
-    add_executable(${curTestName} ${curTest})
-    target_link_libraries(${curTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LIBRARIES})
-endforeach ()
-
-foreach (curPerfTest ${PERF_SOURCES})
-    get_filename_component(curPerfTestName ${curPerfTest} NAME_WE)
-    add_executable(${curPerfTestName} ${curPerfTest})
-    target_link_libraries(${curPerfTestName} sdr_modemLib sdr_modemTestLib ${PC_CHECK_LIBRARIES})
-endforeach ()
+add_executable(perf_fsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_fsk_modem.c)
+target_link_libraries(perf_fsk_modem sdr_modemLib sdr_modemTestLib)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_custom_target("coverage")

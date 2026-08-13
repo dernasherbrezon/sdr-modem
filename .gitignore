@@ -54,3 +54,4 @@ dkms.conf
 /build/
 /Debug/
 /cmake-build-debug/
+.idea

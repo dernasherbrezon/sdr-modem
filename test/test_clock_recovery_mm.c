@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <check.h>
+#include <unity.h>
 #include <math.h>
 #include "../src/dsp/clock_recovery_mm.h"
 #include "utils.h"
@@ -8,112 +8,81 @@
 clock_mm *clock = NULL;
 float *float_input = NULL;
 
-START_TEST(test_big_buffers) {
-    size_t max_input_buffer = 10;
-    int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, max_input_buffer, &clock);
-    ck_assert_int_eq(code, 0);
+void test_big_buffers() {
+  size_t max_input_buffer = 10;
+  int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, max_input_buffer, &clock);
+  TEST_ASSERT_EQUAL_INT(0, code);
 
-    setup_input_data(&float_input, 0, max_input_buffer + 1);
-    float *output = NULL;
-    size_t output_len = 0;
-    clock_mm_process(float_input, max_input_buffer + 1, &output, &output_len, clock);
-    ck_assert_int_eq(output_len, 0);
+  setup_input_data(&float_input, 0, max_input_buffer + 1);
+  float *output = NULL;
+  size_t output_len = 0;
+  clock_mm_process(float_input, max_input_buffer + 1, &output, &output_len, clock);
+  TEST_ASSERT_EQUAL_INT(0, output_len);
 }
 
-END_TEST
+void test_small_buffers() {
+  int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
+  TEST_ASSERT_EQUAL_INT(0, code);
 
-START_TEST(test_small_buffers) {
-    int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
-    ck_assert_int_eq(code, 0);
-
-    setup_input_data(&float_input, 0, 100);
-    float *output = NULL;
-    size_t output_len = 0;
-    // no input, no output
-    clock_mm_process(float_input, 0, &output, &output_len, clock);
-    ck_assert_int_eq(output_len, 0);
-    clock_mm_process(float_input, 4, &output, &output_len, clock);
-    ck_assert_int_eq(output_len, 0);
-    clock_mm_process(float_input + 4, 3, &output, &output_len, clock);
-    ck_assert_int_eq(output_len, 0);
-    clock_mm_process(float_input + 7, 1, &output, &output_len, clock);
-    ck_assert_int_eq(output_len, 1);
-    ck_assert(fabsl(3.007791F - output[0]) < 0.001);
+  setup_input_data(&float_input, 0, 100);
+  float *output = NULL;
+  size_t output_len = 0;
+  // no input, no output
+  clock_mm_process(float_input, 0, &output, &output_len, clock);
+  TEST_ASSERT_EQUAL_INT(0, output_len);
+  clock_mm_process(float_input, 4, &output, &output_len, clock);
+  TEST_ASSERT_EQUAL_INT(0, output_len);
+  clock_mm_process(float_input + 4, 3, &output, &output_len, clock);
+  TEST_ASSERT_EQUAL_INT(0, output_len);
+  clock_mm_process(float_input + 7, 1, &output, &output_len, clock);
+  TEST_ASSERT_EQUAL_INT(1, output_len);
+  TEST_ASSERT(fabsl(3.007791F - output[0]) < 0.001);
 }
 
-END_TEST
+void test_normal() {
+  int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
+  TEST_ASSERT_EQUAL_INT(0, code);
 
-START_TEST (test_normal) {
-    int code = clock_mm_create(2.0F, 0.25F * 0.175F * 0.175F, 0.005f, 0.175f, 0.005f, 100, &clock);
-    ck_assert_int_eq(code, 0);
+  setup_input_data(&float_input, 0, 100);
+  float *output = NULL;
+  size_t output_len = 0;
+  clock_mm_process(float_input, 42, &output, &output_len, clock);
 
-    setup_input_data(&float_input, 0, 100);
-    float *output = NULL;
-    size_t output_len = 0;
-    clock_mm_process(float_input, 42, &output, &output_len, clock);
+  const float expected[] = {
+    3.007791F, 5.537506F, 7.992135F, 10.434598F, 12.865694F, 15.301093F, 17.738537F,
+    20.176548F, 22.611200F, 25.053421F, 27.484411F, 29.919767F, 32.351070F, 34.790939F,
+    37.227158F
+  };
+  assert_float_array(expected, sizeof(expected) / sizeof(float), output, output_len);
 
-    const float expected[] = {3.007791F, 5.537506F, 7.992135F, 10.434598F, 12.865694F, 15.301093F, 17.738537F,
-                              20.176548F, 22.611200F, 25.053421F, 27.484411F, 29.919767F, 32.351070F, 34.790939F,
-                              37.227158F};
-    assert_float_array(expected, sizeof(expected) / sizeof(float), output, output_len);
-
-    clock_mm_process(float_input + 42, 36, &output, &output_len, clock);
-    const float expected2[] = {39.662235F, 42.105213F, 44.534428F, 46.975555F, 49.400551F, 51.844826F, 54.276859F,
-                               56.714336F, 59.148190F, 61.577019F, 64.029373F, 66.450058F, 68.900490F, 71.325760F,
-                               73.759659F};
-    assert_float_array(expected2, sizeof(expected2) / sizeof(float), output, output_len);
-
+  clock_mm_process(float_input + 42, 36, &output, &output_len, clock);
+  const float expected2[] = {
+    39.662235F, 42.105213F, 44.534428F, 46.975555F, 49.400551F, 51.844826F, 54.276859F,
+    56.714336F, 59.148190F, 61.577019F, 64.029373F, 66.450058F, 68.900490F, 71.325760F,
+    73.759659F
+  };
+  assert_float_array(expected2, sizeof(expected2) / sizeof(float), output, output_len);
 }
 
-END_TEST
-
-void teardown() {
-    if (clock != NULL) {
-        clock_mm_destroy(clock);
-        clock = NULL;
-    }
-    if (float_input != NULL) {
-        free(float_input);
-        float_input = NULL;
-    }
+void tearDown() {
+  if (clock != NULL) {
+    clock_mm_destroy(clock);
+    clock = NULL;
+  }
+  if (float_input != NULL) {
+    free(float_input);
+    float_input = NULL;
+  }
 }
 
-void setup() {
-    //do nothing
-}
-
-Suite *common_suite(void) {
-    Suite *s;
-    TCase *tc_core;
-
-    s = suite_create("clock_recovery_mm");
-
-    /* Core test case */
-    tc_core = tcase_create("Core");
-
-    tcase_add_test(tc_core, test_normal);
-    tcase_add_test(tc_core, test_small_buffers);
-    tcase_add_test(tc_core, test_big_buffers);
-
-    tcase_add_checked_fixture(tc_core, setup, teardown);
-    suite_add_tcase(s, tc_core);
-
-    return s;
+void setUp() {
+  //do nothing
 }
 
 int main(void) {
-    int number_failed;
-    Suite *s;
-    SRunner *sr;
-
-    s = common_suite();
-    sr = srunner_create(s);
-
-    srunner_set_fork_status(sr, CK_NOFORK);
-    srunner_run_all(sr, CK_NORMAL);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
-    return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+  UNITY_BEGIN();
+  RUN_TEST(test_normal);
+  RUN_TEST(test_small_buffers);
+  RUN_TEST(test_big_buffers);
+  return UNITY_END();
 }
-
-
