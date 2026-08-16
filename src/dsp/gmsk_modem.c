@@ -87,9 +87,9 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
     return -ENOMEM;
   }
 
-  size_t gaussian_taps_len = 4 * sps;
+  size_t gaussian_taps_len = (size_t) (4 * sps);
   float *gaussian_taps = NULL;
-  code = gaussian_taps_create(1.0F, sps, req->bt, gaussian_taps_len, &gaussian_taps);
+  code = gaussian_taps_create(sps, req->bt, gaussian_taps_len, &gaussian_taps);
   if (code != 0) {
     gmsk_modem_destroy(result);
     return code;

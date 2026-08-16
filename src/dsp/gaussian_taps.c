@@ -7,27 +7,26 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-int gaussian_taps_create(double gain, double samples_per_symbol, double bt, size_t taps_len, float **taps) {
-    float *result = malloc(sizeof(float) * taps_len);
-    if (result == NULL) {
-        return -ENOMEM;
-    }
+int gaussian_taps_create(float samples_per_symbol, float bt, size_t taps_len, float **taps) {
+  float *result = malloc(sizeof(float) * taps_len);
+  if (result == NULL) {
+    return -ENOMEM;
+  }
 
-    double scale = 0;
-    double dt = 1.0 / samples_per_symbol;
-    double s = 1.0 / (sqrt(log(2.0)) / (2 * M_PI * bt));
-    double t0 = -0.5 * taps_len;
-    double ts;
-    for (int i = 0; i < taps_len; i++) {
-        t0++;
-        ts = s * dt * t0;
-        result[i] = exp(-0.5 * ts * ts);
-        scale += result[i];
-    }
-    for (int i = 0; i < taps_len; i++) {
-        result[i] = result[i] / scale * gain;
-    }
+  float scale = 0;
+  float dt = 1.0f / samples_per_symbol;
+  float s = 1.0f / (sqrtf(logf(2.0f)) / (2 * (float) M_PI * bt));
+  float t0 = -0.5f * (float) taps_len;
+  for (size_t i = 0; i < taps_len; i++) {
+    t0++;
+    float ts = s * dt * t0;
+    result[i] = expf(-0.5f * ts * ts);
+    scale += result[i];
+  }
+  for (size_t i = 0; i < taps_len; i++) {
+    result[i] = result[i] / scale;
+  }
 
-    *taps = result;
-    return 0;
+  *taps = result;
+  return 0;
 }
