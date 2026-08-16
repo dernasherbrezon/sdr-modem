@@ -28,7 +28,6 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sig_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
@@ -149,10 +148,6 @@ target_link_libraries(test_queue sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_app_config COMMAND test_app_config)
 add_executable(test_app_config ${CMAKE_CURRENT_SOURCE_DIR}/test/test_app_config.c)
 target_link_libraries(test_app_config sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_sig_source COMMAND test_sig_source)
-add_executable(test_sig_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sig_source.c)
-target_link_libraries(test_sig_source sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_tcp_server COMMAND test_tcp_server)
 add_executable(test_tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_server.c)

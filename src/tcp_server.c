@@ -21,15 +21,16 @@
 #include "sdr_worker.h"
 #include "dsp/gmsk_modem.h"
 #include <math.h>
-#include "dsp/sig_source.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"
-#include "sdr/file_source.h"
+#include <liquid/liquid.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+#define M_2PI ((float) (2 * M_PI))
 
 struct tcp_worker {
   struct RxRequest *rx_req;
@@ -46,7 +47,8 @@ struct tcp_worker {
   uint8_t *buffer;
   gmsk_modem *gmsk_modem;
   FILE *tx_dump_file;
-  sig_source *signal;
+  nco_crcf nco;
+  float complex *nco_output;
 
   sdr_device *tx_device;
 };
@@ -166,12 +168,9 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
       gmsk_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->gmsk_modem);
     }
 
-    if (worker->signal != NULL) {
-      float complex *signal_output = NULL;
-      size_t signal_output_len = 0;
-      sig_source_multiply(worker->tx_req->gmsk->offset, output, output_len, &signal_output, &signal_output_len, worker->signal);
-      output = signal_output;
-      output_len = signal_output_len;
+    if (worker->nco != NULL) {
+      nco_crcf_mix_block_up(worker->nco, (liquid_float_complex *) output, (liquid_float_complex *) worker->nco_output, (unsigned int) output_len);
+      output = worker->nco_output;
     }
 
     if (worker->tx_dump_file != NULL) {
@@ -290,8 +289,11 @@ void tcp_worker_destroy(void *data) {
   if (worker->gmsk_modem != NULL) {
     gmsk_modem_destroy(worker->gmsk_modem);
   }
-  if (worker->signal != NULL) {
-    sig_source_destroy(worker->signal);
+  if (worker->nco_output != NULL) {
+    free(worker->nco_output);
+  }
+  if (worker->nco != NULL) {
+    nco_crcf_destroy(worker->nco);
   }
   if (worker->tx_dump_file != NULL) {
     fclose(worker->tx_dump_file);
@@ -467,16 +469,16 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
       return;
     }
   }
-  int samples_per_symbol = (int) ((double) tcp_worker->tx_req->gmsk->sample_rate / tcp_worker->tx_req->gmsk->baud_rate);
-  uint32_t max_output_buffer = samples_per_symbol * server->app_config->buffer_size;
   if (tcp_worker->tx_req->gmsk->offset != 0) {
-    code = sig_source_create(tcp_worker->tx_req->gmsk->sample_rate, max_output_buffer, &tcp_worker->signal);
-    if (code != 0) {
+    tcp_worker->nco = nco_crcf_create(LIQUID_NCO);
+    tcp_worker->nco_output = malloc(sizeof(float complex) * tcp_worker->buffer_size);
+    if (tcp_worker->nco == NULL || tcp_worker->nco_output == NULL) {
       fprintf(stderr, "<3>[%d] unable to create freq correction block\n", tcp_worker->id);
       tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
       tcp_worker_destroy(tcp_worker);
       return;
     }
+    nco_crcf_set_frequency(tcp_worker->nco, M_2PI * (float) tcp_worker->tx_req->gmsk->offset / (float) tcp_worker->tx_req->gmsk->sample_rate);
   }
   if (server->app_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
