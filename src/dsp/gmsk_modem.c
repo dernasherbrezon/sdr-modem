@@ -130,6 +130,8 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
     return code;
   }
 
+  sps = sps / (float) matched_decimation;
+
   if (req->use_dc_block) {
     code = dc_blocker_create((int) ceilf(sps * 32), &result->dc);
     if (code != 0) {
