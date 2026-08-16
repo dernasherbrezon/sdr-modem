@@ -29,7 +29,6 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sig_source.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/math/fast_atan2f.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c

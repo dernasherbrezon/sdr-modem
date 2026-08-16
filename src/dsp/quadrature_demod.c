@@ -3,8 +3,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "quadrature_demod.h"
-#include "../math/fast_atan2f.h"
 
 struct quadrature_demod_t {
     float gain;
@@ -66,7 +66,7 @@ void quadrature_demod_process(float complex *input, size_t input_len, float **ou
         demod->temp_buffer[i] = demod->working_buffer[i + 1] * conjf(demod->working_buffer[i]);
     }
     for (int i = 0; i < input_len; i++) {
-        demod->output[i] = demod->gain * fast_atan2f(cimagf(demod->temp_buffer[i]), crealf(demod->temp_buffer[i]));
+        demod->output[i] = demod->gain * atan2f(cimagf(demod->temp_buffer[i]), crealf(demod->temp_buffer[i]));
     }
     memmove(demod->working_buffer, demod->working_buffer + input_len, sizeof(float complex) * demod->history_offset);
 
