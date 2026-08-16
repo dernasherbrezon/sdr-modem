@@ -1,64 +1,36 @@
-syntax = "proto2";
+syntax = "proto3";
 
-enum modem_type {
-    GMSK = 1;
+message gmsk_modem_settings {
+    uint64 center_freq = 1;
+    uint64 sample_rate = 2;
+    int64 offset = 3;
+    uint32 baud_rate = 4;
+    int64 deviation = 5;
+    uint32 transition_width = 6;
+    float bt = 7;
+    bool use_dc_block = 8;
+    uint32 decimation = 9;
 }
 
-enum demod_destination {
-    FILE = 0;
-    SOCKET = 1;
-    BOTH = 2;
-}
-
-message doppler_settings {
-    repeated string tle = 1;
-    required uint32 latitude = 2;  //degrees times 10^6
-    required uint32 longitude = 3;  //degrees times 10^6
-    required uint32 altitude = 4;  //kilometers times 10^6
-}
-
-message fsk_demodulation_settings {
-    required int64 demod_fsk_deviation = 1;
-    required uint32 demod_fsk_transition_width = 2;
-    required bool demod_fsk_use_dc_block = 3;
-}
-
-message fsk_modulation_settings {
-    required int64 mod_fsk_deviation = 1;
-}
-
-message file_settings {
-    required string filename = 1;
-    required uint64 start_time_seconds = 2;
+message none_framing {
 }
 
 message RxRequest {
-    required uint64 rx_center_freq = 1;
-    required uint64 rx_sampling_freq = 2;
-    required bool rx_dump_file = 3;
-    required int64 rx_offset = 4;
-    required modem_type demod_type = 5;
-    required uint32 demod_baud_rate = 6;
-    // the actual is uint8
-    required uint32 demod_decimation = 7;
-    required demod_destination demod_destination = 8;
-
-    optional doppler_settings doppler = 9;
-    optional fsk_demodulation_settings fsk_settings = 10;
-    optional file_settings file_settings = 11;
+    oneof modem_settings {
+        gmsk_modem_settings gmsk = 1;
+    }
+    oneof framing {
+        none_framing none = 8;
+    }
 }
 
 message TxRequest {
-    required uint64 tx_center_freq = 1;
-    required uint64 tx_sampling_freq = 2;
-    required bool tx_dump_file = 3;
-    required int64 tx_offset = 4;
-    required modem_type mod_type = 5;
-    required uint32 mod_baud_rate = 6;
-
-    optional doppler_settings doppler = 7;
-    optional fsk_modulation_settings fsk_settings = 8;
-    optional file_settings file_settings = 9;
+    oneof modem_settings {
+        gmsk_modem_settings gmsk = 1;
+    }
+    oneof framing {
+        none_framing none = 2;
+    }
 }
 
 enum response_status {
@@ -67,10 +39,10 @@ enum response_status {
 }
 
 message Response {
-    required response_status status = 1;
-    required uint32 details = 2;
+    response_status status = 1;
+    uint32 details = 2;
 }
 
 message TxData {
-    required bytes data = 1;
+    bytes data = 1;
 }

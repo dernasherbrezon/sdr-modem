@@ -44,7 +44,6 @@ sdr-modem depends on several libraries:
 * libz. Should be installed in every operational system
 * libm. Same
 * [libiio](https://github.com/analogdevicesinc/libiio) for plutosdr SDR (Optional)
-* [libcheck](https://libcheck.github.io/check/) for tests (Optional)
 
 All dependencies can be easily installed from [r2cloud APT repository](https://r2server.ru/apt.html):
 

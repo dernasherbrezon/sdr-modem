@@ -107,8 +107,3 @@ int api_utils_write_response(int socket, ResponseStatus status, uint32_t details
     return code;
 }
 
-void api_utils_convert_tle(char **tle, char (*output)[80]) {
-    for (int i = 0; i < 3; i++) {
-        strncpy(output[i], tle[i], 80);
-    }
-}

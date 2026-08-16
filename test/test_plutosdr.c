@@ -73,7 +73,7 @@ void init_rx_data(size_t expected_rx_len, size_t expected_tx_len) {
 struct stream_cfg *create_rx_config() {
   struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
   TEST_ASSERT(rx_config != NULL);
-  rx_config->sampling_freq = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
+  rx_config->sample_rate = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
   rx_config->center_freq = 434236000;
   rx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
   return rx_config;
@@ -85,7 +85,7 @@ struct stream_cfg *create_tx_config() {
 
   struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
   TEST_ASSERT(tx_config != NULL);
-  tx_config->sampling_freq = sample_rate;
+  tx_config->sample_rate = sample_rate;
   tx_config->center_freq = 434236000;
   tx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
   return tx_config;
@@ -271,7 +271,7 @@ void test_invalid_rx_config() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 
   rx_config = create_rx_config();
-  rx_config->sampling_freq = 100000;
+  rx_config->sample_rate = 100000;
   code = plutosdr_create(1, false, rx_config, NULL, 10000, 2000000, lib, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }

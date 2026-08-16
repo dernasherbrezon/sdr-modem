@@ -12,7 +12,7 @@
 #include "../src/api.pb-c.h"
 
 tcp_server *server = NULL;
-struct server_config *config = NULL;
+app_config *config = NULL;
 struct RxRequest *req = NULL;
 struct TxRequest *tx_req = NULL;
 sdr_modem_client *client0 = NULL;
@@ -108,7 +108,7 @@ void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, Res
 }
 
 void init_server_with_plutosdr_support(size_t expected_tx_len) {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   iio_lib_destroy(config->iio);
@@ -153,7 +153,6 @@ void test_plutosdr_failures() {
   config->iio->iio_create_scan_context = empty_iio_create_scan_context;
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR, tx_req);
 }
 
@@ -163,8 +162,6 @@ void test_plutosdr_failures2() {
   // init timeout a bit more for test to get ack with timeout failure
   reconnect_client_with_timeout(config->read_timeout_seconds * 2);
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  tx_req->tx_dump_file = true;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
 
   struct message_header header;
@@ -188,7 +185,6 @@ void test_plutosdr_failures2() {
   code = sdr_modem_client_create(config->bind_address, config->port, config->buffer_size, config->read_timeout_seconds, &client1);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_response_with_tx_request(client1, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_TX_IS_BEING_USED, tx_req);
-
 }
 
 void test_plutosdr_tx() {
@@ -196,11 +192,6 @@ void test_plutosdr_tx() {
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  tx_req->tx_dump_file = true;
-  // keep test stable
-  doppler_settings__free_unpacked(tx_req->doppler, NULL);
-  tx_req->doppler = NULL;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
   assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
 
@@ -212,30 +203,10 @@ void test_plutosdr_tx() {
 
   // assert only first 50, thus actual_size = 50
   assert_int16_array(expected, 50, actual, 50);
-
-  char file_path[4096];
-  snprintf(file_path, sizeof(file_path), "%s/tx.mod2sdr.%d.cf32", config->base_path, 0);
-  output_file = fopen(file_path, "rb");
-  TEST_ASSERT(output_file != NULL);
-  size_t buffer_len = sizeof(float complex) * config->buffer_size;
-  actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
-  TEST_ASSERT(actual_buffer != NULL);
-  size_t actual_read = 0;
-  int code = read_data(actual_buffer, &actual_read, sizeof(uint8_t) * buffer_len, output_file);
-  TEST_ASSERT_EQUAL_INT(0, code);
-
-  const float expected_modulated[100] = {1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
-                     1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
-                     1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
-                     1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F,
-                     1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F, 1.000000F, -0.000000F};
-
-  assert_complex_array(expected_modulated, 50, (float complex *) actual_buffer, 50);
-
 }
 
 void test_invalid_config() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   free(config->bind_address);
   config->bind_address = utils_read_and_copy_str("invalid.ip");
@@ -250,7 +221,7 @@ void test_invalid_config() {
 }
 
 void test_ping() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
@@ -261,7 +232,7 @@ void test_ping() {
 }
 
 void test_invalid_requests() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   //make server timeout a bit less than client's
   //this will allow to read response for partial requests
@@ -283,48 +254,34 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_rx_request();
-  req->demod_type = 255;
+  req->modem_settings_case = RX_REQUEST__MODEM_SETTINGS__NOT_SET;
+  req->gmsk = NULL;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->rx_center_freq = 0;
+  req->gmsk->center_freq = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->rx_sampling_freq = 0;
+  req->gmsk->sample_rate = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->demod_baud_rate = 0;
+  req->gmsk->baud_rate = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->demod_decimation = 0;
+  req->gmsk->decimation = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->fsk_settings->demod_fsk_transition_width = 0;
+  req->gmsk->transition_width = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
-
-  reconnect_client();
-  req = create_rx_request();
-  req->demod_destination = 255;
-  assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
-
-  reconnect_client();
-  tx_req = create_tx_request();
-  tx_req->mod_type = 255;
-  assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
-
-  reconnect_client();
-  tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   //re-create server with plutosdr support
   tcp_server_destroy(server);
@@ -336,20 +293,17 @@ void test_invalid_requests() {
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  tx_req->tx_center_freq = 0;
+  tx_req->gmsk->center_freq = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  tx_req->tx_sampling_freq = 0;
+  tx_req->gmsk->sample_rate = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->mod_type = MODEM_TYPE__GMSK;
-  tx_req->mod_baud_rate = 0;
+  tx_req->gmsk->baud_rate = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
@@ -365,11 +319,10 @@ void test_invalid_requests() {
   code = sdr_modem_client_write_raw(buffer, sizeof(buffer), client0);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_response(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-
 }
 
 void test_unable_to_connect_to_sdr_server() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // non-existing port
   config->rx_sdr_server_port = 9999;
@@ -385,7 +338,7 @@ void test_unable_to_connect_to_sdr_server() {
 }
 
 void test_multiple_clients() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // speed up test a bit
   config->read_timeout_seconds = 2;
@@ -404,143 +357,15 @@ void test_multiple_clients() {
   // same freq, different baud rate
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client1);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->demod_decimation = 1;
-  req->demod_baud_rate = 9600;
+  req->gmsk->decimation = 1;
+  req->gmsk->baud_rate = 9600;
   assert_response_with_request(client1, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 1, req);
 
   // different frequency
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client2);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->rx_center_freq = 437525000 + 20000;
+  req->gmsk->center_freq = 437525000 + 20000;
   assert_response_with_request(client2, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 2, req);
-}
-
-void test_file_data() {
-  int code = server_config_create(&config, "full.conf");
-  TEST_ASSERT_EQUAL_INT(0, code);
-  config->tx_sdr_type = TX_SDR_TYPE_FILE;
-  config->rx_sdr_type = RX_SDR_TYPE_FILE;
-  code = tcp_server_create(config, &server);
-  TEST_ASSERT_EQUAL_INT(0, code);
-
-  reconnect_client();
-  tx_req = create_tx_request();
-  tx_req->tx_sampling_freq = 48000;
-  // keep test stable
-  doppler_settings__free_unpacked(tx_req->doppler, NULL);
-  tx_req->doppler = NULL;
-  assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
-  assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
-
-  sdr_modem_client_destroy_gracefully(client0);
-  client0 = NULL;
-  reconnect_client();
-  req = create_rx_request();
-  req->rx_sampling_freq = 48000;
-  req->fsk_settings->demod_fsk_use_dc_block = false;
-  // do not correct doppler - this will make test unstable and dependent on the
-  // current satellite position
-  doppler_settings__free_unpacked(req->doppler, NULL);
-  req->doppler = NULL;
-  assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 1, req);
-
-  int8_t *output = NULL;
-  size_t expected_read = 399;
-  code = sdr_modem_client_read_stream(&output, expected_read, client0);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  //convert to hard decision bits in order to make test stable
-  for (size_t i = 0; i < expected_read; i++) {
-    output[i] = (int8_t) (output[i] > 0);
-  }
-  int8_t expected[389] = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0,
-              0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1,
-              0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-              1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
-              1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1};
-  assert_byte_array(expected, 389, output + 10, expected_read - 10, 0);
-}
-
-void test_read_data() {
-  int code = server_config_create(&config, "minimal.conf");
-  TEST_ASSERT_EQUAL_INT(0, code);
-  // speed up test a bit
-  config->read_timeout_seconds = 2;
-  config->buffer_size = 4096;
-  code = tcp_server_create(config, &server);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
-  TEST_ASSERT_EQUAL_INT(0, code);
-
-  //connect client
-  uint32_t batch_size = 256;
-  code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client0);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  req = create_rx_request();
-  // do not correct doppler - this will make test unstable and dependent on the
-  // current satellite position
-  doppler_settings__free_unpacked(req->doppler, NULL);
-  req->doppler = NULL;
-  req->rx_dump_file = true;
-  req->demod_destination = DEMOD_DESTINATION__BOTH;
-  assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, req);
-
-  //send input data
-  //lucky7.expected.cf32 - is already doppler-corrected data
-  input_file = fopen("lucky7.expected.cf32", "rb");
-  TEST_ASSERT(input_file != NULL);
-  // this is important. sdr server client will wait until incoming expected_buffer is fully read
-  // in real world, this is normal, but in test it will never happen (test data can be less than max expected_buffer size)
-  size_t buffer_len = sizeof(float complex) * config->buffer_size;
-  expected_buffer = malloc(sizeof(uint8_t) * buffer_len);
-  actual_buffer = malloc(sizeof(uint8_t) * buffer_len);
-  TEST_ASSERT(input_file != NULL);
-  while (true) {
-    size_t actual_read = 0;
-    code = read_data(expected_buffer, &actual_read, buffer_len, input_file);
-    if (code != 0 && actual_read == 0) {
-      break;
-    }
-    code = sdr_server_mock_send((float complex *) expected_buffer, actual_read / sizeof(float complex), mock_server);
-    TEST_ASSERT_EQUAL_INT(0, code);
-  }
-
-  output_file = fopen("lucky7.expected.s8", "rb");
-  TEST_ASSERT(output_file != NULL);
-  size_t total_read = 0;
-  while (true) {
-    size_t actual_read = 0;
-    code = read_data(expected_buffer, &actual_read, batch_size, output_file);
-    if (code != 0 && actual_read == 0) {
-      break;
-    }
-    int8_t *output = NULL;
-    code = sdr_modem_client_read_stream(&output, actual_read, client0);
-    TEST_ASSERT_EQUAL_INT(0, code);
-    assert_byte_array((const int8_t *) expected_buffer, actual_read, output, actual_read, 2);
-    total_read += actual_read;
-    // there is not enough data in the sdr input
-    // if 500 numbers matched, then I consider test passed
-    // see test_fsp_demod for this number
-    if (total_read > 500) {
-      break;
-    }
-  }
-
-  //this will trigger flush of files
-  sdr_modem_client_destroy_gracefully(client0);
-  client0 = NULL;
-
-  fseek(output_file, 0, SEEK_SET);
-  char file_path[4096];
-  snprintf(file_path, sizeof(file_path), "%s/rx.demod2client.%d.s8", config->base_path, 0);
-  demod_file = fopen(file_path, "rb");
-  assert_files(output_file, 500, expected_buffer, actual_buffer, batch_size, demod_file, 2);
-
-  fseek(input_file, 0, SEEK_SET);
-  snprintf(file_path, sizeof(file_path), "%s/rx.sdr2demod.%d.cf32", config->base_path, 0);
-  sdr_file = fopen(file_path, "rb");
-  assert_files(input_file, 76000, expected_buffer, actual_buffer, batch_size, sdr_file, 2);
-
 }
 
 void tearDown() {
@@ -570,7 +395,7 @@ void tearDown() {
     server = NULL;
   }
   if (config != NULL) {
-    server_config_destroy(config);
+    app_config_destroy(config);
     config = NULL;
   }
   if (mock_server != NULL) {
@@ -621,11 +446,9 @@ int main(void) {
   RUN_TEST(test_ping);
   RUN_TEST(test_multiple_clients);
   RUN_TEST(test_unable_to_connect_to_sdr_server);
-  RUN_TEST(test_read_data);
   RUN_TEST(test_invalid_requests);
   RUN_TEST(test_plutosdr_failures);
   RUN_TEST(test_plutosdr_failures2);
   RUN_TEST(test_plutosdr_tx);
-  RUN_TEST(test_file_data);
   return UNITY_END();
 }

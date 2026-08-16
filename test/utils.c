@@ -5,100 +5,56 @@
 #include <string.h>
 
 struct RxRequest *create_rx_request() {
-  struct DopplerSettings doppler_settings = DOPPLER_SETTINGS__INIT;
-  doppler_settings.altitude = 0;
-  doppler_settings.n_tle = 3;
-  char **tle = malloc(sizeof(char *) * doppler_settings.n_tle);
-  tle[0] = "LUCKY-7";
-  tle[1] = "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992";
-  tle[2] = "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524";
-  doppler_settings.tle = tle;
-  doppler_settings.latitude = 53.72 * 10E6;
-  doppler_settings.longitude = 47.57F * 10E6;
-
-  struct FskDemodulationSettings fsk_settings = FSK_DEMODULATION_SETTINGS__INIT;
-  fsk_settings.demod_fsk_use_dc_block = true;
-  fsk_settings.demod_fsk_transition_width = 2000;
-  fsk_settings.demod_fsk_deviation = 5000;
+  struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
+  gmsk_settings.use_dc_block = true;
+  gmsk_settings.transition_width = 2000;
+  gmsk_settings.deviation = 5000;
+  gmsk_settings.sample_rate = 48000;
+  gmsk_settings.offset = 0;
+  gmsk_settings.center_freq = 437525000;
+  gmsk_settings.baud_rate = 4800;
+  gmsk_settings.decimation = 1;
+  gmsk_settings.bt = 0.5f;
 
   struct RxRequest result = RX_REQUEST__INIT;
-  result.rx_sampling_freq = 48000;
-  result.rx_offset = 0;
-  result.rx_center_freq = 437525000;
-  result.rx_dump_file = false;
-  result.doppler = &doppler_settings;
-  result.demod_destination = DEMOD_DESTINATION__SOCKET;
-  result.demod_type = MODEM_TYPE__GMSK;
-  result.demod_decimation = 2;
-  result.demod_baud_rate = 4800;
-  result.fsk_settings = &fsk_settings;
-  struct FileSettings rx_file_settings = FILE_SETTINGS__INIT;
-  const char *tmp_folder = getenv("TMPDIR");
-  if (tmp_folder == NULL) {
-    tmp_folder = "/tmp";
-  }
-  char filename[4096];
-  snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
-  rx_file_settings.filename = filename;
-  rx_file_settings.start_time_seconds = 0L;
-  result.file_settings = &rx_file_settings;
+  result.modem_settings_case = RX_REQUEST__MODEM_SETTINGS_GMSK;
+  result.gmsk = &gmsk_settings;
 
   size_t len = rx_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);
   if (buffer == NULL) {
-    free(tle);
     return NULL;
   }
   rx_request__pack(&result, buffer);
   struct RxRequest *unpacked = rx_request__unpack(NULL, len, buffer);
   free(buffer);
-  free(tle);
   return unpacked;
 }
 
 struct TxRequest *create_tx_request() {
-  struct DopplerSettings doppler_settings = DOPPLER_SETTINGS__INIT;
-  doppler_settings.altitude = 0;
-  doppler_settings.n_tle = 3;
-  char **tle = malloc(sizeof(char *) * doppler_settings.n_tle);
-  tle[0] = "LUCKY-7";
-  tle[1] = "1 44406U 19038W   20069.88080907  .00000505  00000-0  32890-4 0  9992";
-  tle[2] = "2 44406  97.5270  32.5584 0026284 107.4758 252.9348 15.12089395 37524";
-  doppler_settings.tle = tle;
-  doppler_settings.latitude = 53.72 * 10E6;
-  doppler_settings.longitude = 47.57F * 10E6;
+  struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
+  gmsk_settings.use_dc_block = true;
+  gmsk_settings.transition_width = 2000;
+  gmsk_settings.deviation = 5000;
+  gmsk_settings.sample_rate = 580000;
+  gmsk_settings.offset = 0;
+  gmsk_settings.center_freq = 437525000;
+  gmsk_settings.baud_rate = 4800;
+  gmsk_settings.decimation = 1;
+  gmsk_settings.bt = 0.5f;
+
   TxRequest result = TX_REQUEST__INIT;
-  result.doppler = &doppler_settings;
-  result.tx_center_freq = 437525000;
-  result.tx_sampling_freq = 580000;
-  result.tx_dump_file = false;
-  result.tx_offset = 0;
-  result.mod_type = MODEM_TYPE__GMSK;
-  result.mod_baud_rate = 4800;
-  struct FskModulationSettings fsk_settings = FSK_MODULATION_SETTINGS__INIT;
-  fsk_settings.mod_fsk_deviation = 5000;
-  result.fsk_settings = &fsk_settings;
-  struct FileSettings fs = FILE_SETTINGS__INIT;
-  const char *tmp_folder = getenv("TMPDIR");
-  if (tmp_folder == NULL) {
-    tmp_folder = "/tmp";
-  }
-  char filename[4096];
-  snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
-  fs.filename = filename;
-  fs.start_time_seconds = 0L;
-  result.file_settings = &fs;
+  result.modem_settings_case = TX_REQUEST__MODEM_SETTINGS_GMSK;
+  result.gmsk = &gmsk_settings;
 
   size_t len = tx_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);
   if (buffer == NULL) {
-    free(tle);
     return NULL;
   }
   tx_request__pack(&result, buffer);
   struct TxRequest *unpacked = tx_request__unpack(NULL, len, buffer);
   free(buffer);
-  free(tle);
   return unpacked;
 }
 

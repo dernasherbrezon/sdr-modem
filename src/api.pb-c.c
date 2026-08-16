@@ -7,184 +7,94 @@
 #endif
 
 #include "api.pb-c.h"
-void   doppler_settings__init
-                     (DopplerSettings         *message)
+void   gmsk_modem_settings__init
+                     (GmskModemSettings         *message)
 {
-  static const DopplerSettings init_value = DOPPLER_SETTINGS__INIT;
+  static const GmskModemSettings init_value = GMSK_MODEM_SETTINGS__INIT;
   *message = init_value;
 }
-size_t doppler_settings__get_packed_size
-                     (const DopplerSettings *message)
+size_t gmsk_modem_settings__get_packed_size
+                     (const GmskModemSettings *message)
 {
-  assert(message->base.descriptor == &doppler_settings__descriptor);
+  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t doppler_settings__pack
-                     (const DopplerSettings *message,
+size_t gmsk_modem_settings__pack
+                     (const GmskModemSettings *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &doppler_settings__descriptor);
+  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t doppler_settings__pack_to_buffer
-                     (const DopplerSettings *message,
+size_t gmsk_modem_settings__pack_to_buffer
+                     (const GmskModemSettings *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &doppler_settings__descriptor);
+  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-DopplerSettings *
-       doppler_settings__unpack
+GmskModemSettings *
+       gmsk_modem_settings__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (DopplerSettings *)
-     protobuf_c_message_unpack (&doppler_settings__descriptor,
+  return (GmskModemSettings *)
+     protobuf_c_message_unpack (&gmsk_modem_settings__descriptor,
                                 allocator, len, data);
 }
-void   doppler_settings__free_unpacked
-                     (DopplerSettings *message,
+void   gmsk_modem_settings__free_unpacked
+                     (GmskModemSettings *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &doppler_settings__descriptor);
+  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   fsk_demodulation_settings__init
-                     (FskDemodulationSettings         *message)
+void   none_framing__init
+                     (NoneFraming         *message)
 {
-  static const FskDemodulationSettings init_value = FSK_DEMODULATION_SETTINGS__INIT;
+  static const NoneFraming init_value = NONE_FRAMING__INIT;
   *message = init_value;
 }
-size_t fsk_demodulation_settings__get_packed_size
-                     (const FskDemodulationSettings *message)
+size_t none_framing__get_packed_size
+                     (const NoneFraming *message)
 {
-  assert(message->base.descriptor == &fsk_demodulation_settings__descriptor);
+  assert(message->base.descriptor == &none_framing__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t fsk_demodulation_settings__pack
-                     (const FskDemodulationSettings *message,
+size_t none_framing__pack
+                     (const NoneFraming *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &fsk_demodulation_settings__descriptor);
+  assert(message->base.descriptor == &none_framing__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t fsk_demodulation_settings__pack_to_buffer
-                     (const FskDemodulationSettings *message,
+size_t none_framing__pack_to_buffer
+                     (const NoneFraming *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &fsk_demodulation_settings__descriptor);
+  assert(message->base.descriptor == &none_framing__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-FskDemodulationSettings *
-       fsk_demodulation_settings__unpack
+NoneFraming *
+       none_framing__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (FskDemodulationSettings *)
-     protobuf_c_message_unpack (&fsk_demodulation_settings__descriptor,
+  return (NoneFraming *)
+     protobuf_c_message_unpack (&none_framing__descriptor,
                                 allocator, len, data);
 }
-void   fsk_demodulation_settings__free_unpacked
-                     (FskDemodulationSettings *message,
+void   none_framing__free_unpacked
+                     (NoneFraming *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &fsk_demodulation_settings__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
-void   fsk_modulation_settings__init
-                     (FskModulationSettings         *message)
-{
-  static const FskModulationSettings init_value = FSK_MODULATION_SETTINGS__INIT;
-  *message = init_value;
-}
-size_t fsk_modulation_settings__get_packed_size
-                     (const FskModulationSettings *message)
-{
-  assert(message->base.descriptor == &fsk_modulation_settings__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t fsk_modulation_settings__pack
-                     (const FskModulationSettings *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &fsk_modulation_settings__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t fsk_modulation_settings__pack_to_buffer
-                     (const FskModulationSettings *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &fsk_modulation_settings__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-FskModulationSettings *
-       fsk_modulation_settings__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (FskModulationSettings *)
-     protobuf_c_message_unpack (&fsk_modulation_settings__descriptor,
-                                allocator, len, data);
-}
-void   fsk_modulation_settings__free_unpacked
-                     (FskModulationSettings *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &fsk_modulation_settings__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
-void   file_settings__init
-                     (FileSettings         *message)
-{
-  static const FileSettings init_value = FILE_SETTINGS__INIT;
-  *message = init_value;
-}
-size_t file_settings__get_packed_size
-                     (const FileSettings *message)
-{
-  assert(message->base.descriptor == &file_settings__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t file_settings__pack
-                     (const FileSettings *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &file_settings__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t file_settings__pack_to_buffer
-                     (const FileSettings *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &file_settings__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-FileSettings *
-       file_settings__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (FileSettings *)
-     protobuf_c_message_unpack (&file_settings__descriptor,
-                                allocator, len, data);
-}
-void   file_settings__free_unpacked
-                     (FileSettings *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &file_settings__descriptor);
+  assert(message->base.descriptor == &none_framing__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   rx_request__init
@@ -367,388 +277,202 @@ void   tx_data__free_unpacked
   assert(message->base.descriptor == &tx_data__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor doppler_settings__field_descriptors[4] =
+static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[9] =
 {
   {
-    "tle",
+    "center_freq",
     1,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_STRING,
-    offsetof(DopplerSettings, n_tle),
-    offsetof(DopplerSettings, tle),
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(GmskModemSettings, center_freq),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "latitude",
+    "sample_rate",
     2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(DopplerSettings, latitude),
+    offsetof(GmskModemSettings, sample_rate),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "longitude",
+    "offset",
     3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
-    offsetof(DopplerSettings, longitude),
+    offsetof(GmskModemSettings, offset),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "altitude",
+    "baud_rate",
     4,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(DopplerSettings, altitude),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned doppler_settings__field_indices_by_name[] = {
-  3,   /* field[3] = altitude */
-  1,   /* field[1] = latitude */
-  2,   /* field[2] = longitude */
-  0,   /* field[0] = tle */
-};
-static const ProtobufCIntRange doppler_settings__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 4 }
-};
-const ProtobufCMessageDescriptor doppler_settings__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "doppler_settings",
-  "DopplerSettings",
-  "DopplerSettings",
-  "",
-  sizeof(DopplerSettings),
-  4,
-  doppler_settings__field_descriptors,
-  doppler_settings__field_indices_by_name,
-  1,  doppler_settings__number_ranges,
-  (ProtobufCMessageInit) doppler_settings__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor fsk_demodulation_settings__field_descriptors[3] =
-{
-  {
-    "demod_fsk_deviation",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(FskDemodulationSettings, demod_fsk_deviation),
+    offsetof(GmskModemSettings, baud_rate),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "demod_fsk_transition_width",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
-    0,   /* quantifier_offset */
-    offsetof(FskDemodulationSettings, demod_fsk_transition_width),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "demod_fsk_use_dc_block",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_BOOL,
-    0,   /* quantifier_offset */
-    offsetof(FskDemodulationSettings, demod_fsk_use_dc_block),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned fsk_demodulation_settings__field_indices_by_name[] = {
-  0,   /* field[0] = demod_fsk_deviation */
-  1,   /* field[1] = demod_fsk_transition_width */
-  2,   /* field[2] = demod_fsk_use_dc_block */
-};
-static const ProtobufCIntRange fsk_demodulation_settings__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 3 }
-};
-const ProtobufCMessageDescriptor fsk_demodulation_settings__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "fsk_demodulation_settings",
-  "FskDemodulationSettings",
-  "FskDemodulationSettings",
-  "",
-  sizeof(FskDemodulationSettings),
-  3,
-  fsk_demodulation_settings__field_descriptors,
-  fsk_demodulation_settings__field_indices_by_name,
-  1,  fsk_demodulation_settings__number_ranges,
-  (ProtobufCMessageInit) fsk_demodulation_settings__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor fsk_modulation_settings__field_descriptors[1] =
-{
-  {
-    "mod_fsk_deviation",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(FskModulationSettings, mod_fsk_deviation),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned fsk_modulation_settings__field_indices_by_name[] = {
-  0,   /* field[0] = mod_fsk_deviation */
-};
-static const ProtobufCIntRange fsk_modulation_settings__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 1 }
-};
-const ProtobufCMessageDescriptor fsk_modulation_settings__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "fsk_modulation_settings",
-  "FskModulationSettings",
-  "FskModulationSettings",
-  "",
-  sizeof(FskModulationSettings),
-  1,
-  fsk_modulation_settings__field_descriptors,
-  fsk_modulation_settings__field_indices_by_name,
-  1,  fsk_modulation_settings__number_ranges,
-  (ProtobufCMessageInit) fsk_modulation_settings__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor file_settings__field_descriptors[2] =
-{
-  {
-    "filename",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    offsetof(FileSettings, filename),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "start_time_seconds",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT64,
-    0,   /* quantifier_offset */
-    offsetof(FileSettings, start_time_seconds),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned file_settings__field_indices_by_name[] = {
-  0,   /* field[0] = filename */
-  1,   /* field[1] = start_time_seconds */
-};
-static const ProtobufCIntRange file_settings__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
-};
-const ProtobufCMessageDescriptor file_settings__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "file_settings",
-  "FileSettings",
-  "FileSettings",
-  "",
-  sizeof(FileSettings),
-  2,
-  file_settings__field_descriptors,
-  file_settings__field_indices_by_name,
-  1,  file_settings__number_ranges,
-  (ProtobufCMessageInit) file_settings__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor rx_request__field_descriptors[11] =
-{
-  {
-    "rx_center_freq",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT64,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, rx_center_freq),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "rx_sampling_freq",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT64,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, rx_sampling_freq),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "rx_dump_file",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_BOOL,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, rx_dump_file),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "rx_offset",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, rx_offset),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "demod_type",
+    "deviation",
     5,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_ENUM,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
-    offsetof(RxRequest, demod_type),
-    &modem_type__descriptor,
+    offsetof(GmskModemSettings, deviation),
+    NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "demod_baud_rate",
+    "transition_width",
     6,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(RxRequest, demod_baud_rate),
+    offsetof(GmskModemSettings, transition_width),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "demod_decimation",
+    "bt",
     7,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    0,   /* quantifier_offset */
+    offsetof(GmskModemSettings, bt),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "use_dc_block",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(GmskModemSettings, use_dc_block),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "decimation",
+    9,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(RxRequest, demod_decimation),
+    offsetof(GmskModemSettings, decimation),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+};
+static const unsigned gmsk_modem_settings__field_indices_by_name[] = {
+  3,   /* field[3] = baud_rate */
+  6,   /* field[6] = bt */
+  0,   /* field[0] = center_freq */
+  8,   /* field[8] = decimation */
+  4,   /* field[4] = deviation */
+  2,   /* field[2] = offset */
+  1,   /* field[1] = sample_rate */
+  5,   /* field[5] = transition_width */
+  7,   /* field[7] = use_dc_block */
+};
+static const ProtobufCIntRange gmsk_modem_settings__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 9 }
+};
+const ProtobufCMessageDescriptor gmsk_modem_settings__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "gmsk_modem_settings",
+  "GmskModemSettings",
+  "GmskModemSettings",
+  "",
+  sizeof(GmskModemSettings),
+  9,
+  gmsk_modem_settings__field_descriptors,
+  gmsk_modem_settings__field_indices_by_name,
+  1,  gmsk_modem_settings__number_ranges,
+  (ProtobufCMessageInit) gmsk_modem_settings__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+#define none_framing__field_descriptors NULL
+#define none_framing__field_indices_by_name NULL
+#define none_framing__number_ranges NULL
+const ProtobufCMessageDescriptor none_framing__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "none_framing",
+  "NoneFraming",
+  "NoneFraming",
+  "",
+  sizeof(NoneFraming),
+  0,
+  none_framing__field_descriptors,
+  none_framing__field_indices_by_name,
+  0,  none_framing__number_ranges,
+  (ProtobufCMessageInit) none_framing__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
+{
   {
-    "demod_destination",
+    "gmsk",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(RxRequest, modem_settings_case),
+    offsetof(RxRequest, gmsk),
+    &gmsk_modem_settings__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "none",
     8,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_ENUM,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, demod_destination),
-    &demod_destination__descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "doppler",
-    9,
-    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, doppler),
-    &doppler_settings__descriptor,
+    offsetof(RxRequest, framing_case),
+    offsetof(RxRequest, none),
+    &none_framing__descriptor,
     NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "fsk_settings",
-    10,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, fsk_settings),
-    &fsk_demodulation_settings__descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "file_settings",
-    11,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(RxRequest, file_settings),
-    &file_settings__descriptor,
-    NULL,
-    0,             /* flags */
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned rx_request__field_indices_by_name[] = {
-  5,   /* field[5] = demod_baud_rate */
-  6,   /* field[6] = demod_decimation */
-  7,   /* field[7] = demod_destination */
-  4,   /* field[4] = demod_type */
-  8,   /* field[8] = doppler */
-  10,   /* field[10] = file_settings */
-  9,   /* field[9] = fsk_settings */
-  0,   /* field[0] = rx_center_freq */
-  2,   /* field[2] = rx_dump_file */
-  3,   /* field[3] = rx_offset */
-  1,   /* field[1] = rx_sampling_freq */
+  0,   /* field[0] = gmsk */
+  1,   /* field[1] = none */
 };
-static const ProtobufCIntRange rx_request__number_ranges[1 + 1] =
+static const ProtobufCIntRange rx_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 11 }
+  { 8, 1 },
+  { 0, 2 }
 };
 const ProtobufCMessageDescriptor rx_request__descriptor =
 {
@@ -758,139 +482,48 @@ const ProtobufCMessageDescriptor rx_request__descriptor =
   "RxRequest",
   "",
   sizeof(RxRequest),
-  11,
+  2,
   rx_request__field_descriptors,
   rx_request__field_indices_by_name,
-  1,  rx_request__number_ranges,
+  2,  rx_request__number_ranges,
   (ProtobufCMessageInit) rx_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor tx_request__field_descriptors[9] =
+static const ProtobufCFieldDescriptor tx_request__field_descriptors[2] =
 {
   {
-    "tx_center_freq",
+    "gmsk",
     1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT64,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, tx_center_freq),
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(TxRequest, modem_settings_case),
+    offsetof(TxRequest, gmsk),
+    &gmsk_modem_settings__descriptor,
     NULL,
-    NULL,
-    0,             /* flags */
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "tx_sampling_freq",
+    "none",
     2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT64,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, tx_sampling_freq),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "tx_dump_file",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_BOOL,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, tx_dump_file),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "tx_offset",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, tx_offset),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "mod_type",
-    5,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_ENUM,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, mod_type),
-    &modem_type__descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "mod_baud_rate",
-    6,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_UINT32,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, mod_baud_rate),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "doppler",
-    7,
-    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, doppler),
-    &doppler_settings__descriptor,
+    offsetof(TxRequest, framing_case),
+    offsetof(TxRequest, none),
+    &none_framing__descriptor,
     NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "fsk_settings",
-    8,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, fsk_settings),
-    &fsk_modulation_settings__descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "file_settings",
-    9,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(TxRequest, file_settings),
-    &file_settings__descriptor,
-    NULL,
-    0,             /* flags */
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
 static const unsigned tx_request__field_indices_by_name[] = {
-  6,   /* field[6] = doppler */
-  8,   /* field[8] = file_settings */
-  7,   /* field[7] = fsk_settings */
-  5,   /* field[5] = mod_baud_rate */
-  4,   /* field[4] = mod_type */
-  0,   /* field[0] = tx_center_freq */
-  2,   /* field[2] = tx_dump_file */
-  3,   /* field[3] = tx_offset */
-  1,   /* field[1] = tx_sampling_freq */
+  0,   /* field[0] = gmsk */
+  1,   /* field[1] = none */
 };
 static const ProtobufCIntRange tx_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 9 }
+  { 0, 2 }
 };
 const ProtobufCMessageDescriptor tx_request__descriptor =
 {
@@ -900,7 +533,7 @@ const ProtobufCMessageDescriptor tx_request__descriptor =
   "TxRequest",
   "",
   sizeof(TxRequest),
-  9,
+  2,
   tx_request__field_descriptors,
   tx_request__field_indices_by_name,
   1,  tx_request__number_ranges,
@@ -912,7 +545,7 @@ static const ProtobufCFieldDescriptor response__field_descriptors[2] =
   {
     "status",
     1,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_ENUM,
     0,   /* quantifier_offset */
     offsetof(Response, status),
@@ -924,7 +557,7 @@ static const ProtobufCFieldDescriptor response__field_descriptors[2] =
   {
     "details",
     2,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(Response, details),
@@ -963,7 +596,7 @@ static const ProtobufCFieldDescriptor tx_data__field_descriptors[1] =
   {
     "data",
     1,
-    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BYTES,
     0,   /* quantifier_offset */
     offsetof(TxData, data),
@@ -995,62 +628,6 @@ const ProtobufCMessageDescriptor tx_data__descriptor =
   1,  tx_data__number_ranges,
   (ProtobufCMessageInit) tx_data__init,
   NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCEnumValue modem_type__enum_values_by_number[1] =
-{
-  { "GMSK", "MODEM_TYPE__GMSK", 1 },
-};
-static const ProtobufCIntRange modem_type__value_ranges[] = {
-{1, 0},{0, 1}
-};
-static const ProtobufCEnumValueIndex modem_type__enum_values_by_name[1] =
-{
-  { "GMSK", 0 },
-};
-const ProtobufCEnumDescriptor modem_type__descriptor =
-{
-  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
-  "modem_type",
-  "modem_type",
-  "ModemType",
-  "",
-  1,
-  modem_type__enum_values_by_number,
-  1,
-  modem_type__enum_values_by_name,
-  1,
-  modem_type__value_ranges,
-  NULL,NULL,NULL,NULL   /* reserved[1234] */
-};
-static const ProtobufCEnumValue demod_destination__enum_values_by_number[3] =
-{
-  { "FILE", "DEMOD_DESTINATION__FILE", 0 },
-  { "SOCKET", "DEMOD_DESTINATION__SOCKET", 1 },
-  { "BOTH", "DEMOD_DESTINATION__BOTH", 2 },
-};
-static const ProtobufCIntRange demod_destination__value_ranges[] = {
-{0, 0},{0, 3}
-};
-static const ProtobufCEnumValueIndex demod_destination__enum_values_by_name[3] =
-{
-  { "BOTH", 2 },
-  { "FILE", 0 },
-  { "SOCKET", 1 },
-};
-const ProtobufCEnumDescriptor demod_destination__descriptor =
-{
-  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
-  "demod_destination",
-  "demod_destination",
-  "DemodDestination",
-  "",
-  3,
-  demod_destination__enum_values_by_number,
-  3,
-  demod_destination__enum_values_by_name,
-  1,
-  demod_destination__value_ranges,
-  NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
 static const ProtobufCEnumValue response_status__enum_values_by_number[2] =
 {

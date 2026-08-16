@@ -15,6 +15,4 @@ int api_utils_read_tx_data(int socket, const struct message_header *header, stru
 
 int api_utils_write_response(int socket, ResponseStatus status, uint32_t details);
 
-void api_utils_convert_tle(char **tle, char (*output)[80]);
-
 #endif //SDR_MODEM_API_UTILS_H

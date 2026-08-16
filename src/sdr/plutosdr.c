@@ -269,11 +269,11 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, 
     if (chn == NULL) {
         return -1;
     }
-    code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) cfg->sampling_freq, iio);
+    code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) cfg->sample_rate, iio);
     if (code != 0) {
         return code;
     }
-    code = plutosdr_write_lli(chn, "sampling_frequency", (long long) cfg->sampling_freq, iio);
+    code = plutosdr_write_lli(chn, "sampling_frequency", (long long) cfg->sample_rate, iio);
     if (code != 0) {
         return code;
     }
@@ -314,13 +314,13 @@ int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, i
         return 0;
     }
 
-    if (cfg->sampling_freq < MIN_FIR_FILTER) {
-        fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", cfg->sampling_freq);
+    if (cfg->sample_rate < MIN_FIR_FILTER) {
+        fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", cfg->sample_rate);
         return -1;
-    } else if (cfg->sampling_freq < MIN_FIR_FILTER_2) {
+    } else if (cfg->sample_rate < MIN_FIR_FILTER_2) {
         *decimation = 4;
         *fir_filter_taps = fir_128_4;
-    } else if (cfg->sampling_freq < MIN_NO_FIR_FILTER) {
+    } else if (cfg->sample_rate < MIN_NO_FIR_FILTER) {
         *decimation = 2;
         *fir_filter_taps = fir_128_2;
     }

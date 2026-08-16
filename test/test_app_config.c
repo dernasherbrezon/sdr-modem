@@ -1,42 +1,42 @@
 #include <stdlib.h>
 #include <unity.h>
 #include <math.h>
-#include "../src/server_config.h"
+#include "../src/app_config.h"
 
-struct server_config *config = NULL;
+app_config *config = NULL;
 
 void test_missing_file() {
-  int code = server_config_create(&config, "non-existing-configuration-file.conf");
+  int code = app_config_create("non-existing-configuration-file.conf", &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_invalid_format() {
-  int code = server_config_create(&config, "invalid.format.conf");
+  int code = app_config_create("invalid.format.conf", &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_invalid_timeout() {
-  int code = server_config_create(&config, "invalid.timeout.conf");
+  int code = app_config_create("invalid.timeout.conf", &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_unknown_tx_sdr_type() {
-  int code = server_config_create(&config, "invalid.tx_sdr_type.conf");
+  int code = app_config_create("invalid.tx_sdr_type.conf", &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_unknown_rx_sdr_type() {
-  int code = server_config_create(&config, "invalid.rx_sdr_type.conf");
+  int code = app_config_create("invalid.rx_sdr_type.conf", &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_minimal_config() {
-  int code = server_config_create(&config, "minimal.conf");
+  int code = app_config_create("minimal.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
 void test_pluto_enabled() {
-  int code = server_config_create(&config, "pluto_enabled.conf");
+  int code = app_config_create("pluto_enabled.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(TX_SDR_TYPE_PLUTOSDR, config->tx_sdr_type);
   TEST_ASSERT(config->iio != NULL);
@@ -45,7 +45,7 @@ void test_pluto_enabled() {
 }
 
 void test_success() {
-  int code = server_config_create(&config, "full.conf");
+  int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->bind_address);
   TEST_ASSERT_EQUAL_INT(8091, config->port);
@@ -61,7 +61,7 @@ void test_success() {
 }
 
 void tearDown() {
-  server_config_destroy(config);
+  app_config_destroy(config);
   config = NULL;
 }
 
