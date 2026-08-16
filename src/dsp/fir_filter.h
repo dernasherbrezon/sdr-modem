@@ -9,16 +9,14 @@ typedef struct fir_filter_t fir_filter;
 struct fir_filter_t {
     uint8_t decimation;
 
-    float **taps;
-    size_t aligned_taps_len;
-    size_t alignment;
+    void *real_dotprod;
+    void *complex_dotprod;
     size_t taps_len;
     float *original_taps;
 
     void *working_buffer;
     size_t history_offset;
     size_t working_len_total;
-    void *volk_output;
     size_t max_input_buffer_length;
 
     void *output;

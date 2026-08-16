@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <volk/volk.h>
+#include <complex.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -62,7 +62,9 @@ void quadrature_demod_process(float complex *input, size_t input_len, float **ou
         return;
     }
     memcpy(demod->working_buffer + demod->history_offset, input, sizeof(float complex) * input_len);
-    volk_32fc_x2_multiply_conjugate_32fc(demod->temp_buffer, &demod->working_buffer[1], &demod->working_buffer[0], input_len);
+    for (size_t i = 0; i < input_len; i++) {
+        demod->temp_buffer[i] = demod->working_buffer[i + 1] * conjf(demod->working_buffer[i]);
+    }
     for (int i = 0; i < input_len; i++) {
         demod->output[i] = demod->gain * fast_atan2f(cimagf(demod->temp_buffer[i]), crealf(demod->temp_buffer[i]));
     }

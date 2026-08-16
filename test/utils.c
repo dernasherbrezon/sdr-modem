@@ -1,8 +1,8 @@
 #include "utils.h"
 #include  <unity.h>
-#include <volk/volk.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 
 struct RxRequest *create_rx_request() {
   struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
@@ -60,16 +60,6 @@ struct TxRequest *create_tx_request() {
 
 void setup_input_data(float **input, size_t input_offset, size_t len) {
   float *result = malloc(sizeof(float) * len);
-  TEST_ASSERT(result != NULL);
-  for (size_t i = 0; i < len; i++) {
-    // don't care about the loss of data
-    result[i] = (float) (input_offset + i);
-  }
-  *input = result;
-}
-
-void setup_volk_input_data(float **input, size_t input_offset, size_t len) {
-  float *result = volk_malloc(sizeof(float) * len, volk_get_alignment());
   TEST_ASSERT(result != NULL);
   for (size_t i = 0; i < len; i++) {
     // don't care about the loss of data

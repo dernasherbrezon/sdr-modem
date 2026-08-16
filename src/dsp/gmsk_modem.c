@@ -3,7 +3,6 @@
 #include "clock_recovery_mm.h"
 #include "dc_blocker.h"
 #include <math.h>
-#include <volk/volk.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -161,7 +160,15 @@ void gmsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
   size_t clock_output_len = 0;
   clock_mm_process(dc_output, dc_output_len, &clock_output, &clock_output_len, demod->clock);
 
-  volk_32f_s32f_convert_8i(demod->output, clock_output, 127.0f, clock_output_len);
+  for (size_t i = 0; i < clock_output_len; i++) {
+    float r = clock_output[i] * 127.0f;
+    if (r > INT8_MAX) {
+      r = INT8_MAX;
+    } else if (r < INT8_MIN) {
+      r = INT8_MIN;
+    }
+    demod->output[i] = (int8_t) rintf(r);
+  }
 
   *output = demod->output;
   *output_len = clock_output_len;

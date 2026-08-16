@@ -1,7 +1,6 @@
 #include <unity.h>
 #include "../src/dsp/mmse_fir_interpolator.h"
 #include "utils.h"
-#include <volk/volk.h>
 #include <stdio.h>
 
 mmse_fir_interpolator *interp = NULL;
@@ -10,7 +9,7 @@ float *float_input = NULL;
 void test_normal() {
   int code = mmse_fir_interpolator_create(&interp);
   TEST_ASSERT_EQUAL_INT(0, code);
-  setup_volk_input_data(&float_input, 0, 8);
+  setup_input_data(&float_input, 0, 8);
   float result = mmse_fir_interpolator_process(float_input, 0.14, interp);
   TEST_ASSERT(fabsl(3.140217F - result) < 0.001);
 }
@@ -21,7 +20,7 @@ void tearDown() {
     interp = NULL;
   }
   if (float_input != NULL) {
-    volk_free(float_input);
+    free(float_input);
     float_input = NULL;
   }
 }

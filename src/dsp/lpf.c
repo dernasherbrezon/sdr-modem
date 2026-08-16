@@ -1,6 +1,5 @@
 #include "lpf.h"
 #include <errno.h>
-#include <volk/volk.h>
 #include <string.h>
 #include "fir_filter.h"
 #include "lpf_taps.h"

@@ -2,12 +2,13 @@
 #include <iio.h>
 #include <stdio.h>
 #include <errno.h>
-#include <volk/volk.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <string.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <math.h>
 
 #define FIR_BUF_SIZE    8192
 
@@ -80,7 +81,17 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
 
         // put [-1;1] into 16bit interval [-32768;32768]
         // pluto has 16bit DAC for TX
-        volk_32f_s32f_convert_16i((int16_t *) p_start, (const float *) (input + processed), 32768, batch * 2);
+        int16_t *tx_output = (int16_t *) p_start;
+        const float *tx_input = (const float *) (input + processed);
+        for (size_t i = 0; i < batch * 2; i++) {
+            float r = tx_input[i] * 32768;
+            if (r > SHRT_MAX) {
+                r = SHRT_MAX;
+            } else if (r < SHRT_MIN) {
+                r = SHRT_MIN;
+            }
+            tx_output[i] = (int16_t) rintf(r);
+        }
 
         // always use push_partial because normal push won't reset buffer to full length
         // https://github.com/analogdevicesinc/libiio/blob/e65a97863c3481f30c6ea8642bda86125a7ee39d/buffer.c#L154
@@ -126,7 +137,11 @@ int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin
         return -1;
     }
     // ADC is 12bit, thus 2^12 = 2048
-    volk_16i_s32f_convert_32f((float *) iio->output, (const int16_t *) p_start, 2048.0F, num_points);
+    float *rx_output = (float *) iio->output;
+    const int16_t *rx_input = (const int16_t *) p_start;
+    for (size_t i = 0; i < num_points; i++) {
+        rx_output[i] = ((float) rx_input[i]) / 2048.0F;
+    }
     *output = iio->output;
     *output_len = num_points / 2;
     return 0;

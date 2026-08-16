@@ -45,17 +45,7 @@ void test_normal() {
   assert_float_array(expected, 400, result, result_len);
 }
 
-void test_invalid_alignment() {
-  setenv("VOLK_ALIGNMENT", "invalid", 1);
-  size_t taps_len = 12;
-  int code = gaussian_taps_create(1.5, 2 * (32000.0F / 1200), 0.5, 12, &taps);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  code = interp_fir_filter_create(taps, taps_len, 2, 1000, &filter);
-  TEST_ASSERT_EQUAL_INT(-1, code);
-}
-
 void tearDown() {
-  unsetenv("VOLK_ALIGNMENT");
   if (filter != NULL) {
     interp_fir_filter_destroy(filter);
     filter = NULL;
@@ -76,6 +66,5 @@ void setUp() {
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_normal);
-  RUN_TEST(test_invalid_alignment);
   return UNITY_END();
 }

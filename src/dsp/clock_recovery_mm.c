@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <string.h>
 #include <math.h>
-#include <volk/volk.h>
 #include <stdio.h>
 
 struct clock_mm_t {
@@ -56,7 +55,7 @@ clock_mm_create(float omega, float gain_omega, float mu, float gain_mu, float om
     }
     result->history_offset = 0;
     result->working_len_total = output_len + mmse_fir_interpolator_taps(result->interp);
-    result->working_buffer = volk_malloc(sizeof(float) * result->working_len_total, volk_get_alignment());
+    result->working_buffer = malloc(sizeof(float) * result->working_len_total);
     if (result->working_buffer == NULL) {
         clock_mm_destroy(result);
         return -ENOMEM;
@@ -149,7 +148,7 @@ void clock_mm_destroy(clock_mm *clock) {
         free(clock->output);
     }
     if (clock->working_buffer != NULL) {
-        volk_free(clock->working_buffer);
+        free(clock->working_buffer);
     }
     free(clock);
 }

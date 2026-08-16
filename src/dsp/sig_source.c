@@ -1,7 +1,6 @@
 #include "sig_source.h"
 #include <math.h>
 #include <errno.h>
-#include <volk/volk.h>
 #include <stdio.h>
 
 #ifndef M_PI
@@ -68,7 +67,9 @@ void sig_source_multiply(int64_t freq, const float complex *input, size_t input_
     size_t sig_output_len = 0;
     sig_source_process(freq, input_len, &sig_output, &sig_output_len, source);
 
-    volk_32fc_x2_multiply_32fc(source->output, (const lv_32fc_t *) input, (const lv_32fc_t *) sig_output, (unsigned int) input_len);
+    for (size_t i = 0; i < input_len; i++) {
+        source->output[i] = input[i] * sig_output[i];
+    }
 
     *output = source->output;
     *output_len = input_len;

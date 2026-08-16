@@ -38,10 +38,10 @@ add_library(sdr_modemLib
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(PC_VOLK REQUIRED volk)
-include_directories(${PC_VOLK_INCLUDE_DIRS})
-link_directories(${PC_VOLK_LIBRARY_DIRS})
-target_link_libraries(sdr_modemLib ${PC_VOLK_LIBRARIES})
+find_path(LIQUID_INCLUDE_DIRS liquid/liquid.h)
+find_library(LIQUID_LIBRARIES NAMES liquid)
+include_directories(${LIQUID_INCLUDE_DIRS})
+target_link_libraries(sdr_modemLib ${LIQUID_LIBRARIES})
 
 pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
 include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
