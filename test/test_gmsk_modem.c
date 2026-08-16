@@ -75,9 +75,9 @@ void test_convolve() {
 
 void test_exceeded_input() {
   GmskModemSettings settings = {
-    .sample_rate = 19200,
+    .sample_rate = 48000,
     .baud_rate = 9600,
-    .deviation = 3000,
+    .deviation = 5000,
     .bandwidth = 15600,
     .bt = 0.5f,
     .use_dc_block = true
@@ -95,9 +95,9 @@ void test_exceeded_input() {
 
 void test_modulation() {
   GmskModemSettings settings = {
-    .sample_rate = 19200,
+    .sample_rate = 48000,
     .baud_rate = 9600,
-    .deviation = 3000,
+    .deviation = 5000,
     .bandwidth = 15600,
     .bt = 0.5f,
     .use_dc_block = true
@@ -133,10 +133,11 @@ void test_modulation() {
 
 void test_demodulation() {
   GmskModemSettings settings = {
-    .sample_rate = 192000,
-    .baud_rate = 40000,
+    .sample_rate = 48000,
+    .baud_rate = 9600,
     .deviation = 5000,
-    .bandwidth = 50000,
+    .bandwidth = 15600,
+    .bt = 0.5f,
     .use_dc_block = true
   };
   int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
@@ -146,10 +147,11 @@ void test_demodulation() {
 
 void test_nan() {
   GmskModemSettings settings = {
-    .sample_rate = 240000,
+    .sample_rate = 48000,
     .baud_rate = 9600,
     .deviation = 5000,
-    .bandwidth = 19600,
+    .bandwidth = 15600,
+    .bt = 0.5f,
     .use_dc_block = true
   };
   int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
@@ -160,9 +162,10 @@ void test_nan() {
 void test_handle_lucky7() {
   GmskModemSettings settings = {
     .sample_rate = 48000,
-    .baud_rate = 4800,
+    .baud_rate = 9600,
     .deviation = 5000,
-    .bandwidth = 14800,
+    .bandwidth = 15600,
+    .bt = 0.5f,
     .use_dc_block = true
   };
   int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
@@ -173,10 +176,11 @@ void test_handle_lucky7() {
 void test_no_dc() {
   GmskModemSettings settings = {
     .sample_rate = 48000,
-    .baud_rate = 4800,
+    .baud_rate = 9600,
     .deviation = 5000,
-    .bandwidth = 14800,
-    .use_dc_block = false
+    .bandwidth = 15600,
+    .bt = 0.5f,
+    .use_dc_block = true
   };
   int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);

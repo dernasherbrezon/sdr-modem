@@ -2,6 +2,7 @@
 #include "quadrature_demod.h"
 #include "clock_recovery_mm.h"
 #include "dc_blocker.h"
+#include "halfband_decim.h"
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -9,16 +10,28 @@
 #include "interp_fir_filter.h"
 #include "frequency_modulator.h"
 #include "gaussian_taps.h"
-#include "lpf.h"
+#include "fir_filter.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+// hardcoded per design: half-band decimator stop-band attenuation
+#define GMSK_MODEM_STOPBAND_ATTENUATION_DB 60.0f
+// half-band decimator: keep the decimated rate at least this many times the signal bandwidth
+// so that the half-band filter's own transition band does not clip the signal
+#define GMSK_MODEM_HALFBAND_MIN_OVERSAMPLE 2.0f
+#define GMSK_MODEM_HALFBAND_MAX_STAGES 6
+// matched filter: keep at least this many samples per symbol so clock recovery has room to lock
+#define GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER 2.0f
+
 struct gmsk_modem_t {
-  lpf *lpf1;
-  lpf *lpf2;
+  // NULL when the sample rate is already close enough to the required bandwidth
+  halfband_decim *halfband;
   quadrature_demod *quad_demod;
+  // fine gaussian matched filter, decimates the discriminator output down to just above
+  // GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER samples per symbol
+  fir_filter *matched_filter;
   dc_blocker *dc;
   clock_mm *clock;
 
@@ -32,6 +45,31 @@ struct gmsk_modem_t {
   size_t temp_input_len;
 };
 
+static unsigned int gmsk_modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
+  if (bandwidth == 0) {
+    return 0;
+  }
+  uint64_t required_rate = (uint64_t) ceilf(GMSK_MODEM_HALFBAND_MIN_OVERSAMPLE * (float) bandwidth);
+  unsigned int num_stages = 0;
+  while (num_stages < GMSK_MODEM_HALFBAND_MAX_STAGES && (sample_rate >> (num_stages + 1)) >= required_rate) {
+    num_stages++;
+  }
+  return num_stages;
+}
+
+// choose the decimation factor for the matched filter so that the resulting samples per symbol
+// stay above GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER.
+static unsigned int gmsk_modem_estimate_decimation(float sps) {
+  unsigned int decimation = (unsigned int) (sps / GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER);
+  while (decimation > 1 && (sps / (float) decimation) <= GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER) {
+    decimation--;
+  }
+  if (decimation < 1) {
+    decimation = 1;
+  }
+  return decimation;
+}
+
 int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, gmsk_modem **demod) {
   struct gmsk_modem_t *result = malloc(sizeof(struct gmsk_modem_t));
   if (result == NULL) {
@@ -40,24 +78,57 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
   // init all fields with 0 so that destroy_* method would work
   *result = (struct gmsk_modem_t){0};
 
-  double carson_cutoff = (double) llabs(req->deviation) + (double) req->baud_rate / 2;
-  int code = lpf_create(1, req->sample_rate, (uint64_t) carson_cutoff, (uint32_t) (0.1f * carson_cutoff), max_input_buffer_length, sizeof(float complex), &result->lpf1);
-  if (code != 0) {
-    gmsk_modem_destroy(result);
-    return code;
+  unsigned int halfband_stages = gmsk_modem_estimate_halfband_stages(req->sample_rate, req->bandwidth);
+  uint64_t sample_rate = req->sample_rate;
+  int code;
+  if (halfband_stages > 0) {
+    sample_rate = req->sample_rate >> halfband_stages;
+    float cutoff = ((float) req->bandwidth / 2.0f) / (float) sample_rate;
+    // liquid advise avoid 0 and 0.5, so put some guards here
+    if (cutoff < 0.05f) {
+      cutoff = 0.05f;
+    } else if (cutoff > 0.45f) {
+      cutoff = 0.45f;
+    }
+    code = halfband_decim_create(halfband_stages, cutoff, GMSK_MODEM_STOPBAND_ATTENUATION_DB, max_input_buffer_length, &result->halfband);
+    if (code != 0) {
+      gmsk_modem_destroy(result);
+      return code;
+    }
+    max_input_buffer_length = max_input_buffer_length / (1u << halfband_stages) + 1;
   }
-  code = quadrature_demod_create((float) ((double) req->sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
-  if (code != 0) {
-    gmsk_modem_destroy(result);
-    return code;
-  }
-  code = lpf_create(req->decimation, req->sample_rate, req->baud_rate / 2, req->transition_width, max_input_buffer_length, sizeof(float), &result->lpf2);
+
+  code = quadrature_demod_create((float) ((double) sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
   if (code != 0) {
     gmsk_modem_destroy(result);
     return code;
   }
 
-  float sps = (float) ((double) req->sample_rate / req->baud_rate / req->decimation);
+  float sps = (float) ((double) sample_rate / (double) req->baud_rate);
+  unsigned int matched_decimation = gmsk_modem_estimate_decimation(sps);
+  // strictly below the minimum the discriminator output can't be demodulated at all. exactly at
+  // the minimum is still accepted, since that's also the sps used for TX pulse shaping.
+  if (sps / (float) matched_decimation < GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER) {
+    fprintf(stderr, "<3>gmsk modem: samples per symbol after matched filter (%f) is below the minimum required %.1f; check sample_rate/baud_rate/bandwidth\n", sps, GMSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER);
+    gmsk_modem_destroy(result);
+    return -EINVAL;
+  }
+
+  size_t rx_gaussian_taps_len = (size_t) (4 * sps);
+  if (rx_gaussian_taps_len < (size_t) matched_decimation * 2 + 1) {
+    rx_gaussian_taps_len = (size_t) matched_decimation * 2 + 1;
+  }
+  float *rx_gaussian_taps = NULL;
+  code = gaussian_taps_create(sps, req->bt, rx_gaussian_taps_len, &rx_gaussian_taps);
+  if (code != 0) {
+    gmsk_modem_destroy(result);
+    return code;
+  }
+  code = fir_filter_create((uint8_t) matched_decimation, rx_gaussian_taps, rx_gaussian_taps_len, max_input_buffer_length, sizeof(float), &result->matched_filter);
+  if (code != 0) {
+    gmsk_modem_destroy(result);
+    return code;
+  }
 
   if (req->use_dc_block) {
     code = dc_blocker_create((int) ceilf(sps * 32), &result->dc);
@@ -87,17 +158,18 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
     return -ENOMEM;
   }
 
-  size_t gaussian_taps_len = (size_t) (4 * sps);
-  float *gaussian_taps = NULL;
-  code = gaussian_taps_create(sps, req->bt, gaussian_taps_len, &gaussian_taps);
+  float tx_sps = (float) ((double) req->sample_rate / req->baud_rate);
+  size_t tx_gaussian_taps_len = (size_t) (4 * tx_sps);
+  float *tx_gaussian_taps = NULL;
+  code = gaussian_taps_create(tx_sps, req->bt, tx_gaussian_taps_len, &tx_gaussian_taps);
   if (code != 0) {
     gmsk_modem_destroy(result);
     return code;
   }
-  size_t square_wave_len = (int) sps;
+  size_t square_wave_len = (int) tx_sps;
   float *square_wave = malloc(sizeof(float) * square_wave_len);
   if (square_wave == NULL) {
-    free(gaussian_taps);
+    free(tx_gaussian_taps);
     gmsk_modem_destroy(result);
     return -ENOMEM;
   }
@@ -107,15 +179,15 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
 
   float *taps = NULL;
   size_t taps_len = 0;
-  code = gmsk_modem_convolve(gaussian_taps, gaussian_taps_len, square_wave, square_wave_len, &taps, &taps_len);
-  free(gaussian_taps);
+  code = gmsk_modem_convolve(tx_gaussian_taps, tx_gaussian_taps_len, square_wave, square_wave_len, &taps, &taps_len);
+  free(tx_gaussian_taps);
   free(square_wave);
   if (code != 0) {
     gmsk_modem_destroy(result);
     return code;
   }
 
-  code = interp_fir_filter_create(taps, taps_len, (int) sps, result->temp_input_len, &result->filter);
+  code = interp_fir_filter_create(taps, taps_len, (int) tx_sps, result->temp_input_len, &result->filter);
   if (code != 0) {
     free(taps);
     gmsk_modem_destroy(result);
@@ -123,7 +195,7 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
   }
 
   float sensitivity = (float) (2 * M_PI * (double) req->deviation / (double) req->sample_rate);
-  code = frequency_modulator_create(sensitivity, (int) sps * result->temp_input_len, &result->freq_mod);
+  code = frequency_modulator_create(sensitivity, (int) tx_sps * result->temp_input_len, &result->freq_mod);
   if (code != 0) {
     gmsk_modem_destroy(result);
     return code;
@@ -135,25 +207,32 @@ int gmsk_modem_create(GmskModemSettings *req, uint32_t max_input_buffer_length, 
 
 void gmsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   gmsk_modem *demod = (gmsk_modem *) modem;
-  float complex *lpf_output = NULL;
-  size_t lpf_output_len = 0;
-  lpf_process(input, input_len, (void **) &lpf_output, &lpf_output_len, demod->lpf1);
+
+  const float complex *quad_input = input;
+  size_t quad_input_len = input_len;
+  if (demod->halfband != NULL) {
+    float complex *halfband_output = NULL;
+    size_t halfband_output_len = 0;
+    halfband_decim_process(input, input_len, &halfband_output, &halfband_output_len, demod->halfband);
+    quad_input = halfband_output;
+    quad_input_len = halfband_output_len;
+  }
 
   float *qd_output = NULL;
   size_t qd_output_len = 0;
-  quadrature_demod_process(lpf_output, lpf_output_len, &qd_output, &qd_output_len, demod->quad_demod);
+  quadrature_demod_process((float complex *) quad_input, quad_input_len, &qd_output, &qd_output_len, demod->quad_demod);
 
-  float *lpf2_output = NULL;
-  size_t lpf2_output_len = 0;
-  lpf_process(qd_output, qd_output_len, (void **) &lpf2_output, &lpf2_output_len, demod->lpf2);
+  float *matched_output = NULL;
+  size_t matched_output_len = 0;
+  fir_filter_process(qd_output, qd_output_len, (void **) &matched_output, &matched_output_len, demod->matched_filter);
 
   float *dc_output = NULL;
   size_t dc_output_len = 0;
   if (demod->dc != NULL) {
-    dc_blocker_process(lpf2_output, lpf2_output_len, &dc_output, &dc_output_len, demod->dc);
+    dc_blocker_process(matched_output, matched_output_len, &dc_output, &dc_output_len, demod->dc);
   } else {
-    dc_output = lpf2_output;
-    dc_output_len = lpf2_output_len;
+    dc_output = matched_output;
+    dc_output_len = matched_output_len;
   }
 
   float *clock_output = NULL;
@@ -238,14 +317,14 @@ void gmsk_modem_destroy(void *modem) {
     return;
   }
   gmsk_modem *demod = (gmsk_modem *) modem;
-  if (demod->lpf1 != NULL) {
-    lpf_destroy(demod->lpf1);
+  if (demod->halfband != NULL) {
+    halfband_decim_destroy(demod->halfband);
   }
   if (demod->quad_demod != NULL) {
     quadrature_demod_destroy(demod->quad_demod);
   }
-  if (demod->lpf2 != NULL) {
-    lpf_destroy(demod->lpf2);
+  if (demod->matched_filter != NULL) {
+    fir_filter_destroy(demod->matched_filter);
   }
   if (demod->dc != NULL) {
     dc_blocker_destroy(demod->dc);

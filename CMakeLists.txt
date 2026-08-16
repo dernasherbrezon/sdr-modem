@@ -23,6 +23,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gmsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf_taps.c
@@ -112,6 +113,10 @@ target_link_libraries(test_gmsk_modem sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_gaussian_taps COMMAND test_gaussian_taps)
 add_executable(test_gaussian_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gaussian_taps.c)
 target_link_libraries(test_gaussian_taps sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_halfband_decim COMMAND test_halfband_decim)
+add_executable(test_halfband_decim ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_decim.c)
+target_link_libraries(test_halfband_decim sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_interp_fir_filter COMMAND test_interp_fir_filter)
 add_executable(test_interp_fir_filter ${CMAKE_CURRENT_SOURCE_DIR}/test/test_interp_fir_filter.c)
