@@ -25,8 +25,6 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/lpf_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
@@ -125,14 +123,6 @@ target_link_libraries(test_interp_fir_filter sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_linked_list COMMAND test_linked_list)
 add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)
 target_link_libraries(test_linked_list sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_lpf COMMAND test_lpf)
-add_executable(test_lpf ${CMAKE_CURRENT_SOURCE_DIR}/test/test_lpf.c)
-target_link_libraries(test_lpf sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_lpf_taps COMMAND test_lpf_taps)
-add_executable(test_lpf_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_lpf_taps.c)
-target_link_libraries(test_lpf_taps sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_mmse_fir_interpolator COMMAND test_mmse_fir_interpolator)
 add_executable(test_mmse_fir_interpolator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_mmse_fir_interpolator.c)
