@@ -41,14 +41,13 @@ struct  GmskModemSettings
   int64_t offset;
   uint32_t baud_rate;
   int64_t deviation;
-  uint32_t transition_width;
+  uint32_t bandwidth;
   float bt;
   protobuf_c_boolean use_dc_block;
-  uint32_t decimation;
 };
 #define GMSK_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&gmsk_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  NoneFraming

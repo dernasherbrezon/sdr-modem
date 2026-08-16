@@ -275,12 +275,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_rx_request();
-  req->gmsk->decimation = 0;
-  assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
-
-  reconnect_client();
-  req = create_rx_request();
-  req->gmsk->transition_width = 0;
+  req->gmsk->bandwidth = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   //re-create server with plutosdr support
@@ -357,7 +352,6 @@ void test_multiple_clients() {
   // same freq, different baud rate
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client1);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->gmsk->decimation = 1;
   req->gmsk->baud_rate = 9600;
   assert_response_with_request(client1, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 1, req);
 

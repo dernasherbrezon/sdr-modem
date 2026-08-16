@@ -277,7 +277,7 @@ void   tx_data__free_unpacked
   assert(message->base.descriptor == &tx_data__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[9] =
+static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] =
 {
   {
     "center_freq",
@@ -340,12 +340,12 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[9] 
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "transition_width",
+    "bandwidth",
     6,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, transition_width),
+    offsetof(GmskModemSettings, bandwidth),
     NULL,
     NULL,
     0,             /* flags */
@@ -375,34 +375,21 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[9] 
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "decimation",
-    9,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_UINT32,
-    0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, decimation),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
 };
 static const unsigned gmsk_modem_settings__field_indices_by_name[] = {
+  5,   /* field[5] = bandwidth */
   3,   /* field[3] = baud_rate */
   6,   /* field[6] = bt */
   0,   /* field[0] = center_freq */
-  8,   /* field[8] = decimation */
   4,   /* field[4] = deviation */
   2,   /* field[2] = offset */
   1,   /* field[1] = sample_rate */
-  5,   /* field[5] = transition_width */
   7,   /* field[7] = use_dc_block */
 };
 static const ProtobufCIntRange gmsk_modem_settings__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 9 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor gmsk_modem_settings__descriptor =
 {
@@ -412,7 +399,7 @@ const ProtobufCMessageDescriptor gmsk_modem_settings__descriptor =
   "GmskModemSettings",
   "",
   sizeof(GmskModemSettings),
-  9,
+  8,
   gmsk_modem_settings__field_descriptors,
   gmsk_modem_settings__field_indices_by_name,
   1,  gmsk_modem_settings__number_ranges,

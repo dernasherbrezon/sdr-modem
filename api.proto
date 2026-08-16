@@ -6,10 +6,9 @@ message gmsk_modem_settings {
     int64 offset = 3;
     uint32 baud_rate = 4;
     int64 deviation = 5;
-    uint32 transition_width = 6;
+    uint32 bandwidth = 6;
     float bt = 7;
     bool use_dc_block = 8;
-    uint32 decimation = 9;
 }
 
 message none_framing {

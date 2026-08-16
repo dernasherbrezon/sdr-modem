@@ -7,13 +7,12 @@
 struct RxRequest *create_rx_request() {
   struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
   gmsk_settings.use_dc_block = true;
-  gmsk_settings.transition_width = 2000;
+  gmsk_settings.bandwidth = 14800;
   gmsk_settings.deviation = 5000;
   gmsk_settings.sample_rate = 48000;
   gmsk_settings.offset = 0;
   gmsk_settings.center_freq = 437525000;
   gmsk_settings.baud_rate = 4800;
-  gmsk_settings.decimation = 1;
   gmsk_settings.bt = 0.5f;
 
   struct RxRequest result = RX_REQUEST__INIT;
@@ -34,13 +33,12 @@ struct RxRequest *create_rx_request() {
 struct TxRequest *create_tx_request() {
   struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
   gmsk_settings.use_dc_block = true;
-  gmsk_settings.transition_width = 2000;
+  gmsk_settings.bandwidth = 14800;
   gmsk_settings.deviation = 5000;
   gmsk_settings.sample_rate = 580000;
   gmsk_settings.offset = 0;
   gmsk_settings.center_freq = 437525000;
   gmsk_settings.baud_rate = 4800;
-  gmsk_settings.decimation = 1;
   gmsk_settings.bt = 0.5f;
 
   TxRequest result = TX_REQUEST__INIT;

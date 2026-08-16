@@ -24,10 +24,9 @@ void perf_gmsk_mod() {
     .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
-    .transition_width = 2000,
+    .bandwidth = 10800,
     .use_dc_block = true,
-    .bt = 0.5F,
-    .decimation = 2
+    .bt = 0.5F
   };
   int code = gmsk_modem_create(&settings, 2016000, &mod);
   if (code != 0) {
@@ -76,10 +75,9 @@ void perf_gmsk_demod() {
     .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
-    .transition_width = 2000,
+    .bandwidth = 10800,
     .use_dc_block = true,
-    .bt = 0.5F,
-    .decimation = 2
+    .bt = 0.5F
   };
   gmsk_modem *demod = NULL;
   int code = gmsk_modem_create(&settings, 2016000, &demod);

@@ -129,12 +129,8 @@ int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const a
     fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->decimation == 0) {
-    fprintf(stderr, "<3>[%d] missing decimation parameter\n", client_id);
-    return -1;
-  }
-  if (req->gmsk->transition_width == 0) {
-    fprintf(stderr, "<3>[%d] missing transition_width parameter\n", client_id);
+  if (req->gmsk->bandwidth == 0) {
+    fprintf(stderr, "<3>[%d] missing bandwidth parameter\n", client_id);
     return -1;
   }
   return 0;

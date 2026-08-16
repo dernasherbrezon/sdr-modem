@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <unity.h>
 #include "../src/dsp_worker.h"
 #include "utils.h"
@@ -23,7 +24,7 @@ void test_invalid_fsk_configuration() {
   req = create_rx_request();
   req->gmsk->baud_rate = req->gmsk->sample_rate;
   code = dsp_worker_create(1, 0, config, req, &worker);
-  TEST_ASSERT_EQUAL_INT(-1, code);
+  TEST_ASSERT_EQUAL_INT(-EINVAL, code);
 }
 
 void test_create_delete() {
