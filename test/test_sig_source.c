@@ -6,7 +6,7 @@
 sig_source *source = NULL;
 
 void test_success() {
-  int code = sig_source_create(1.0F, 4, 4, &source);
+  int code = sig_source_create(4, 4, &source);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float complex *output = NULL;

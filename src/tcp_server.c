@@ -470,7 +470,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
   int samples_per_symbol = (int) ((double) tcp_worker->tx_req->gmsk->sample_rate / tcp_worker->tx_req->gmsk->baud_rate);
   uint32_t max_output_buffer = samples_per_symbol * server->app_config->buffer_size;
   if (tcp_worker->tx_req->gmsk->offset != 0) {
-    code = sig_source_create(1.0F, tcp_worker->tx_req->gmsk->sample_rate, max_output_buffer, &tcp_worker->signal);
+    code = sig_source_create(tcp_worker->tx_req->gmsk->sample_rate, max_output_buffer, &tcp_worker->signal);
     if (code != 0) {
       fprintf(stderr, "<3>[%d] unable to create freq correction block\n", tcp_worker->id);
       tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);

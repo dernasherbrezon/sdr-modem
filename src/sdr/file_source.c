@@ -49,7 +49,7 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
     device->running = true;
 
     if (freq_offset != 0) {
-        int code = sig_source_create(1.0F, sampling_freq, max_output_buffer_length, &device->signal);
+        int code = sig_source_create(sampling_freq, max_output_buffer_length, &device->signal);
         if (code != 0) {
             fprintf(stderr, "<3>[%d] unable to create signal generator\n", device->id);
             file_source_destroy(device);
