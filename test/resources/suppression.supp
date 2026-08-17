@@ -1,0 +1,7 @@
+{
+   KnownLiquidDspLeak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:qs1dsearch_create
+}
