@@ -226,6 +226,10 @@ void tearDown() {
     fclose(expected);
     expected = NULL;
   }
+  if (mod_input != NULL) {
+    free(mod_input);
+    mod_input = NULL;
+  }
 }
 
 void setUp() {
