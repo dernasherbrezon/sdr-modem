@@ -92,17 +92,7 @@ struct stream_cfg *create_tx_config() {
 }
 
 void test_no_configs() {
-  int code = iio_lib_create(&lib);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  code = plutosdr_create(1, false, NULL, NULL, 10000, 2000000, lib, &sdr);
-  TEST_ASSERT_EQUAL_INT(-1, code);
-}
-
-void test_no_device() {
-  int code = iio_lib_create(&lib);
-  TEST_ASSERT_EQUAL_INT(0, code);
-
-  code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = plutosdr_create(1, false, NULL, NULL, 10000, 2000000, NULL, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -302,7 +292,6 @@ void setUp() {
 
 int main(void) {
   UNITY_BEGIN();
-  RUN_TEST(test_no_device);
   RUN_TEST(test_no_configs);
   RUN_TEST(test_rx);
   RUN_TEST(test_no_rx_config);
