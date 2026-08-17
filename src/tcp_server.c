@@ -272,7 +272,9 @@ void tcp_worker_destroy(void *data) {
   struct tcp_worker *worker = (struct tcp_worker *) data;
   fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->id);
   worker->is_running = false;
-  pthread_join(worker->client_thread, NULL);
+  if (worker->client_thread != NULL) {
+    pthread_join(worker->client_thread, NULL);
+  }
   if (worker->rx_req != NULL) {
     rx_request__free_unpacked(worker->rx_req, NULL);
   }

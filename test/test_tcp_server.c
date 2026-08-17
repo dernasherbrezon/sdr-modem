@@ -88,7 +88,6 @@ void assert_response_with_header_and_request(sdr_modem_client *client, uint8_t p
   TEST_ASSERT_EQUAL_INT(0, code);
 
   assert_response(client, type, status, details);
-  rx_request__free_unpacked(rx_req, NULL);
 }
 
 void sdr_modem_client_send_header(sdr_modem_client *client, uint8_t protocol_version, uint8_t request_type) {
@@ -106,7 +105,6 @@ void assert_response_with_request(sdr_modem_client *client, uint8_t type, Respon
 
 void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, ResponseStatus status, uint8_t details, struct TxRequest *tx_req) {
   assert_response_with_header_and_tx_request(client, PROTOCOL_VERSION, TYPE_TX_REQUEST, type, status, details, tx_req);
-  tx_request__free_unpacked(tx_req, NULL);
 }
 
 void init_server_with_plutosdr_support(size_t expected_tx_len) {
@@ -258,6 +256,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_rx_request();
+  gmsk_modem_settings__free_unpacked(req->gmsk, NULL);
   req->modem_settings_case = RX_REQUEST__MODEM_SETTINGS__NOT_SET;
   req->gmsk = NULL;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);

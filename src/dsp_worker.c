@@ -149,8 +149,10 @@ void dsp_worker_destroy(void *data) {
   if (worker->queue != NULL) {
     interrupt_waiting_the_data(worker->queue);
   }
-  // wait until thread terminates and only then destroy the worker
-  pthread_join(worker->dsp_thread, NULL);
+  if (worker->dsp_thread != NULL) {
+    // wait until thread terminates and only then destroy the worker
+    pthread_join(worker->dsp_thread, NULL);
+  }
   if (worker->queue != NULL) {
     destroy_queue(worker->queue);
   }
