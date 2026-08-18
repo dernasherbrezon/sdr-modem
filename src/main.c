@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <signal.h>
+#include <stdlib.h>
+#include <getopt.h>
 
 #include "app_config.h"
 #include "tcp_server.h"
@@ -12,14 +14,30 @@ void sdrmodem_stop_async(int signum) {
 }
 
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    fprintf(stderr, "<3>parameter missing: configuration file\n");
+  static struct option long_options[] = {
+      {"config", required_argument, NULL, 'c'},
+      {NULL, 0, NULL, 0}};
+
+  const char *config_path = NULL;
+  int opt;
+  while ((opt = getopt_long(argc, argv, "c:", long_options, NULL)) != -1) {
+    switch (opt) {
+      case 'c':
+        config_path = optarg;
+        break;
+      default:
+        fprintf(stderr, "usage: %s -c|--config <configuration file>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+  }
+  if (config_path == NULL) {
+    fprintf(stderr, "<3>parameter missing: -c/--config <configuration file>\n");
     exit(EXIT_FAILURE);
   }
   setvbuf(stdout, NULL, _IOLBF, 0);
 
   app_config *server_config = NULL;
-  int code = app_config_create(argv[1], &server_config);
+  int code = app_config_create(config_path, &server_config);
   if (code != 0) {
     exit(EXIT_FAILURE);
   }

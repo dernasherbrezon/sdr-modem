@@ -4,7 +4,7 @@ Description=sdr-modem Service
 [Service]
 WorkingDirectory=/etc/sdr-modem
 Environment="VOLK_CONFIGPATH=/etc/sdr-modem"
-ExecStart=/usr/bin/sdr_modem /etc/sdr-modem/config.conf
+ExecStart=/usr/bin/sdr_modem --config /etc/sdr-modem/config.conf
 Restart=always
 
 [Install]
