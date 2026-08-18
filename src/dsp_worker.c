@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
-#include "dsp/gmsk_modem.h"
+#include "dsp/gfsk_modem.h"
 #include "queue.h"
 #include <complex.h>
 #include "tcp_utils.h"
@@ -105,11 +105,11 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->client_socket = client_socket;
 
   int code = 0;
-  if (req->modem_settings_case == RX_REQUEST__MODEM_SETTINGS_GMSK) {
-    code = gmsk_modem_create(req->gmsk,
-                             server_config->buffer_size, (gmsk_modem **) &result->modem);
-    result->modem_demodulate = gmsk_modem_demodulate;
-    result->modem_destroy = gmsk_modem_destroy;
+  if (req->modem_settings_case == RX_REQUEST__MODEM_SETTINGS_GFSK) {
+    code = gfsk_modem_create(req->gfsk,
+                             server_config->buffer_size, (gfsk_modem **) &result->modem);
+    result->modem_demodulate = gfsk_modem_demodulate;
+    result->modem_destroy = gfsk_modem_destroy;
   }
 
   if (code != 0) {

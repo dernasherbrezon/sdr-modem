@@ -19,7 +19,7 @@
 #include "api_utils.h"
 #include "dsp_worker.h"
 #include "sdr_worker.h"
-#include "dsp/gmsk_modem.h"
+#include "dsp/gfsk_modem.h"
 #include <math.h>
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
@@ -45,7 +45,7 @@ struct tcp_worker {
 
   uint32_t buffer_size;
   uint8_t *buffer;
-  gmsk_modem *gmsk_modem;
+  gfsk_modem *gfsk_modem;
   FILE *tx_dump_file;
   nco_crcf nco;
   float complex *nco_output;
@@ -78,10 +78,10 @@ int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
   if (rx == NULL) {
     return -ENOMEM;
   }
-  if (req->gmsk != NULL) {
-    rx->rx_sampling_freq = req->gmsk->sample_rate;
-    rx->rx_center_freq = req->gmsk->center_freq;
-    rx->rx_offset = req->gmsk->offset;
+  if (req->gfsk != NULL) {
+    rx->rx_sampling_freq = req->gfsk->sample_rate;
+    rx->rx_center_freq = req->gfsk->center_freq;
+    rx->rx_offset = req->gfsk->offset;
   }
 
   *result = rx;
@@ -89,23 +89,23 @@ int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
 }
 
 int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const app_config *config) {
-  if (req->gmsk == NULL) {
-    fprintf(stderr, "<3>[%d] gmsk settings are missing\n", client_id);
+  if (req->gfsk == NULL) {
+    fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
   }
   if (config->tx_sdr_type == TX_SDR_TYPE_NONE) {
     fprintf(stderr, "<3>[%d] server doesn't support tx\n", client_id);
     return -1;
   }
-  if (req->gmsk->center_freq == 0) {
+  if (req->gfsk->center_freq == 0) {
     fprintf(stderr, "<3>[%d] missing center_freq parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->sample_rate == 0) {
+  if (req->gfsk->sample_rate == 0) {
     fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->baud_rate == 0) {
+  if (req->gfsk->baud_rate == 0) {
     fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
     return -1;
   }
@@ -113,23 +113,23 @@ int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const a
 }
 
 int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const app_config *config) {
-  if (req->gmsk == NULL) {
-    fprintf(stderr, "<3>[%d] gmsk settings are missing\n", client_id);
+  if (req->gfsk == NULL) {
+    fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
   }
-  if (req->gmsk->center_freq == 0) {
+  if (req->gfsk->center_freq == 0) {
     fprintf(stderr, "<3>[%d] missing center_freq parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->sample_rate == 0) {
+  if (req->gfsk->sample_rate == 0) {
     fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->baud_rate == 0) {
+  if (req->gfsk->baud_rate == 0) {
     fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
     return -1;
   }
-  if (req->gmsk->bandwidth == 0) {
+  if (req->gfsk->bandwidth == 0) {
     fprintf(stderr, "<3>[%d] missing bandwidth parameter\n", client_id);
     return -1;
   }
@@ -160,8 +160,8 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
     }
     float complex *output = NULL;
     size_t output_len = 0;
-    if (worker->gmsk_modem != NULL) {
-      gmsk_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->gmsk_modem);
+    if (worker->gfsk_modem != NULL) {
+      gfsk_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->gfsk_modem);
     }
 
     if (worker->nco != NULL) {
@@ -284,8 +284,8 @@ void tcp_worker_destroy(void *data) {
   if (worker->buffer != NULL) {
     free(worker->buffer);
   }
-  if (worker->gmsk_modem != NULL) {
-    gmsk_modem_destroy(worker->gmsk_modem);
+  if (worker->gfsk_modem != NULL) {
+    gfsk_modem_destroy(worker->gfsk_modem);
   }
   if (worker->nco_output != NULL) {
     free(worker->nco_output);
@@ -326,8 +326,8 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
       fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
-    tx_config->sample_rate = req->gmsk->sample_rate;
-    tx_config->center_freq = req->gmsk->center_freq;
+    tx_config->sample_rate = req->gfsk->sample_rate;
+    tx_config->center_freq = req->gfsk->center_freq;
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = server->app_config->tx_plutosdr_gain;
     int code = plutosdr_create(id, false, NULL, tx_config, server->app_config->tx_plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, output);
@@ -458,8 +458,8 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
   }
 
   int code;
-  if (tcp_worker->tx_req->gmsk != NULL) {
-    code = gmsk_modem_create(tcp_worker->tx_req->gmsk, tcp_worker->buffer_size, &tcp_worker->gmsk_modem);
+  if (tcp_worker->tx_req->gfsk != NULL) {
+    code = gfsk_modem_create(tcp_worker->tx_req->gfsk, tcp_worker->buffer_size, &tcp_worker->gfsk_modem);
     if (code != 0) {
       fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
       tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
@@ -467,7 +467,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
       return;
     }
   }
-  if (tcp_worker->tx_req->gmsk->offset != 0) {
+  if (tcp_worker->tx_req->gfsk->offset != 0) {
     tcp_worker->nco = nco_crcf_create(LIQUID_NCO);
     tcp_worker->nco_output = malloc(sizeof(float complex) * tcp_worker->buffer_size);
     if (tcp_worker->nco == NULL || tcp_worker->nco_output == NULL) {
@@ -476,7 +476,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
       tcp_worker_destroy(tcp_worker);
       return;
     }
-    nco_crcf_set_frequency(tcp_worker->nco, M_2PI * (float) tcp_worker->tx_req->gmsk->offset / (float) tcp_worker->tx_req->gmsk->sample_rate);
+    nco_crcf_set_frequency(tcp_worker->nco, M_2PI * (float) tcp_worker->tx_req->gfsk->offset / (float) tcp_worker->tx_req->gfsk->sample_rate);
   }
   if (server->app_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
@@ -508,10 +508,10 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
   }
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-  fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, tcp_worker->tx_req->gmsk->center_freq,
-          tcp_worker->tx_req->gmsk->offset,
-          tcp_worker->tx_req->gmsk->sample_rate,
-          tcp_worker->tx_req->gmsk->baud_rate);
+  fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, tcp_worker->tx_req->gfsk->center_freq,
+          tcp_worker->tx_req->gfsk->offset,
+          tcp_worker->tx_req->gfsk->sample_rate,
+          tcp_worker->tx_req->gfsk->baud_rate);
 }
 
 void handle_rx_client(int client_socket, struct message_header *header, tcp_server *server) {
@@ -526,8 +526,8 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   tcp_worker->server = server;
   //explicitly init all tx fields to NULL for rx client
   tcp_worker->tx_req = NULL;
-  tcp_worker->gmsk_modem = NULL;
-  tcp_worker->gmsk_modem = NULL;
+  tcp_worker->gfsk_modem = NULL;
+  tcp_worker->gfsk_modem = NULL;
   tcp_worker->tx_dump_file = NULL;
   tcp_worker->tx_device = NULL;
 
@@ -579,8 +579,8 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
   fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx offset: %" PRId64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          tcp_worker->rx_req->gmsk->center_freq, tcp_worker->rx_req->gmsk->offset,
-          tcp_worker->rx_req->gmsk->sample_rate, tcp_worker->rx_req->gmsk->baud_rate);
+          tcp_worker->rx_req->gfsk->center_freq, tcp_worker->rx_req->gfsk->offset,
+          tcp_worker->rx_req->gfsk->sample_rate, tcp_worker->rx_req->gfsk->baud_rate);
 }
 
 static void *acceptor_worker(void *arg) {

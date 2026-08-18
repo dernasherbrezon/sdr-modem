@@ -4,10 +4,10 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <unity.h>
-#include "../src/dsp/gmsk_modem.h"
+#include "../src/dsp/gfsk_modem.h"
 #include "utils.h"
 
-gmsk_modem *demod = NULL;
+gfsk_modem *demod = NULL;
 uint8_t *buffer = NULL;
 FILE *input = NULL;
 FILE *expected = NULL;
@@ -39,7 +39,7 @@ void generate_test_data(const char *input_filename, const char *output_filename)
     }
     int8_t *output = NULL;
     size_t output_len = 0;
-    gmsk_modem_demodulate((const complex float *) buffer, actual_read / 8, &output, &output_len, demod);
+    gfsk_modem_demodulate((const complex float *) buffer, actual_read / 8, &output, &output_len, demod);
     size_t actually_wrote = fwrite(output, sizeof(int8_t), output_len, expected);
     TEST_ASSERT_EQUAL_INT(output_len, actually_wrote);
   }
@@ -62,7 +62,7 @@ void assert_files_and_demod(const char *input_filename, const char *expected_fil
     }
     int8_t *output = NULL;
     size_t output_len = 0;
-    gmsk_modem_demodulate((const complex float *) buffer, actual_read / 8, &output, &output_len, demod);
+    gfsk_modem_demodulate((const complex float *) buffer, actual_read / 8, &output, &output_len, demod);
     code = read_data(buffer, &actual_read, output_len, expected);
     TEST_ASSERT_EQUAL_INT(0, code);
     TEST_ASSERT_EQUAL_INT(output_len, actual_read);
@@ -89,7 +89,7 @@ void test_convolve() {
   float x[3] = {0, 1, 0.5F};
   float y[3] = {1, 2, 3};
   size_t result_len = 0;
-  int code = gmsk_modem_convolve(x, 3, y, 3, &result, &result_len);
+  int code = gfsk_modem_convolve(x, 3, y, 3, &result, &result_len);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float expected[5] = {0, 1, 2.5F, 4, 1.5F};
@@ -97,7 +97,7 @@ void test_convolve() {
 }
 
 void test_exceeded_input() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 48000,
     .baud_rate = 9600,
     .deviation = 5000,
@@ -105,19 +105,19 @@ void test_exceeded_input() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, 10, &demod);
+  int code = gfsk_modem_create(&settings, 10, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_byte_data(&mod_input, 0, 11);
 
   float complex *output = NULL;
   size_t output_len = 0;
-  gmsk_modem_modulate(mod_input, 11, &output, &output_len, demod);
+  gfsk_modem_modulate(mod_input, 11, &output, &output_len, demod);
   TEST_ASSERT_EQUAL_INT(0, output_len);
 }
 
 void test_modulation() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 48000,
     .baud_rate = 9600,
     .deviation = 5000,
@@ -125,14 +125,14 @@ void test_modulation() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, 1000, &demod);
+  int code = gfsk_modem_create(&settings, 1000, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_byte_data(&mod_input, 0, 10);
 
   float complex *output = NULL;
   size_t output_len = 0;
-  gmsk_modem_modulate(mod_input, 10, &output, &output_len, demod);
+  gfsk_modem_modulate(mod_input, 10, &output, &output_len, demod);
 
   // 10 * 2 (samples per symbol) * 8 (bit) * 2 (complex) = 320
   const float expected_output[320] = {
@@ -154,7 +154,7 @@ void test_modulation() {
 }
 
 void test_demodulation() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 192000,
     .baud_rate = 40000,
     .deviation = 5000,
@@ -162,13 +162,13 @@ void test_demodulation() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("nusat.cf32", "nusat.expected.s8");
 }
 
 void test_nan() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 48000,
     .baud_rate = 9600,
     .deviation = 5000,
@@ -176,13 +176,13 @@ void test_nan() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("inputnan.cf32", "nan.s8");
 }
 
 void test_handle_lucky7() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 48000,
     .baud_rate = 4800,
     .deviation = 5000,
@@ -190,13 +190,13 @@ void test_handle_lucky7() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.s8");
 }
 
 void test_no_dc() {
-  GmskModemSettings settings = {
+  GfskModemSettings settings = {
     .sample_rate = 48000,
     .baud_rate = 9600,
     .deviation = 5000,
@@ -204,14 +204,14 @@ void test_no_dc() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gmsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
 }
 
 void tearDown() {
   if (demod != NULL) {
-    gmsk_modem_destroy(demod);
+    gfsk_modem_destroy(demod);
     demod = NULL;
   }
   if (buffer != NULL) {

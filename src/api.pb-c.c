@@ -7,49 +7,49 @@
 #endif
 
 #include "api.pb-c.h"
-void   gmsk_modem_settings__init
-                     (GmskModemSettings         *message)
+void   gfsk_modem_settings__init
+                     (GfskModemSettings         *message)
 {
-  static const GmskModemSettings init_value = GMSK_MODEM_SETTINGS__INIT;
+  static const GfskModemSettings init_value = GFSK_MODEM_SETTINGS__INIT;
   *message = init_value;
 }
-size_t gmsk_modem_settings__get_packed_size
-                     (const GmskModemSettings *message)
+size_t gfsk_modem_settings__get_packed_size
+                     (const GfskModemSettings *message)
 {
-  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &gfsk_modem_settings__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t gmsk_modem_settings__pack
-                     (const GmskModemSettings *message,
+size_t gfsk_modem_settings__pack
+                     (const GfskModemSettings *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &gfsk_modem_settings__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t gmsk_modem_settings__pack_to_buffer
-                     (const GmskModemSettings *message,
+size_t gfsk_modem_settings__pack_to_buffer
+                     (const GfskModemSettings *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &gfsk_modem_settings__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-GmskModemSettings *
-       gmsk_modem_settings__unpack
+GfskModemSettings *
+       gfsk_modem_settings__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (GmskModemSettings *)
-     protobuf_c_message_unpack (&gmsk_modem_settings__descriptor,
+  return (GfskModemSettings *)
+     protobuf_c_message_unpack (&gfsk_modem_settings__descriptor,
                                 allocator, len, data);
 }
-void   gmsk_modem_settings__free_unpacked
-                     (GmskModemSettings *message,
+void   gfsk_modem_settings__free_unpacked
+                     (GfskModemSettings *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &gmsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &gfsk_modem_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   none_framing__init
@@ -277,7 +277,7 @@ void   tx_data__free_unpacked
   assert(message->base.descriptor == &tx_data__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] =
+static const ProtobufCFieldDescriptor gfsk_modem_settings__field_descriptors[8] =
 {
   {
     "center_freq",
@@ -285,7 +285,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, center_freq),
+    offsetof(GfskModemSettings, center_freq),
     NULL,
     NULL,
     0,             /* flags */
@@ -297,7 +297,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, sample_rate),
+    offsetof(GfskModemSettings, sample_rate),
     NULL,
     NULL,
     0,             /* flags */
@@ -309,7 +309,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, offset),
+    offsetof(GfskModemSettings, offset),
     NULL,
     NULL,
     0,             /* flags */
@@ -321,7 +321,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, baud_rate),
+    offsetof(GfskModemSettings, baud_rate),
     NULL,
     NULL,
     0,             /* flags */
@@ -333,7 +333,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, deviation),
+    offsetof(GfskModemSettings, deviation),
     NULL,
     NULL,
     0,             /* flags */
@@ -345,7 +345,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, bandwidth),
+    offsetof(GfskModemSettings, bandwidth),
     NULL,
     NULL,
     0,             /* flags */
@@ -357,7 +357,7 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_FLOAT,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, bt),
+    offsetof(GfskModemSettings, bt),
     NULL,
     NULL,
     0,             /* flags */
@@ -369,14 +369,14 @@ static const ProtobufCFieldDescriptor gmsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
-    offsetof(GmskModemSettings, use_dc_block),
+    offsetof(GfskModemSettings, use_dc_block),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned gmsk_modem_settings__field_indices_by_name[] = {
+static const unsigned gfsk_modem_settings__field_indices_by_name[] = {
   5,   /* field[5] = bandwidth */
   3,   /* field[3] = baud_rate */
   6,   /* field[6] = bt */
@@ -386,24 +386,24 @@ static const unsigned gmsk_modem_settings__field_indices_by_name[] = {
   1,   /* field[1] = sample_rate */
   7,   /* field[7] = use_dc_block */
 };
-static const ProtobufCIntRange gmsk_modem_settings__number_ranges[1 + 1] =
+static const ProtobufCIntRange gfsk_modem_settings__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 8 }
 };
-const ProtobufCMessageDescriptor gmsk_modem_settings__descriptor =
+const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "gmsk_modem_settings",
-  "GmskModemSettings",
-  "GmskModemSettings",
+  "gfsk_modem_settings",
+  "GfskModemSettings",
+  "GfskModemSettings",
   "",
-  sizeof(GmskModemSettings),
+  sizeof(GfskModemSettings),
   8,
-  gmsk_modem_settings__field_descriptors,
-  gmsk_modem_settings__field_indices_by_name,
-  1,  gmsk_modem_settings__number_ranges,
-  (ProtobufCMessageInit) gmsk_modem_settings__init,
+  gfsk_modem_settings__field_descriptors,
+  gfsk_modem_settings__field_indices_by_name,
+  1,  gfsk_modem_settings__number_ranges,
+  (ProtobufCMessageInit) gfsk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 #define none_framing__field_descriptors NULL
@@ -427,13 +427,13 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
 static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
 {
   {
-    "gmsk",
+    "gfsk",
     1,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(RxRequest, modem_settings_case),
-    offsetof(RxRequest, gmsk),
-    &gmsk_modem_settings__descriptor,
+    offsetof(RxRequest, gfsk),
+    &gfsk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -452,7 +452,7 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
   },
 };
 static const unsigned rx_request__field_indices_by_name[] = {
-  0,   /* field[0] = gmsk */
+  0,   /* field[0] = gfsk */
   1,   /* field[1] = none */
 };
 static const ProtobufCIntRange rx_request__number_ranges[2 + 1] =
@@ -479,13 +479,13 @@ const ProtobufCMessageDescriptor rx_request__descriptor =
 static const ProtobufCFieldDescriptor tx_request__field_descriptors[2] =
 {
   {
-    "gmsk",
+    "gfsk",
     1,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(TxRequest, modem_settings_case),
-    offsetof(TxRequest, gmsk),
-    &gmsk_modem_settings__descriptor,
+    offsetof(TxRequest, gfsk),
+    &gfsk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -504,7 +504,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[2] =
   },
 };
 static const unsigned tx_request__field_indices_by_name[] = {
-  0,   /* field[0] = gmsk */
+  0,   /* field[0] = gfsk */
   1,   /* field[1] = none */
 };
 static const ProtobufCIntRange tx_request__number_ranges[1 + 1] =

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-message gmsk_modem_settings {
+message gfsk_modem_settings {
     uint64 center_freq = 1;
     uint64 sample_rate = 2;
     int64 offset = 3;
@@ -16,7 +16,7 @@ message none_framing {
 
 message RxRequest {
     oneof modem_settings {
-        gmsk_modem_settings gmsk = 1;
+        gfsk_modem_settings gfsk = 1;
     }
     oneof framing {
         none_framing none = 8;
@@ -25,7 +25,7 @@ message RxRequest {
 
 message TxRequest {
     oneof modem_settings {
-        gmsk_modem_settings gmsk = 1;
+        gfsk_modem_settings gfsk = 1;
     }
     oneof framing {
         none_framing none = 2;

@@ -162,7 +162,7 @@ void test_plutosdr_failures2() {
   // init timeout a bit more for test to get ack with timeout failure
   reconnect_client_with_timeout(config->read_timeout_seconds * 2);
   tx_req = create_tx_request();
-  tx_req->gmsk->sample_rate = 580000;
+  tx_req->gfsk->sample_rate = 580000;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
 
   struct message_header header;
@@ -193,7 +193,7 @@ void test_plutosdr_tx() {
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->gmsk->sample_rate = 580000;
+  tx_req->gfsk->sample_rate = 580000;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
   assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
 
@@ -256,29 +256,29 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_rx_request();
-  gmsk_modem_settings__free_unpacked(req->gmsk, NULL);
+  gfsk_modem_settings__free_unpacked(req->gfsk, NULL);
   req->modem_settings_case = RX_REQUEST__MODEM_SETTINGS__NOT_SET;
-  req->gmsk = NULL;
+  req->gfsk = NULL;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->gmsk->center_freq = 0;
+  req->gfsk->center_freq = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->gmsk->sample_rate = 0;
+  req->gfsk->sample_rate = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->gmsk->baud_rate = 0;
+  req->gfsk->baud_rate = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
   req = create_rx_request();
-  req->gmsk->bandwidth = 0;
+  req->gfsk->bandwidth = 0;
   assert_response_with_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   //re-create server with plutosdr support
@@ -291,17 +291,17 @@ void test_invalid_requests() {
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->gmsk->center_freq = 0;
+  tx_req->gfsk->center_freq = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->gmsk->sample_rate = 0;
+  tx_req->gfsk->sample_rate = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
   tx_req = create_tx_request();
-  tx_req->gmsk->baud_rate = 0;
+  tx_req->gfsk->baud_rate = 0;
   assert_response_with_tx_request(client0, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
@@ -355,13 +355,13 @@ void test_multiple_clients() {
   // same freq, different baud rate
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client1);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->gmsk->baud_rate = 9600;
+  req->gfsk->baud_rate = 9600;
   assert_response_with_request(client1, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 1, req);
 
   // different frequency
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client2);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->gmsk->center_freq = 437525000 + 20000;
+  req->gfsk->center_freq = 437525000 + 20000;
   assert_response_with_request(client2, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 2, req);
 }
 

@@ -13,7 +13,7 @@ Modem based on software defined radios.
  * TCP-based
  * Custom [binary protocol](https://github.com/dernasherbrezon/sdr-modem/blob/main/api.proto) based on protobuf messages.
  * Supported modulation/demodulation:
-   * GMSK
+   * GFSK
  * Supported SDRs:
    * [sdr-server](https://github.com/dernasherbrezon/sdr-server)
    * [plutosdr](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/adalm-pluto.html)

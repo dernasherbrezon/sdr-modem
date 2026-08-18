@@ -5,19 +5,19 @@
 #include <stdbool.h>
 
 struct RxRequest *create_rx_request() {
-  struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
-  gmsk_settings.use_dc_block = true;
-  gmsk_settings.bandwidth = 15600;
-  gmsk_settings.deviation = 5000;
-  gmsk_settings.sample_rate = 48000;
-  gmsk_settings.offset = 0;
-  gmsk_settings.center_freq = 437525000;
-  gmsk_settings.baud_rate = 9600;
-  gmsk_settings.bt = 0.5f;
+  struct GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
+  gfsk_settings.use_dc_block = true;
+  gfsk_settings.bandwidth = 15600;
+  gfsk_settings.deviation = 5000;
+  gfsk_settings.sample_rate = 48000;
+  gfsk_settings.offset = 0;
+  gfsk_settings.center_freq = 437525000;
+  gfsk_settings.baud_rate = 9600;
+  gfsk_settings.bt = 0.5f;
 
   struct RxRequest result = RX_REQUEST__INIT;
-  result.modem_settings_case = RX_REQUEST__MODEM_SETTINGS_GMSK;
-  result.gmsk = &gmsk_settings;
+  result.modem_settings_case = RX_REQUEST__MODEM_SETTINGS_GFSK;
+  result.gfsk = &gfsk_settings;
 
   size_t len = rx_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);
@@ -31,19 +31,19 @@ struct RxRequest *create_rx_request() {
 }
 
 struct TxRequest *create_tx_request() {
-  struct GmskModemSettings gmsk_settings = GMSK_MODEM_SETTINGS__INIT;
-  gmsk_settings.use_dc_block = true;
-  gmsk_settings.bandwidth = 15600;
-  gmsk_settings.deviation = 5000;
-  gmsk_settings.sample_rate = 48000;
-  gmsk_settings.offset = 0;
-  gmsk_settings.center_freq = 437525000;
-  gmsk_settings.baud_rate = 9600;
-  gmsk_settings.bt = 0.5f;
+  struct GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
+  gfsk_settings.use_dc_block = true;
+  gfsk_settings.bandwidth = 15600;
+  gfsk_settings.deviation = 5000;
+  gfsk_settings.sample_rate = 48000;
+  gfsk_settings.offset = 0;
+  gfsk_settings.center_freq = 437525000;
+  gfsk_settings.baud_rate = 9600;
+  gfsk_settings.bt = 0.5f;
 
   TxRequest result = TX_REQUEST__INIT;
-  result.modem_settings_case = TX_REQUEST__MODEM_SETTINGS_GMSK;
-  result.gmsk = &gmsk_settings;
+  result.modem_settings_case = TX_REQUEST__MODEM_SETTINGS_GFSK;
+  result.gfsk = &gfsk_settings;
 
   size_t len = tx_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);

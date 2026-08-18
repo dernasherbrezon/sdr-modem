@@ -21,7 +21,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gmsk_modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
@@ -104,9 +104,9 @@ add_test(NAME test_frequency_modulator COMMAND test_frequency_modulator)
 add_executable(test_frequency_modulator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_frequency_modulator.c)
 target_link_libraries(test_frequency_modulator sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_gmsk_modem COMMAND test_gmsk_modem)
-add_executable(test_gmsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gmsk_modem.c)
-target_link_libraries(test_gmsk_modem sdr_modemLib sdr_modemTestLib)
+add_test(NAME test_gfsk_modem COMMAND test_gfsk_modem)
+add_executable(test_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_modem.c)
+target_link_libraries(test_gfsk_modem sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_gaussian_taps COMMAND test_gaussian_taps)
 add_executable(test_gaussian_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gaussian_taps.c)
@@ -151,8 +151,8 @@ target_link_libraries(test_tcp_server sdr_modemLib sdr_modemTestLib)
 file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
 
-add_executable(perf_gmsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_gmsk_modem.c)
-target_link_libraries(perf_gmsk_modem sdr_modemLib sdr_modemTestLib)
+add_executable(perf_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_gfsk_modem.c)
+target_link_libraries(perf_gfsk_modem sdr_modemLib sdr_modemTestLib)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_custom_target("coverage")

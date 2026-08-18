@@ -1,26 +1,26 @@
 #include "utils.h"
 #include <time.h>
-#include "../src/dsp/gmsk_modem.h"
-#include "../src/dsp/gmsk_modem.h"
+#include "../src/dsp/gfsk_modem.h"
+#include "../src/dsp/gfsk_modem.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-void perf_gmsk_demod();
+void perf_gfsk_demod();
 
-void perf_gmsk_mod();
+void perf_gfsk_mod();
 
 int main(void) {
-  perf_gmsk_demod();
-  perf_gmsk_mod();
+  perf_gfsk_demod();
+  perf_gfsk_mod();
 
   return EXIT_SUCCESS;
 }
 
-void perf_gmsk_mod() {
-  gmsk_modem *mod = NULL;
-  GmskModemSettings settings = {
+void perf_gfsk_mod() {
+  gfsk_modem *mod = NULL;
+  GfskModemSettings settings = {
     .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
@@ -28,7 +28,7 @@ void perf_gmsk_mod() {
     .use_dc_block = true,
     .bt = 0.5F
   };
-  int code = gmsk_modem_create(&settings, 2016000, &mod);
+  int code = gfsk_modem_create(&settings, 2016000, &mod);
   if (code != 0) {
     return;
   }
@@ -49,7 +49,7 @@ void perf_gmsk_mod() {
     for (int i = 0; i < total_executions; i++) {
       complex float *output = NULL;
       size_t output_len = 0;
-      gmsk_modem_modulate(input, input_len, &output, &output_len, mod);
+      gfsk_modem_modulate(input, input_len, &output, &output_len, mod);
     }
     clock_t end = clock();
     double time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
@@ -67,11 +67,11 @@ void perf_gmsk_mod() {
   // tuned kernel:
   // completed in: 0.851478 seconds
 
-  printf("gmsk modulation completed (average): %f seconds\n", (totalTime / total));
+  printf("gfsk modulation completed (average): %f seconds\n", (totalTime / total));
 }
 
-void perf_gmsk_demod() {
-  GmskModemSettings settings = {
+void perf_gfsk_demod() {
+  GfskModemSettings settings = {
     .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
@@ -79,8 +79,8 @@ void perf_gmsk_demod() {
     .use_dc_block = true,
     .bt = 0.5F
   };
-  gmsk_modem *demod = NULL;
-  int code = gmsk_modem_create(&settings, 2016000, &demod);
+  gfsk_modem *demod = NULL;
+  int code = gfsk_modem_create(&settings, 2016000, &demod);
   if (code != 0) {
     return;
   }
@@ -101,7 +101,7 @@ void perf_gmsk_demod() {
     for (int i = 0; i < total_executions; i++) {
       int8_t *output = NULL;
       size_t output_len = 0;
-      gmsk_modem_demodulate(input, input_len, &output, &output_len, demod);
+      gfsk_modem_demodulate(input, input_len, &output, &output_len, demod);
     }
     clock_t end = clock();
     double time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
@@ -120,5 +120,5 @@ void perf_gmsk_demod() {
   // tuned kernel:
   // completed in: 0.655575 seconds
 
-  printf("gmsk demodulation completed (average): %f seconds\n", (totalTime / total));
+  printf("gfsk demodulation completed (average): %f seconds\n", (totalTime / total));
 }

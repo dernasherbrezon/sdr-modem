@@ -22,7 +22,7 @@ void test_invalid_fsk_configuration() {
   int code = app_config_create("full.conf", &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   req = create_rx_request();
-  req->gmsk->baud_rate = req->gmsk->sample_rate;
+  req->gfsk->baud_rate = req->gfsk->sample_rate;
   code = dsp_worker_create(1, 0, config, req, &worker);
   TEST_ASSERT_EQUAL_INT(-EINVAL, code);
 }

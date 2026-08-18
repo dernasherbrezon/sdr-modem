@@ -15,7 +15,7 @@ PROTOBUF_C__BEGIN_DECLS
 #endif
 
 
-typedef struct GmskModemSettings GmskModemSettings;
+typedef struct GfskModemSettings GfskModemSettings;
 typedef struct NoneFraming NoneFraming;
 typedef struct RxRequest RxRequest;
 typedef struct TxRequest TxRequest;
@@ -33,7 +33,7 @@ typedef enum _ResponseStatus {
 
 /* --- messages --- */
 
-struct  GmskModemSettings
+struct  GfskModemSettings
 {
   ProtobufCMessage base;
   uint64_t center_freq;
@@ -45,8 +45,8 @@ struct  GmskModemSettings
   float bt;
   protobuf_c_boolean use_dc_block;
 };
-#define GMSK_MODEM_SETTINGS__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&gmsk_modem_settings__descriptor) \
+#define GFSK_MODEM_SETTINGS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&gfsk_modem_settings__descriptor) \
 , 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
@@ -61,7 +61,7 @@ struct  NoneFraming
 
 typedef enum {
   RX_REQUEST__MODEM_SETTINGS__NOT_SET = 0,
-  RX_REQUEST__MODEM_SETTINGS_GMSK = 1
+  RX_REQUEST__MODEM_SETTINGS_GFSK = 1
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RX_REQUEST__MODEM_SETTINGS__CASE)
 } RxRequest__ModemSettingsCase;
 
@@ -76,7 +76,7 @@ struct  RxRequest
   ProtobufCMessage base;
   RxRequest__ModemSettingsCase modem_settings_case;
   union {
-    GmskModemSettings *gmsk;
+    GfskModemSettings *gfsk;
   };
   RxRequest__FramingCase framing_case;
   union {
@@ -90,7 +90,7 @@ struct  RxRequest
 
 typedef enum {
   TX_REQUEST__MODEM_SETTINGS__NOT_SET = 0,
-  TX_REQUEST__MODEM_SETTINGS_GMSK = 1
+  TX_REQUEST__MODEM_SETTINGS_GFSK = 1
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(TX_REQUEST__MODEM_SETTINGS__CASE)
 } TxRequest__ModemSettingsCase;
 
@@ -105,7 +105,7 @@ struct  TxRequest
   ProtobufCMessage base;
   TxRequest__ModemSettingsCase modem_settings_case;
   union {
-    GmskModemSettings *gmsk;
+    GfskModemSettings *gfsk;
   };
   TxRequest__FramingCase framing_case;
   union {
@@ -138,24 +138,24 @@ struct  TxData
 , {0,NULL} }
 
 
-/* GmskModemSettings methods */
-void   gmsk_modem_settings__init
-                     (GmskModemSettings         *message);
-size_t gmsk_modem_settings__get_packed_size
-                     (const GmskModemSettings   *message);
-size_t gmsk_modem_settings__pack
-                     (const GmskModemSettings   *message,
+/* GfskModemSettings methods */
+void   gfsk_modem_settings__init
+                     (GfskModemSettings         *message);
+size_t gfsk_modem_settings__get_packed_size
+                     (const GfskModemSettings   *message);
+size_t gfsk_modem_settings__pack
+                     (const GfskModemSettings   *message,
                       uint8_t             *out);
-size_t gmsk_modem_settings__pack_to_buffer
-                     (const GmskModemSettings   *message,
+size_t gfsk_modem_settings__pack_to_buffer
+                     (const GfskModemSettings   *message,
                       ProtobufCBuffer     *buffer);
-GmskModemSettings *
-       gmsk_modem_settings__unpack
+GfskModemSettings *
+       gfsk_modem_settings__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   gmsk_modem_settings__free_unpacked
-                     (GmskModemSettings *message,
+void   gfsk_modem_settings__free_unpacked
+                     (GfskModemSettings *message,
                       ProtobufCAllocator *allocator);
 /* NoneFraming methods */
 void   none_framing__init
@@ -254,8 +254,8 @@ void   tx_data__free_unpacked
                       ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
-typedef void (*GmskModemSettings_Closure)
-                 (const GmskModemSettings *message,
+typedef void (*GfskModemSettings_Closure)
+                 (const GfskModemSettings *message,
                   void *closure_data);
 typedef void (*NoneFraming_Closure)
                  (const NoneFraming *message,
@@ -279,7 +279,7 @@ typedef void (*TxData_Closure)
 /* --- descriptors --- */
 
 extern const ProtobufCEnumDescriptor    response_status__descriptor;
-extern const ProtobufCMessageDescriptor gmsk_modem_settings__descriptor;
+extern const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor;
 extern const ProtobufCMessageDescriptor none_framing__descriptor;
 extern const ProtobufCMessageDescriptor rx_request__descriptor;
 extern const ProtobufCMessageDescriptor tx_request__descriptor;
