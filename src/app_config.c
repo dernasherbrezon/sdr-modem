@@ -95,21 +95,6 @@ int app_config_create(const char *path, app_config **config) {
   fprintf(stdout, "queue_size: %d\n", queue_size);
   result->queue_size = queue_size;
 
-  const char *default_folder = getenv("TMPDIR");
-  if (default_folder == NULL) {
-    default_folder = "/tmp";
-  }
-
-  setting = config_lookup(&libconfig, "base_path");
-  char *base_path = read_and_copy_str(setting, default_folder);
-  if (base_path == NULL) {
-    config_destroy(&libconfig);
-    app_config_destroy(result);
-    return -ENOMEM;
-  }
-  result->base_path = base_path;
-  fprintf(stdout, "base path for storing results: %s\n", result->base_path);
-
   setting = config_lookup(&libconfig, "rx_sdr_type");
   uint8_t rx_sdr_type;
   if (setting == NULL) {
@@ -226,9 +211,6 @@ void app_config_destroy(app_config *config) {
   }
   if (config->bind_address != NULL) {
     free(config->bind_address);
-  }
-  if (config->base_path != NULL) {
-    free(config->base_path);
   }
   if (config->rx_sdr_server_address != NULL) {
     free(config->rx_sdr_server_address);

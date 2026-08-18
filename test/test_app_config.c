@@ -52,7 +52,6 @@ void test_success() {
   TEST_ASSERT_EQUAL_INT(10, config->read_timeout_seconds);
   TEST_ASSERT_EQUAL_INT(2048, config->buffer_size);
   TEST_ASSERT_EQUAL_INT(RX_SDR_TYPE_SDR_SERVER, config->rx_sdr_type);
-  TEST_ASSERT_EQUAL_STRING("/tmp/", config->base_path);
   TEST_ASSERT_EQUAL_INT(64, config->queue_size);
   TEST_ASSERT_EQUAL_INT(TX_SDR_TYPE_NONE, config->tx_sdr_type);
   TEST_ASSERT(config->iio == NULL);

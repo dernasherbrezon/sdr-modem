@@ -23,9 +23,6 @@ typedef struct {
   char *rx_sdr_server_address;
   int rx_sdr_server_port;
 
-  // output settings
-  char *base_path;
-
   char *rx_file_base_path;
   char *tx_file_base_path;
 
