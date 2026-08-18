@@ -273,7 +273,7 @@ void tearDown() {
     sdr = NULL;
   }
   if (lib != NULL) {
-    iio_lib_destroy(lib);
+    iio_lib_mock_destroy(lib);
     lib = NULL;
   }
   if (expected_rx != NULL) {

@@ -7,4 +7,6 @@ int iio_lib_mock_create(int16_t *expected_rx, size_t expected_rx_len, int16_t *e
 
 void iio_lib_mock_get_tx(int16_t **output, size_t *output_len);
 
+void iio_lib_mock_destroy(iio_lib *lib);
+
 #endif //SDR_MODEM_IIO_LIB_MOCK_H
