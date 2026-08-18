@@ -52,13 +52,10 @@ int app_config_create(const char *path, app_config **config) {
   result->buffer_size = buffer_size;
 
   setting = config_lookup(&libconfig, "bind_address");
-  char *bind_address = read_and_copy_str(setting, "127.0.0.1");
-  if (bind_address == NULL) {
-    config_destroy(&libconfig);
-    app_config_destroy(result);
-    return -ENOMEM;
+  if (setting != NULL) {
+    char *bind_address = read_and_copy_str(setting, "127.0.0.1");
+    result->bind_address = bind_address;
   }
-  result->bind_address = bind_address;
   setting = config_lookup(&libconfig, "port");
   uint16_t port;
   if (setting == NULL) {
