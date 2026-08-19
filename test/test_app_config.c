@@ -67,6 +67,20 @@ void test_success() {
   TEST_ASSERT_EQUAL_INT(0, config->tx_plutosdr_timeout_millis);
 }
 
+void test_override_from_cli() {
+  char *argv[] = {"test_app_config", "--config", "full.conf", "--bind_address", "192.168.1.1", NULL};
+  int code = app_config_create(5, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_STRING("192.168.1.1", config->bind_address);
+}
+
+void test_override_with_invalid() {
+  char *argv[] = {"test_app_config", "--config", "full.conf", "--bind_address", NULL};
+  int code = app_config_create(4, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT(config->bind_address);
+}
+
 void tearDown() {
   app_config_destroy(config);
   config = NULL;
@@ -86,5 +100,7 @@ int main(void) {
   RUN_TEST(test_unknown_tx_sdr_type);
   RUN_TEST(test_unknown_rx_sdr_type);
   RUN_TEST(test_pluto_enabled);
+  RUN_TEST(test_override_from_cli);
+  RUN_TEST(test_override_with_invalid);
   return UNITY_END();
 }

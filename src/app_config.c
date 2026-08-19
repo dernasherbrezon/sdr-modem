@@ -153,6 +153,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   };
 
   optind = 1;
+  opterr = 1;
   int opt;
   while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
     switch (opt) {
@@ -332,6 +333,7 @@ int app_config_create(int argc, char **argv, app_config **config) {
 
   const char *config_path = NULL;
   optind = 1;
+  opterr = 0; // ignore extra options that can appear
   int opt;
   while ((opt = getopt_long(argc, argv, "c:", long_options, NULL)) != -1) {
     switch (opt) {
