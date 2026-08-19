@@ -108,7 +108,8 @@ void assert_response_with_tx_request(sdr_modem_client *client, uint8_t type, Res
 }
 
 void init_server_with_plutosdr_support(size_t expected_tx_len) {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   iio_lib_destroy(config->iio);
@@ -116,7 +117,7 @@ void init_server_with_plutosdr_support(size_t expected_tx_len) {
   TEST_ASSERT(expected_tx != NULL);
   code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
   TEST_ASSERT_EQUAL_INT(0, code);
-  config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
+  config->tx_sdr_type = SDR_TYPE_PLUTOSDR;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -208,7 +209,8 @@ void test_plutosdr_tx() {
 }
 
 void test_invalid_config() {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   free(config->bind_address);
   config->bind_address = utils_read_and_copy_str("invalid.ip");
@@ -223,7 +225,8 @@ void test_invalid_config() {
 }
 
 void test_ping() {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
@@ -234,12 +237,13 @@ void test_ping() {
 }
 
 void test_invalid_requests() {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   //make server timeout a bit less than client's
   //this will allow to read response for partial requests
   config->read_timeout_seconds = 2;
-  config->tx_sdr_type = TX_SDR_TYPE_NONE;
+  config->tx_sdr_type = SDR_TYPE_NONE;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
   code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
@@ -285,7 +289,7 @@ void test_invalid_requests() {
   tcp_server_destroy(server);
   tcp_server_join_thread(server);
   server = NULL;
-  config->tx_sdr_type = TX_SDR_TYPE_PLUTOSDR;
+  config->tx_sdr_type = SDR_TYPE_PLUTOSDR;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -320,7 +324,8 @@ void test_invalid_requests() {
 }
 
 void test_unable_to_connect_to_sdr_server() {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // non-existing port
   config->rx_sdr_server_port = 9999;
@@ -336,7 +341,8 @@ void test_unable_to_connect_to_sdr_server() {
 }
 
 void test_multiple_clients() {
-  int code = app_config_create("full.conf", &config);
+  char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
+  int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // speed up test a bit
   config->read_timeout_seconds = 2;

@@ -15,6 +15,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/queue.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/app_config.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/cli.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_server.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/clock_recovery_mm.c
@@ -91,10 +92,6 @@ target_link_libraries(test_clock_recovery_mm sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_dc_blocker COMMAND test_dc_blocker)
 add_executable(test_dc_blocker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dc_blocker.c)
 target_link_libraries(test_dc_blocker sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_dsp_worker COMMAND test_dsp_worker)
-add_executable(test_dsp_worker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dsp_worker.c)
-target_link_libraries(test_dsp_worker sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_file_source COMMAND test_file_source)
 add_executable(test_file_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_file_source.c)

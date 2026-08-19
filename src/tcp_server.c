@@ -93,7 +93,7 @@ int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const a
     fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
   }
-  if (config->tx_sdr_type == TX_SDR_TYPE_NONE) {
+  if (config->tx_sdr_type == SDR_TYPE_NONE) {
     fprintf(stderr, "<3>[%d] server doesn't support tx\n", client_id);
     return -1;
   }
@@ -320,7 +320,7 @@ int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *se
     fprintf(stderr, "<3>[%d] tx is being used\n", id);
     return -RESPONSE_DETAILS_TX_IS_BEING_USED;
   }
-  if (server->app_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+  if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
     if (tx_config == NULL) {
       fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
@@ -349,7 +349,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
   if (code != 0) {
     return -RESPONSE_DETAILS_INTERNAL_ERROR;
   }
-  if (server->app_config->rx_sdr_type == RX_SDR_TYPE_SDR_SERVER) {
+  if (server->app_config->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
     //re-use sdr connections
     //this will allow demodulating different modes using the same data
     struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
@@ -372,7 +372,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
       tcp_worker->sdr = closest->sdr;
       free(rx);
     }
-  } else if (server->app_config->rx_sdr_type == RX_SDR_TYPE_PLUTOSDR) {
+  } else if (server->app_config->rx_sdr_type == SDR_TYPE_PLUTOSDR) {
     if (server->rx_initialized) {
       free(rx);
       fprintf(stderr, "<3>[%d] rx is being used\n", tcp_worker->id);
@@ -478,7 +478,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     }
     nco_crcf_set_frequency(tcp_worker->nco, M_2PI * (float) tcp_worker->tx_req->gfsk->offset / (float) tcp_worker->tx_req->gfsk->sample_rate);
   }
-  if (server->app_config->tx_sdr_type == TX_SDR_TYPE_PLUTOSDR) {
+  if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
     code = tcp_server_init_tx_device(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
     pthread_mutex_unlock(&server->mutex);

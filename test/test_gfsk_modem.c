@@ -209,6 +209,18 @@ void test_no_dc() {
   assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
 }
 
+void test_invalid_parameters() {
+  GfskModemSettings settings = {
+    .sample_rate = 9600,
+    .baud_rate = 9600,
+    .deviation = 5000,
+    .bandwidth = 15600,
+    .bt = 0.5f,
+    .use_dc_block = true
+  };
+  TEST_ASSERT_NOT_EQUAL_INT(0, gfsk_modem_create(&settings, max_buffer_length, &demod));
+}
+
 void tearDown() {
   if (demod != NULL) {
     gfsk_modem_destroy(demod);
@@ -242,6 +254,7 @@ int main(void) {
   RUN_TEST(test_nan);
   // RUN_TEST(test_handle_lucky7);
   // RUN_TEST(test_no_dc);
+  RUN_TEST(test_invalid_parameters);
   RUN_TEST(test_convolve);
   RUN_TEST(test_modulation);
   RUN_TEST(test_exceeded_input);
