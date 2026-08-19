@@ -78,7 +78,17 @@ void test_override_with_invalid() {
   char *argv[] = {"test_app_config", "--config", "full.conf", "--bind_address", NULL};
   int code = app_config_create(4, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT(config->bind_address);
+  TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->bind_address);
+}
+
+void test_invalid() {
+  char *argv1[] = {"test_app_config", "--rx_sdr_type", "file", "--bind_address", "127.0.0.1", NULL};
+  int code = app_config_create(5, argv1, &config);
+  TEST_ASSERT_EQUAL_INT(-1, code);
+
+  char *argv2[] = {"test_app_config", "--rx_sdr_type", "file", NULL};
+  code = app_config_create(3, argv2, &config);
+  TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void tearDown() {
@@ -102,5 +112,6 @@ int main(void) {
   RUN_TEST(test_pluto_enabled);
   RUN_TEST(test_override_from_cli);
   RUN_TEST(test_override_with_invalid);
+  RUN_TEST(test_invalid);
   return UNITY_END();
 }
