@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-struct RxRequest *create_rx_request() {
+struct ModemRequest *create_request() {
   struct GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
   gfsk_settings.use_dc_block = true;
   gfsk_settings.bandwidth = 15600;
@@ -15,43 +15,17 @@ struct RxRequest *create_rx_request() {
   gfsk_settings.baud_rate = 9600;
   gfsk_settings.bt = 0.5f;
 
-  struct RxRequest result = RX_REQUEST__INIT;
-  result.modem_settings_case = RX_REQUEST__MODEM_SETTINGS_GFSK;
+  struct ModemRequest result = MODEM_REQUEST__INIT;
+  result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
   result.gfsk = &gfsk_settings;
 
-  size_t len = rx_request__get_packed_size(&result);
+  size_t len = modem_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);
   if (buffer == NULL) {
     return NULL;
   }
-  rx_request__pack(&result, buffer);
-  struct RxRequest *unpacked = rx_request__unpack(NULL, len, buffer);
-  free(buffer);
-  return unpacked;
-}
-
-struct TxRequest *create_tx_request() {
-  struct GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
-  gfsk_settings.use_dc_block = true;
-  gfsk_settings.bandwidth = 15600;
-  gfsk_settings.deviation = 5000;
-  gfsk_settings.sample_rate = 48000;
-  gfsk_settings.offset = 0;
-  gfsk_settings.center_freq = 437525000;
-  gfsk_settings.baud_rate = 9600;
-  gfsk_settings.bt = 0.5f;
-
-  TxRequest result = TX_REQUEST__INIT;
-  result.modem_settings_case = TX_REQUEST__MODEM_SETTINGS_GFSK;
-  result.gfsk = &gfsk_settings;
-
-  size_t len = tx_request__get_packed_size(&result);
-  uint8_t *buffer = malloc(sizeof(uint8_t) * len);
-  if (buffer == NULL) {
-    return NULL;
-  }
-  tx_request__pack(&result, buffer);
-  struct TxRequest *unpacked = tx_request__unpack(NULL, len, buffer);
+  modem_request__pack(&result, buffer);
+  struct ModemRequest *unpacked = modem_request__unpack(NULL, len, buffer);
   free(buffer);
   return unpacked;
 }

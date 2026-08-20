@@ -93,7 +93,7 @@ static void *dsp_worker_callback(void *arg) {
   return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, struct RxRequest *req,
+int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, struct ModemRequest *req,
                       dsp_worker **worker) {
   struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
   if (result == NULL) {
@@ -105,7 +105,7 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->client_socket = client_socket;
 
   int code = 0;
-  if (req->modem_settings_case == RX_REQUEST__MODEM_SETTINGS_GFSK) {
+  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
     code = gfsk_modem_create(req->gfsk,
                              server_config->buffer_size, (gfsk_modem **) &result->modem);
     result->modem_demodulate = gfsk_modem_demodulate;

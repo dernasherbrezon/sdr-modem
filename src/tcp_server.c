@@ -33,8 +33,8 @@
 #define M_2PI ((float) (2 * M_PI))
 
 struct tcp_worker {
-  struct RxRequest *rx_req;
-  struct TxRequest *tx_req;
+  struct ModemRequest *rx_req;
+  struct ModemRequest *tx_req;
   int client_socket;
   uint32_t id;
   atomic_bool is_running;
@@ -73,7 +73,7 @@ void log_client(struct sockaddr_in *address, uint32_t id) {
   printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
+int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) {
   struct sdr_rx *rx = malloc(sizeof(struct sdr_rx));
   if (rx == NULL) {
     return -ENOMEM;
@@ -88,7 +88,7 @@ int tcp_worker_convert(struct RxRequest *req, struct sdr_rx **result) {
   return 0;
 }
 
-int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const app_config *config) {
+int validate_tx_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
   if (req->gfsk == NULL) {
     fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
@@ -112,7 +112,7 @@ int validate_tx_request(const struct TxRequest *req, uint32_t client_id, const a
   return 0;
 }
 
-int validate_rx_request(const struct RxRequest *req, uint32_t client_id, const app_config *config) {
+int validate_rx_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
   if (req->gfsk == NULL) {
     fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
@@ -276,10 +276,10 @@ void tcp_worker_destroy(void *data) {
     pthread_join(worker->client_thread, NULL);
   }
   if (worker->rx_req != NULL) {
-    rx_request__free_unpacked(worker->rx_req, NULL);
+    modem_request__free_unpacked(worker->rx_req, NULL);
   }
   if (worker->tx_req != NULL) {
-    tx_request__free_unpacked(worker->tx_req, NULL);
+    modem_request__free_unpacked(worker->tx_req, NULL);
   }
   if (worker->buffer != NULL) {
     free(worker->buffer);
@@ -315,7 +315,7 @@ void cleanup_terminated_threads(tcp_server *server) {
   pthread_mutex_unlock(&server->mutex);
 }
 
-int tcp_server_init_tx_device(uint32_t id, struct TxRequest *req, tcp_server *server, sdr_device **output) {
+int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server *server, sdr_device **output) {
   if (server->tx_initialized) {
     fprintf(stderr, "<3>[%d] tx is being used\n", id);
     return -RESPONSE_DETAILS_TX_IS_BEING_USED;
@@ -444,7 +444,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  if (api_utils_read_tx_request(client_socket, header, &tcp_worker->tx_req) != 0) {
+  if (api_utils_read_modem_request(client_socket, header, &tcp_worker->tx_req) != 0) {
     fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     tcp_worker_destroy(tcp_worker);
@@ -534,7 +534,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   tcp_worker->buffer_size = 0;
   tcp_worker->buffer = NULL;
 
-  if (api_utils_read_rx_request(client_socket, header, &tcp_worker->rx_req) != 0) {
+  if (api_utils_read_modem_request(client_socket, header, &tcp_worker->rx_req) != 0) {
     fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     tcp_worker_destroy(tcp_worker);

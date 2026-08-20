@@ -6,9 +6,7 @@
 #include "../src/api.pb-c.h"
 #include <stdio.h>
 
-struct RxRequest *create_rx_request();
-
-struct TxRequest *create_tx_request();
+struct ModemRequest *create_request();
 
 void setup_input_data(float **input, size_t input_offset, size_t len);
 

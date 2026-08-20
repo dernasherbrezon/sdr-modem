@@ -6,7 +6,7 @@
 #define PROTOBUF_C__NO_DEPRECATED
 #endif
 
-#include "../api.pb-c.h"
+#include "api.pb-c.h"
 void   gfsk_modem_settings__init
                      (GfskModemSettings         *message)
 {
@@ -97,94 +97,49 @@ void   none_framing__free_unpacked
   assert(message->base.descriptor == &none_framing__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   rx_request__init
-                     (RxRequest         *message)
+void   modem_request__init
+                     (ModemRequest         *message)
 {
-  static const RxRequest init_value = RX_REQUEST__INIT;
+  static const ModemRequest init_value = MODEM_REQUEST__INIT;
   *message = init_value;
 }
-size_t rx_request__get_packed_size
-                     (const RxRequest *message)
+size_t modem_request__get_packed_size
+                     (const ModemRequest *message)
 {
-  assert(message->base.descriptor == &rx_request__descriptor);
+  assert(message->base.descriptor == &modem_request__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t rx_request__pack
-                     (const RxRequest *message,
+size_t modem_request__pack
+                     (const ModemRequest *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &rx_request__descriptor);
+  assert(message->base.descriptor == &modem_request__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t rx_request__pack_to_buffer
-                     (const RxRequest *message,
+size_t modem_request__pack_to_buffer
+                     (const ModemRequest *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &rx_request__descriptor);
+  assert(message->base.descriptor == &modem_request__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-RxRequest *
-       rx_request__unpack
+ModemRequest *
+       modem_request__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (RxRequest *)
-     protobuf_c_message_unpack (&rx_request__descriptor,
+  return (ModemRequest *)
+     protobuf_c_message_unpack (&modem_request__descriptor,
                                 allocator, len, data);
 }
-void   rx_request__free_unpacked
-                     (RxRequest *message,
+void   modem_request__free_unpacked
+                     (ModemRequest *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &rx_request__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
-void   tx_request__init
-                     (TxRequest         *message)
-{
-  static const TxRequest init_value = TX_REQUEST__INIT;
-  *message = init_value;
-}
-size_t tx_request__get_packed_size
-                     (const TxRequest *message)
-{
-  assert(message->base.descriptor == &tx_request__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t tx_request__pack
-                     (const TxRequest *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &tx_request__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t tx_request__pack_to_buffer
-                     (const TxRequest *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &tx_request__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-TxRequest *
-       tx_request__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (TxRequest *)
-     protobuf_c_message_unpack (&tx_request__descriptor,
-                                allocator, len, data);
-}
-void   tx_request__free_unpacked
-                     (TxRequest *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &tx_request__descriptor);
+  assert(message->base.descriptor == &modem_request__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   response__init
@@ -424,15 +379,15 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
   (ProtobufCMessageInit) none_framing__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
+static const ProtobufCFieldDescriptor modem_request__field_descriptors[2] =
 {
   {
     "gfsk",
     1,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(RxRequest, modem_settings_case),
-    offsetof(RxRequest, gfsk),
+    offsetof(ModemRequest, modem_settings_case),
+    offsetof(ModemRequest, gfsk),
     &gfsk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
@@ -443,89 +398,37 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
     9,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(RxRequest, framing_case),
-    offsetof(RxRequest, none),
+    offsetof(ModemRequest, framing_case),
+    offsetof(ModemRequest, none),
     &none_framing__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned rx_request__field_indices_by_name[] = {
+static const unsigned modem_request__field_indices_by_name[] = {
   0,   /* field[0] = gfsk */
   1,   /* field[1] = none */
 };
-static const ProtobufCIntRange rx_request__number_ranges[2 + 1] =
+static const ProtobufCIntRange modem_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
   { 9, 1 },
   { 0, 2 }
 };
-const ProtobufCMessageDescriptor rx_request__descriptor =
+const ProtobufCMessageDescriptor modem_request__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "RxRequest",
-  "RxRequest",
-  "RxRequest",
+  "ModemRequest",
+  "ModemRequest",
+  "ModemRequest",
   "",
-  sizeof(RxRequest),
+  sizeof(ModemRequest),
   2,
-  rx_request__field_descriptors,
-  rx_request__field_indices_by_name,
-  2,  rx_request__number_ranges,
-  (ProtobufCMessageInit) rx_request__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor tx_request__field_descriptors[2] =
-{
-  {
-    "gfsk",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(TxRequest, modem_settings_case),
-    offsetof(TxRequest, gfsk),
-    &gfsk_modem_settings__descriptor,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "none",
-    9,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(TxRequest, framing_case),
-    offsetof(TxRequest, none),
-    &none_framing__descriptor,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned tx_request__field_indices_by_name[] = {
-  0,   /* field[0] = gfsk */
-  1,   /* field[1] = none */
-};
-static const ProtobufCIntRange tx_request__number_ranges[2 + 1] =
-{
-  { 1, 0 },
-  { 9, 1 },
-  { 0, 2 }
-};
-const ProtobufCMessageDescriptor tx_request__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "TxRequest",
-  "TxRequest",
-  "TxRequest",
-  "",
-  sizeof(TxRequest),
-  2,
-  tx_request__field_descriptors,
-  tx_request__field_indices_by_name,
-  2,  tx_request__number_ranges,
-  (ProtobufCMessageInit) tx_request__init,
+  modem_request__field_descriptors,
+  modem_request__field_indices_by_name,
+  2,  modem_request__number_ranges,
+  (ProtobufCMessageInit) modem_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 static const ProtobufCFieldDescriptor response__field_descriptors[2] =

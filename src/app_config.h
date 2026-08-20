@@ -2,12 +2,19 @@
 #define APP_CONFIG_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "sdr/iio_lib.h"
+#include "api.pb-c.h"
 
 #define SDR_TYPE_NONE 1
 #define SDR_TYPE_PLUTOSDR 2
 #define SDR_TYPE_FILE 3
 #define SDR_TYPE_SDR_SERVER 4
+
+#define MODEM_TYPE_NONE 0
+#define MODEM_TYPE_GFSK 1
+
+#define FRAMING_TYPE_NONE 0
 
 typedef struct {
   // socket settings
@@ -33,6 +40,14 @@ typedef struct {
 
   char *input_file;
   char *output_file;
+
+  int rx_modem;
+  int rx_framing;
+  struct ModemRequest rx_req;
+
+  int tx_modem;
+  int tx_framing;
+  struct ModemRequest tx_req;
 } app_config;
 
 int app_config_create(int argc, char **argv, app_config **config);

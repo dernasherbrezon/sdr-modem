@@ -17,8 +17,8 @@ struct sdr_modem_client_t {
     size_t output_len;
 };
 
-int sdr_modem_client_write_tx_request(struct message_header *header, struct TxRequest *req, sdr_modem_client *client) {
-    size_t len = tx_request__get_packed_size(req);
+int sdr_modem_client_write_request(struct message_header *header, struct ModemRequest *req, sdr_modem_client *client) {
+    size_t len = modem_request__get_packed_size(req);
     header->message_length = htonl(len);
     int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
     if (code != 0) {
@@ -29,25 +29,7 @@ int sdr_modem_client_write_tx_request(struct message_header *header, struct TxRe
     if (buffer == NULL) {
         return -ENOMEM;
     }
-    tx_request__pack(req, buffer);
-    code = tcp_utils_write_data(buffer, len, client->client_socket);
-    free(buffer);
-    return code;
-}
-
-int sdr_modem_client_write_request(struct message_header *header, struct RxRequest *req, sdr_modem_client *client) {
-    size_t len = rx_request__get_packed_size(req);
-    header->message_length = htonl(len);
-    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
-    if (code != 0) {
-        return code;
-    }
-
-    uint8_t *buffer = malloc(sizeof(uint8_t) * len);
-    if (buffer == NULL) {
-        return -ENOMEM;
-    }
-    rx_request__pack(req, buffer);
+    modem_request__pack(req, buffer);
     code = tcp_utils_write_data(buffer, len, client->client_socket);
     free(buffer);
     return code;

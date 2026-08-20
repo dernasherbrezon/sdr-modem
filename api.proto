@@ -14,16 +14,7 @@ message gfsk_modem_settings {
 message none_framing {
 }
 
-message RxRequest {
-    oneof modem_settings {
-        gfsk_modem_settings gfsk = 1;
-    }
-    oneof framing {
-        none_framing none = 9;
-    }
-}
-
-message TxRequest {
+message ModemRequest {
     oneof modem_settings {
         gfsk_modem_settings gfsk = 1;
     }

@@ -38,6 +38,69 @@ static int app_config_convert_sdr_type(const char *type) {
   return -1;
 }
 
+static int app_config_convert_modem_type(const char *type) {
+  if (strcmp(type, "gfsk") == 0) {
+    return MODEM_TYPE_GFSK;
+  }
+  return -1;
+}
+
+static int app_config_convert_framing_type(const char *type) {
+  if (strcmp(type, "none") == 0) {
+    return FRAMING_TYPE_NONE;
+  }
+  return -1;
+}
+
+static void app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskModemSettings *to) {
+}
+
+static void app_config_load_gfsk_from_file(config_t *libconfig, const char *prefix, GfskModemSettings *settings) {
+  char name[64];
+  const config_setting_t *setting;
+
+  snprintf(name, sizeof(name), "%s_gfsk_center_freq", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->center_freq = (uint64_t) config_setting_get_int64(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_sample_rate", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_offset", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->offset = config_setting_get_int64(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_baud_rate", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->baud_rate = (uint32_t) config_setting_get_int(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_deviation", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->deviation = config_setting_get_int64(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_bandwidth", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->bandwidth = (uint32_t) config_setting_get_int(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_bt", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->bt = config_setting_get_float(setting);
+  }
+  snprintf(name, sizeof(name), "%s_gfsk_use_dc_block", prefix);
+  setting = config_lookup(libconfig, name);
+  if (setting != NULL) {
+    settings->use_dc_block = config_setting_get_bool(setting) ? true : false;
+  }
+}
+
 static int app_config_load_from_file(config_t *libconfig, const char *path, app_config *result) {
   fprintf(stdout, "loading configuration from: %s\n", path);
 
@@ -112,6 +175,35 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     }
   }
 
+  setting = config_lookup(libconfig, "rx_modem");
+  if (setting != NULL) {
+    result->rx_modem = app_config_convert_modem_type(config_setting_get_string(setting));
+  }
+  if (result->rx_modem == MODEM_TYPE_GFSK) {
+    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    gfsk_modem_settings__init(result->rx_req.gfsk);
+    app_config_load_gfsk_from_file(libconfig, "rx", result->rx_req.gfsk);
+  }
+  setting = config_lookup(libconfig, "rx_framing");
+  if (setting != NULL) {
+    result->rx_framing = app_config_convert_framing_type(config_setting_get_string(setting));
+    //ignore framing for now
+  }
+
+  setting = config_lookup(libconfig, "tx_modem");
+  if (setting != NULL) {
+    result->tx_modem = app_config_convert_modem_type(config_setting_get_string(setting));
+  }
+  if (result->tx_modem == MODEM_TYPE_GFSK) {
+    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    gfsk_modem_settings__init(result->tx_req.gfsk);
+    app_config_load_gfsk_from_file(libconfig, "tx", result->tx_req.gfsk);
+  }
+  setting = config_lookup(libconfig, "tx_framing");
+  if (setting != NULL) {
+    result->tx_framing = app_config_convert_framing_type(config_setting_get_string(setting));
+  }
+
   return 0;
 }
 
@@ -133,7 +225,27 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_RX_FILE,
     OPT_CONFIG,
     OPT_INPUT,
-    OPT_OUTPUT
+    OPT_OUTPUT,
+    OPT_RX_MODEM,
+    OPT_RX_FRAMING,
+    OPT_RX_GFSK_CENTER_FREQ,
+    OPT_RX_GFSK_SAMPLE_RATE,
+    OPT_RX_GFSK_OFFSET,
+    OPT_RX_GFSK_BAUD_RATE,
+    OPT_RX_GFSK_DEVIATION,
+    OPT_RX_GFSK_BANDWIDTH,
+    OPT_RX_GFSK_BT,
+    OPT_RX_GFSK_USE_DC_BLOCK,
+    OPT_TX_MODEM,
+    OPT_TX_FRAMING,
+    OPT_TX_GFSK_CENTER_FREQ,
+    OPT_TX_GFSK_SAMPLE_RATE,
+    OPT_TX_GFSK_OFFSET,
+    OPT_TX_GFSK_BAUD_RATE,
+    OPT_TX_GFSK_DEVIATION,
+    OPT_TX_GFSK_BANDWIDTH,
+    OPT_TX_GFSK_BT,
+    OPT_TX_GFSK_USE_DC_BLOCK
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
@@ -153,8 +265,33 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"config", required_argument, NULL, OPT_CONFIG},
     {"input", required_argument, NULL, OPT_INPUT},
     {"output", required_argument, NULL, OPT_OUTPUT},
+    {"rx_modem", required_argument, NULL, OPT_RX_MODEM},
+    {"rx_framing", required_argument, NULL, OPT_RX_FRAMING},
+    {"rx_gfsk_center_freq", required_argument, NULL, OPT_RX_GFSK_CENTER_FREQ},
+    {"rx_gfsk_sample_rate", required_argument, NULL, OPT_RX_GFSK_SAMPLE_RATE},
+    {"rx_gfsk_offset", required_argument, NULL, OPT_RX_GFSK_OFFSET},
+    {"rx_gfsk_baud_rate", required_argument, NULL, OPT_RX_GFSK_BAUD_RATE},
+    {"rx_gfsk_deviation", required_argument, NULL, OPT_RX_GFSK_DEVIATION},
+    {"rx_gfsk_bandwidth", required_argument, NULL, OPT_RX_GFSK_BANDWIDTH},
+    {"rx_gfsk_bt", required_argument, NULL, OPT_RX_GFSK_BT},
+    {"rx_gfsk_use_dc_block", required_argument, NULL, OPT_RX_GFSK_USE_DC_BLOCK},
+    {"tx_modem", required_argument, NULL, OPT_TX_MODEM},
+    {"tx_framing", required_argument, NULL, OPT_TX_FRAMING},
+    {"tx_gfsk_center_freq", required_argument, NULL, OPT_TX_GFSK_CENTER_FREQ},
+    {"tx_gfsk_sample_rate", required_argument, NULL, OPT_TX_GFSK_SAMPLE_RATE},
+    {"tx_gfsk_offset", required_argument, NULL, OPT_TX_GFSK_OFFSET},
+    {"tx_gfsk_baud_rate", required_argument, NULL, OPT_TX_GFSK_BAUD_RATE},
+    {"tx_gfsk_deviation", required_argument, NULL, OPT_TX_GFSK_DEVIATION},
+    {"tx_gfsk_bandwidth", required_argument, NULL, OPT_TX_GFSK_BANDWIDTH},
+    {"tx_gfsk_bt", required_argument, NULL, OPT_TX_GFSK_BT},
+    {"tx_gfsk_use_dc_block", required_argument, NULL, OPT_TX_GFSK_USE_DC_BLOCK},
     {NULL, 0, NULL, 0}
   };
+
+  // populate structures opportunistically
+  // then discard if different type was selected
+  GfskModemSettings tx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
+  GfskModemSettings rx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
 
   optind = 1;
   opterr = 1;
@@ -226,12 +363,88 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_OUTPUT:
         result->output_file = strdup(optarg);
         break;
+      case OPT_RX_MODEM:
+        result->rx_modem = app_config_convert_modem_type(optarg);
+        break;
+      case OPT_RX_FRAMING:
+        result->rx_framing = app_config_convert_framing_type(optarg);
+        break;
+      case OPT_RX_GFSK_CENTER_FREQ:
+        rx_gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
+        break;
+      case OPT_RX_GFSK_SAMPLE_RATE:
+        rx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
+        break;
+      case OPT_RX_GFSK_OFFSET:
+        rx_gfsk_settings.offset = strtoll(optarg, NULL, 10);
+        break;
+      case OPT_RX_GFSK_BAUD_RATE:
+        rx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
+        break;
+      case OPT_RX_GFSK_DEVIATION:
+        rx_gfsk_settings.deviation = strtoll(optarg, NULL, 10);
+        break;
+      case OPT_RX_GFSK_BANDWIDTH:
+        rx_gfsk_settings.bandwidth = (uint32_t) atoi(optarg);
+        break;
+      case OPT_RX_GFSK_BT:
+        rx_gfsk_settings.bt = (float) atof(optarg);
+        break;
+      case OPT_RX_GFSK_USE_DC_BLOCK:
+        rx_gfsk_settings.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
+        break;
+      case OPT_TX_MODEM:
+        result->tx_modem = app_config_convert_modem_type(optarg);
+        break;
+      case OPT_TX_FRAMING:
+        result->tx_framing = app_config_convert_framing_type(optarg);
+        break;
+      case OPT_TX_GFSK_CENTER_FREQ:
+        tx_gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
+        break;
+      case OPT_TX_GFSK_SAMPLE_RATE:
+        tx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
+        break;
+      case OPT_TX_GFSK_OFFSET:
+        tx_gfsk_settings.offset = strtoll(optarg, NULL, 10);
+        break;
+      case OPT_TX_GFSK_BAUD_RATE:
+        tx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
+        break;
+      case OPT_TX_GFSK_DEVIATION:
+        tx_gfsk_settings.deviation = strtoll(optarg, NULL, 10);
+        break;
+      case OPT_TX_GFSK_BANDWIDTH:
+        tx_gfsk_settings.bandwidth = (uint32_t) atoi(optarg);
+        break;
+      case OPT_TX_GFSK_BT:
+        tx_gfsk_settings.bt = (float) atof(optarg);
+        break;
+      case OPT_TX_GFSK_USE_DC_BLOCK:
+        tx_gfsk_settings.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
+        break;
       case OPT_CONFIG:
       default:
         // already handled by app_config_create / unknown option
         break;
     }
   }
+
+  if (result->tx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
+    app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, result->tx_req.gfsk);
+  } else if (result->tx_modem == MODEM_TYPE_GFSK) {
+    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    gfsk_modem_settings__init(result->tx_req.gfsk);
+    app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, result->tx_req.gfsk);
+  }
+  if (result->rx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
+    app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, result->rx_req.gfsk);
+  } else if (result->rx_modem == MODEM_TYPE_GFSK) {
+    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    gfsk_modem_settings__init(result->rx_req.gfsk);
+    app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, result->rx_req.gfsk);
+  }
+
   return 0;
 }
 
@@ -338,6 +551,23 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>tx sdr is enabled, but the input file is missing\n");
     return -1;
   }
+
+  if (result->rx_modem < 0) {
+    fprintf(stderr, "<3>invalid rx_modem\n");
+    return -1;
+  }
+  if (result->rx_framing < 0) {
+    fprintf(stderr, "<3>invalid rx_framing\n");
+    return -1;
+  }
+  if (result->tx_modem < 0) {
+    fprintf(stderr, "<3>invalid tx_modem\n");
+    return -1;
+  }
+  if (result->tx_framing < 0) {
+    fprintf(stderr, "<3>invalid tx_framing\n");
+    return -1;
+  }
   return 0;
 }
 
@@ -347,6 +577,9 @@ int app_config_create(int argc, char **argv, app_config **config) {
     return -ENOMEM;
   }
   *result = (app_config){0};
+  // init both anyway to simplify the reading from cli
+  modem_request__init(&result->rx_req);
+  modem_request__init(&result->tx_req);
 
   const struct option long_options[] = {
     {"config", required_argument, NULL, 'c'},

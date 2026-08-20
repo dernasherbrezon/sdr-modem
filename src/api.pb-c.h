@@ -17,8 +17,7 @@ PROTOBUF_C__BEGIN_DECLS
 
 typedef struct GfskModemSettings GfskModemSettings;
 typedef struct NoneFraming NoneFraming;
-typedef struct RxRequest RxRequest;
-typedef struct TxRequest TxRequest;
+typedef struct ModemRequest ModemRequest;
 typedef struct Response Response;
 typedef struct TxData TxData;
 
@@ -60,61 +59,32 @@ struct  NoneFraming
 
 
 typedef enum {
-  RX_REQUEST__MODEM_SETTINGS__NOT_SET = 0,
-  RX_REQUEST__MODEM_SETTINGS_GFSK = 1
-    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RX_REQUEST__MODEM_SETTINGS__CASE)
-} RxRequest__ModemSettingsCase;
+  MODEM_REQUEST__MODEM_SETTINGS__NOT_SET = 0,
+  MODEM_REQUEST__MODEM_SETTINGS_GFSK = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MODEM_REQUEST__MODEM_SETTINGS__CASE)
+} ModemRequest__ModemSettingsCase;
 
 typedef enum {
-  RX_REQUEST__FRAMING__NOT_SET = 0,
-  RX_REQUEST__FRAMING_NONE = 9
-    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RX_REQUEST__FRAMING__CASE)
-} RxRequest__FramingCase;
+  MODEM_REQUEST__FRAMING__NOT_SET = 0,
+  MODEM_REQUEST__FRAMING_NONE = 9
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MODEM_REQUEST__FRAMING__CASE)
+} ModemRequest__FramingCase;
 
-struct  RxRequest
+struct  ModemRequest
 {
   ProtobufCMessage base;
-  RxRequest__ModemSettingsCase modem_settings_case;
+  ModemRequest__ModemSettingsCase modem_settings_case;
   union {
     GfskModemSettings *gfsk;
   };
-  RxRequest__FramingCase framing_case;
+  ModemRequest__FramingCase framing_case;
   union {
     NoneFraming *none;
   };
 };
-#define RX_REQUEST__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rx_request__descriptor) \
-, RX_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, RX_REQUEST__FRAMING__NOT_SET, {0} }
-
-
-typedef enum {
-  TX_REQUEST__MODEM_SETTINGS__NOT_SET = 0,
-  TX_REQUEST__MODEM_SETTINGS_GFSK = 1
-    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(TX_REQUEST__MODEM_SETTINGS__CASE)
-} TxRequest__ModemSettingsCase;
-
-typedef enum {
-  TX_REQUEST__FRAMING__NOT_SET = 0,
-  TX_REQUEST__FRAMING_NONE = 9
-    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(TX_REQUEST__FRAMING__CASE)
-} TxRequest__FramingCase;
-
-struct  TxRequest
-{
-  ProtobufCMessage base;
-  TxRequest__ModemSettingsCase modem_settings_case;
-  union {
-    GfskModemSettings *gfsk;
-  };
-  TxRequest__FramingCase framing_case;
-  union {
-    NoneFraming *none;
-  };
-};
-#define TX_REQUEST__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&tx_request__descriptor) \
-, TX_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, TX_REQUEST__FRAMING__NOT_SET, {0} }
+#define MODEM_REQUEST__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&modem_request__descriptor) \
+, MODEM_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, MODEM_REQUEST__FRAMING__NOT_SET, {0} }
 
 
 struct  Response
@@ -176,43 +146,24 @@ NoneFraming *
 void   none_framing__free_unpacked
                      (NoneFraming *message,
                       ProtobufCAllocator *allocator);
-/* RxRequest methods */
-void   rx_request__init
-                     (RxRequest         *message);
-size_t rx_request__get_packed_size
-                     (const RxRequest   *message);
-size_t rx_request__pack
-                     (const RxRequest   *message,
+/* ModemRequest methods */
+void   modem_request__init
+                     (ModemRequest         *message);
+size_t modem_request__get_packed_size
+                     (const ModemRequest   *message);
+size_t modem_request__pack
+                     (const ModemRequest   *message,
                       uint8_t             *out);
-size_t rx_request__pack_to_buffer
-                     (const RxRequest   *message,
+size_t modem_request__pack_to_buffer
+                     (const ModemRequest   *message,
                       ProtobufCBuffer     *buffer);
-RxRequest *
-       rx_request__unpack
+ModemRequest *
+       modem_request__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   rx_request__free_unpacked
-                     (RxRequest *message,
-                      ProtobufCAllocator *allocator);
-/* TxRequest methods */
-void   tx_request__init
-                     (TxRequest         *message);
-size_t tx_request__get_packed_size
-                     (const TxRequest   *message);
-size_t tx_request__pack
-                     (const TxRequest   *message,
-                      uint8_t             *out);
-size_t tx_request__pack_to_buffer
-                     (const TxRequest   *message,
-                      ProtobufCBuffer     *buffer);
-TxRequest *
-       tx_request__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   tx_request__free_unpacked
-                     (TxRequest *message,
+void   modem_request__free_unpacked
+                     (ModemRequest *message,
                       ProtobufCAllocator *allocator);
 /* Response methods */
 void   response__init
@@ -260,11 +211,8 @@ typedef void (*GfskModemSettings_Closure)
 typedef void (*NoneFraming_Closure)
                  (const NoneFraming *message,
                   void *closure_data);
-typedef void (*RxRequest_Closure)
-                 (const RxRequest *message,
-                  void *closure_data);
-typedef void (*TxRequest_Closure)
-                 (const TxRequest *message,
+typedef void (*ModemRequest_Closure)
+                 (const ModemRequest *message,
                   void *closure_data);
 typedef void (*Response_Closure)
                  (const Response *message,
@@ -281,8 +229,7 @@ typedef void (*TxData_Closure)
 extern const ProtobufCEnumDescriptor    response_status__descriptor;
 extern const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor;
 extern const ProtobufCMessageDescriptor none_framing__descriptor;
-extern const ProtobufCMessageDescriptor rx_request__descriptor;
-extern const ProtobufCMessageDescriptor tx_request__descriptor;
+extern const ProtobufCMessageDescriptor modem_request__descriptor;
 extern const ProtobufCMessageDescriptor response__descriptor;
 extern const ProtobufCMessageDescriptor tx_data__descriptor;
 

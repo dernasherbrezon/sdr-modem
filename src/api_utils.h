@@ -7,9 +7,7 @@
 
 int api_utils_read_header(int socket, struct message_header *header);
 
-int api_utils_read_rx_request(int socket, const struct message_header *header, struct RxRequest **request);
-
-int api_utils_read_tx_request(int socket, const struct message_header *header, struct TxRequest **request);
+int api_utils_read_modem_request(int socket, const struct message_header *header, struct ModemRequest **request);
 
 int api_utils_read_tx_data(int socket, const struct message_header *header, struct TxData **request);
 

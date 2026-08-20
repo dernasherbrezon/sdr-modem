@@ -37,7 +37,7 @@ int api_utils_read_tx_data(int socket, const struct message_header *header, stru
     return 0;
 }
 
-int api_utils_read_tx_request(int socket, const struct message_header *header, struct TxRequest **request) {
+int api_utils_read_modem_request(int socket, const struct message_header *header, struct ModemRequest **request) {
     if (header->message_length > MAX_MESSAGE_LENGTH) {
         return -1;
     }
@@ -49,28 +49,7 @@ int api_utils_read_tx_request(int socket, const struct message_header *header, s
     if (code != 0) {
         return -1;
     }
-    TxRequest *result = tx_request__unpack(NULL, header->message_length, buffer);
-    free(buffer);
-    if (result == NULL) {
-        return -1;
-    }
-    *request = result;
-    return 0;
-}
-
-int api_utils_read_rx_request(int socket, const struct message_header *header, struct RxRequest **request) {
-    if (header->message_length > MAX_MESSAGE_LENGTH) {
-        return -1;
-    }
-    uint8_t *buffer = malloc(sizeof(uint8_t) * header->message_length);
-    if (buffer == NULL) {
-        return -ENOMEM;
-    }
-    int code = tcp_utils_read_data(buffer, header->message_length, socket);
-    if (code != 0) {
-        return -1;
-    }
-    RxRequest *result = rx_request__unpack(NULL, header->message_length, buffer);
+    ModemRequest *result = modem_request__unpack(NULL, header->message_length, buffer);
     free(buffer);
     if (result == NULL) {
         return -1;
