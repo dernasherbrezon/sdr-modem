@@ -67,13 +67,13 @@ struct tcp_server_t {
   bool rx_initialized;
 };
 
-void log_client(struct sockaddr_in *address, uint32_t id) {
+static void log_client(struct sockaddr_in *address, uint32_t id) {
   char str[INET_ADDRSTRLEN];
   const char *ptr = inet_ntop(AF_INET, &address->sin_addr, str, sizeof(str));
   printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) {
+static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) {
   struct sdr_rx *rx = malloc(sizeof(struct sdr_rx));
   if (rx == NULL) {
     return -ENOMEM;
@@ -88,31 +88,7 @@ int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) {
   return 0;
 }
 
-int validate_tx_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
-  if (req->gfsk == NULL) {
-    fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
-    return -1;
-  }
-  if (config->tx_sdr_type == SDR_TYPE_NONE) {
-    fprintf(stderr, "<3>[%d] server doesn't support tx\n", client_id);
-    return -1;
-  }
-  if (req->gfsk->center_freq == 0) {
-    fprintf(stderr, "<3>[%d] missing center_freq parameter\n", client_id);
-    return -1;
-  }
-  if (req->gfsk->sample_rate == 0) {
-    fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
-    return -1;
-  }
-  if (req->gfsk->baud_rate == 0) {
-    fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
-    return -1;
-  }
-  return 0;
-}
-
-int validate_rx_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
+static int validate_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
   if (req->gfsk == NULL) {
     fprintf(stderr, "<3>[%d] gfsk settings are missing\n", client_id);
     return -1;
@@ -451,7 +427,13 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  if (validate_tx_request(tcp_worker->tx_req, tcp_worker->id, server->app_config) < 0) {
+  if (server->app_config->tx_sdr_type == SDR_TYPE_NONE) {
+    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+    tcp_worker_destroy(tcp_worker);
+    return;
+  }
+
+  if (validate_request(tcp_worker->tx_req, tcp_worker->id, server->app_config) < 0) {
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     tcp_worker_destroy(tcp_worker);
     return;
@@ -541,7 +523,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  if (validate_rx_request(tcp_worker->rx_req, tcp_worker->id, server->app_config) < 0) {
+  if (validate_request(tcp_worker->rx_req, tcp_worker->id, server->app_config) < 0) {
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     tcp_worker_destroy(tcp_worker);
     return;
