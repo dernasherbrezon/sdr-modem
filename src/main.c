@@ -12,7 +12,7 @@ static cli *cli_runner = NULL;
 
 void sdrmodem_stop_async(int signum) {
   tcp_server_destroy(server);
-  cli_destroy(cli_runner);
+  cli_stop(cli_runner);
   server = NULL;
 }
 

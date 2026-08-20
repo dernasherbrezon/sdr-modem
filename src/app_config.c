@@ -131,7 +131,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_TX_PLUTOSDR_TIMEOUT_MILLIS,
     OPT_TX_FILE,
     OPT_RX_FILE,
-    OPT_CONFIG
+    OPT_CONFIG,
+    OPT_INPUT,
+    OPT_OUTPUT
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
@@ -149,6 +151,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"tx_file", required_argument, NULL, OPT_TX_FILE},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"config", required_argument, NULL, OPT_CONFIG},
+    {"input", required_argument, NULL, OPT_INPUT},
+    {"output", required_argument, NULL, OPT_OUTPUT},
     {NULL, 0, NULL, 0}
   };
 
@@ -216,6 +220,12 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_RX_FILE:
         result->rx_file = strdup(optarg);
         break;
+      case OPT_INPUT:
+        result->input_file = strdup(optarg);
+        break;
+      case OPT_OUTPUT:
+        result->output_file = strdup(optarg);
+        break;
       case OPT_CONFIG:
       default:
         // already handled by app_config_create / unknown option
@@ -281,6 +291,10 @@ static int app_config_validate_and_log(app_config *result) {
     }
     fprintf(stdout, "rx_file: %s\n", result->rx_file);
   }
+  if (result->bind_address == NULL && result->rx_sdr_type != SDR_TYPE_NONE && result->output_file == NULL) {
+    fprintf(stderr, "<3>rx sdr is enabled, but the output file is missing\n");
+    return -1;
+  }
 
   if (result->tx_sdr_type < 0) {
     fprintf(stderr, "<3>invalid tx_sdr_type\n");
@@ -314,6 +328,10 @@ static int app_config_validate_and_log(app_config *result) {
   }
   if (result->tx_sdr_type == SDR_TYPE_SDR_SERVER) {
     fprintf(stderr, "<3>sdr-server cannot tx. invalid tx_sdr_type parameter\n");
+    return -1;
+  }
+  if (result->bind_address == NULL && result->tx_sdr_type != SDR_TYPE_NONE && result->input_file == NULL) {
+    fprintf(stderr, "<3>tx sdr is enabled, but the input file is missing\n");
     return -1;
   }
   return 0;
@@ -395,6 +413,12 @@ void app_config_destroy(app_config *config) {
   }
   if (config->tx_file != NULL) {
     free(config->tx_file);
+  }
+  if (config->input_file != NULL) {
+    free(config->input_file);
+  }
+  if (config->output_file != NULL) {
+    free(config->output_file);
   }
   free(config);
 }

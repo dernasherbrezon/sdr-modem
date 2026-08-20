@@ -30,6 +30,9 @@ typedef struct {
   double rx_plutosdr_gain;
   unsigned int tx_plutosdr_timeout_millis;
   iio_lib *iio;
+
+  char *input_file;
+  char *output_file;
 } app_config;
 
 int app_config_create(int argc, char **argv, app_config **config);

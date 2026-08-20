@@ -9,6 +9,8 @@ int cli_create(app_config *config, cli **result);
 
 int cli_process(int argc, char **argv, cli *cli);
 
+void cli_stop(cli *cli);
+
 void cli_destroy(cli *cli);
 
 #endif //SDR_MODEM_CLI_H

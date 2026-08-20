@@ -36,8 +36,8 @@ void test_unknown_rx_sdr_type() {
 }
 
 void test_minimal_config() {
-  char *argv[] = {"test_app_config", "--config", "minimal.conf", NULL};
-  int code = app_config_create(3, argv, &config);
+  char *argv[] = {"test_app_config", "--config", "minimal.conf", "--rx_sdr_type", "none", NULL};
+  int code = app_config_create(5, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
