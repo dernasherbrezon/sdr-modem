@@ -19,7 +19,7 @@ message RxRequest {
         gfsk_modem_settings gfsk = 1;
     }
     oneof framing {
-        none_framing none = 8;
+        none_framing none = 9;
     }
 }
 
@@ -28,7 +28,7 @@ message TxRequest {
         gfsk_modem_settings gfsk = 1;
     }
     oneof framing {
-        none_framing none = 2;
+        none_framing none = 9;
     }
 }
 

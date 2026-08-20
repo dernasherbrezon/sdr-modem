@@ -262,6 +262,10 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>invalid rx_sdr_type\n");
     return -1;
   }
+  if (result->rx_sdr_type == SDR_TYPE_NONE && result->tx_sdr_type == SDR_TYPE_NONE) {
+    fprintf(stderr, "<3>both rx_sdr_type and tx_sdr_type are \"none\"\n");
+    return -1;
+  }
   if (result->rx_sdr_type == 0) {
     result->rx_sdr_type = SDR_TYPE_SDR_SERVER;
   }

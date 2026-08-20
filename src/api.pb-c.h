@@ -67,7 +67,7 @@ typedef enum {
 
 typedef enum {
   RX_REQUEST__FRAMING__NOT_SET = 0,
-  RX_REQUEST__FRAMING_NONE = 8
+  RX_REQUEST__FRAMING_NONE = 9
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RX_REQUEST__FRAMING__CASE)
 } RxRequest__FramingCase;
 
@@ -96,7 +96,7 @@ typedef enum {
 
 typedef enum {
   TX_REQUEST__FRAMING__NOT_SET = 0,
-  TX_REQUEST__FRAMING_NONE = 2
+  TX_REQUEST__FRAMING_NONE = 9
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(TX_REQUEST__FRAMING__CASE)
 } TxRequest__FramingCase;
 

@@ -6,7 +6,7 @@
 #define PROTOBUF_C__NO_DEPRECATED
 #endif
 
-#include "api.pb-c.h"
+#include "../api.pb-c.h"
 void   gfsk_modem_settings__init
                      (GfskModemSettings         *message)
 {
@@ -440,7 +440,7 @@ static const ProtobufCFieldDescriptor rx_request__field_descriptors[2] =
   },
   {
     "none",
-    8,
+    9,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(RxRequest, framing_case),
@@ -458,7 +458,7 @@ static const unsigned rx_request__field_indices_by_name[] = {
 static const ProtobufCIntRange rx_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 8, 1 },
+  { 9, 1 },
   { 0, 2 }
 };
 const ProtobufCMessageDescriptor rx_request__descriptor =
@@ -492,7 +492,7 @@ static const ProtobufCFieldDescriptor tx_request__field_descriptors[2] =
   },
   {
     "none",
-    2,
+    9,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(TxRequest, framing_case),
@@ -507,9 +507,10 @@ static const unsigned tx_request__field_indices_by_name[] = {
   0,   /* field[0] = gfsk */
   1,   /* field[1] = none */
 };
-static const ProtobufCIntRange tx_request__number_ranges[1 + 1] =
+static const ProtobufCIntRange tx_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
+  { 9, 1 },
   { 0, 2 }
 };
 const ProtobufCMessageDescriptor tx_request__descriptor =
@@ -523,7 +524,7 @@ const ProtobufCMessageDescriptor tx_request__descriptor =
   2,
   tx_request__field_descriptors,
   tx_request__field_indices_by_name,
-  1,  tx_request__number_ranges,
+  2,  tx_request__number_ranges,
   (ProtobufCMessageInit) tx_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
