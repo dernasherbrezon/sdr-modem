@@ -36,7 +36,7 @@ void file_source_stop(void *plugin) {
   pthread_mutex_unlock(&device->mutex);
 }
 
-int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sampling_freq, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **output) {
+int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **output) {
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
     return -ENOMEM;
@@ -65,7 +65,7 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
       file_source_destroy(device);
       return -1;
     }
-    nco_crcf_set_frequency(device->nco, M_2PI * (float) freq_offset / (float) sampling_freq);
+    nco_crcf_set_frequency(device->nco, M_2PI * (float) freq_offset / (float) sample_rate);
   }
 
   if (rx_filename != NULL) {

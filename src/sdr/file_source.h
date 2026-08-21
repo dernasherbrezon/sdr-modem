@@ -5,7 +5,7 @@
 
 typedef struct file_device_t file_device;
 
-int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sampling_freq, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **result);
+int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **result);
 
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin);
 

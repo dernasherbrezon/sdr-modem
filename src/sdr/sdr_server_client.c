@@ -80,7 +80,7 @@ int sdr_server_client_create(uint32_t id, struct sdr_rx *rx, char *addr, int por
     req.center_freq = rx->rx_center_freq + rx->rx_offset;
     req.band_freq = rx->rx_center_freq;
     req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
-    req.sampling_rate = rx->rx_sampling_freq;
+    req.sampling_rate = rx->rx_sample_rate;
     struct sdr_server_response *response = NULL;
     code = sdr_server_client_request(req, &response, client);
     if (code != 0) {

@@ -79,7 +79,7 @@ static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) 
     return -ENOMEM;
   }
   if (req->gfsk != NULL) {
-    rx->rx_sampling_freq = req->gfsk->sample_rate;
+    rx->rx_sample_rate = req->gfsk->sample_rate;
     rx->rx_center_freq = req->gfsk->center_freq;
     rx->rx_offset = req->gfsk->offset;
   }
@@ -360,7 +360,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
       fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
-    rx_config->sample_rate = rx->rx_sampling_freq;
+    rx_config->sample_rate = rx->rx_sample_rate;
     rx_config->center_freq = rx->rx_center_freq + rx->rx_offset;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = server->app_config->rx_plutosdr_gain;

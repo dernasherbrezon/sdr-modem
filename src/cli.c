@@ -27,11 +27,10 @@ int cli_create(app_config *config, cli **output) {
   *result = (struct cli_t){0};
   result->do_exit = 0;
   if (config->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
-    // FIXME
     struct sdr_rx rx = {
-      .rx_center_freq = 0,
-      .rx_offset = 0,
-      .rx_sampling_freq = 0
+      .rx_center_freq = config->rx_req.gfsk->center_freq,
+      .rx_offset = config->rx_req.gfsk->offset,
+      .rx_sample_rate = config->rx_req.gfsk->sample_rate
     };
     int code = sdr_server_client_create(1, &rx, config->rx_sdr_server_address, config->rx_sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->rx_device);
     if (code != 0) {
@@ -44,10 +43,9 @@ int cli_create(app_config *config, cli **output) {
       cli_destroy(result);
       return -1;
     }
-    // FIXME
-    // rx_config->sample_rate = rx->rx_sampling_freq;
-    // rx_config->center_freq = rx->rx_center_freq + rx->rx_offset;
-    // rx_config->offset = rx->rx_offset;
+    rx_config->sample_rate = config->rx_req.gfsk->sample_rate;
+    rx_config->center_freq = config->rx_req.gfsk->center_freq + config->rx_req.gfsk->offset;
+    rx_config->offset = config->rx_req.gfsk->offset;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = config->rx_plutosdr_gain;
     int code = plutosdr_create(1, config->tx_sdr_type == SDR_TYPE_PLUTOSDR, rx_config, NULL, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->rx_device);
@@ -56,8 +54,7 @@ int cli_create(app_config *config, cli **output) {
       return -1;
     }
   } else if (config->rx_sdr_type == SDR_TYPE_FILE) {
-    // FIXME
-    int code = file_source_create(1, config->rx_file, NULL, 0, 0, config->buffer_size, &result->rx_device);
+    int code = file_source_create(1, config->rx_file, NULL, config->rx_req.gfsk->sample_rate, config->rx_req.gfsk->offset, config->buffer_size, &result->rx_device);
     if (code != 0) {
       cli_destroy(result);
       return -1;
@@ -84,9 +81,8 @@ int cli_create(app_config *config, cli **output) {
       cli_destroy(result);
       return -1;
     }
-    //FIXME
-    // tx_config->sample_rate = req->gfsk->sample_rate;
-    // tx_config->center_freq = req->gfsk->center_freq;
+    tx_config->sample_rate = config->tx_req.gfsk->sample_rate;
+    tx_config->center_freq = config->tx_req.gfsk->center_freq;
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = config->tx_plutosdr_gain;
     int code = plutosdr_create(1, false, NULL, tx_config, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->tx_device);
@@ -95,8 +91,7 @@ int cli_create(app_config *config, cli **output) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    // FIXME
-    int code = file_source_create(1, config->tx_file, NULL, 0, 0, config->buffer_size, &result->tx_device);
+    int code = file_source_create(1, config->tx_file, NULL, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, config->buffer_size, &result->tx_device);
     if (code != 0) {
       cli_destroy(result);
       return -1;
