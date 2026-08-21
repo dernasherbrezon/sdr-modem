@@ -512,6 +512,10 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>rx sdr is enabled, but the output file is missing\n");
     return -1;
   }
+  if (result->bind_address == NULL && result->rx_sdr_type != SDR_TYPE_NONE && result->rx_modem == MODEM_TYPE_NONE) {
+    fprintf(stderr, "<3>rx sdr is enabled, but the rx_modem configuration is missing\n");
+    return -1;
+  }
 
   if (result->tx_sdr_type < 0) {
     fprintf(stderr, "<3>invalid tx_sdr_type\n");
@@ -549,6 +553,10 @@ static int app_config_validate_and_log(app_config *result) {
   }
   if (result->bind_address == NULL && result->tx_sdr_type != SDR_TYPE_NONE && result->input_file == NULL) {
     fprintf(stderr, "<3>tx sdr is enabled, but the input file is missing\n");
+    return -1;
+  }
+  if (result->bind_address == NULL && result->tx_sdr_type != SDR_TYPE_NONE && result->tx_modem == MODEM_TYPE_NONE) {
+    fprintf(stderr, "<3>tx sdr is enabled, but the tx_modem configuration is missing\n");
     return -1;
   }
 
