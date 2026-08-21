@@ -7,7 +7,7 @@ typedef struct cli_t cli;
 
 int cli_create(app_config *config, cli **result);
 
-int cli_process(int argc, char **argv, cli *cli);
+int cli_process(cli *cli);
 
 void cli_stop(cli *cli);
 

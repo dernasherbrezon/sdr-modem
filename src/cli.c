@@ -13,18 +13,20 @@
 
 struct cli_t {
   sdr_device *rx_device;
-  FILE *output_file;
   void *rx_modem;
+  FILE *output_file;
 
   void (*rx_modem_demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 
   void (*rx_modem_destroy)(void *modem);
 
   sdr_device *tx_device;
-  FILE *input_file;
   void *tx_modem;
+  FILE *input_file;
+  uint8_t *input_temp;
+  size_t input_temp_size;
 
-  void (*tx_modem_demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
+  void (*tx_modem_modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
 
   void (*tx_modem_destroy)(void *modem);
 
@@ -117,7 +119,7 @@ static int cli_create_tx_modem(app_config *config, struct cli_t *result) {
     if (code != 0) {
       return -1;
     }
-    result->tx_modem_demodulate = gfsk_modem_demodulate;
+    result->tx_modem_modulate = gfsk_modem_modulate;
     result->tx_modem_destroy = gfsk_modem_destroy;
   }
 
@@ -171,16 +173,51 @@ int cli_create(app_config *config, cli **output) {
       fprintf(stderr, "<3>unable to open file %s: %s\n", config->input_file, strerror(errno));
       return -1;
     }
+    result->input_temp_size = config->buffer_size;
+    result->input_temp = malloc(sizeof(uint8_t) * result->input_temp_size);
+    if (result->input_temp == NULL) {
+      cli_destroy(result);
+      return -1;
+    }
   }
 
   *output = result;
   return 0;
 }
 
-int cli_process(int argc, char **argv, cli *cli) {
-  while (!cli->do_exit) {
-    //FIXME handle
+int cli_process(cli *cli) {
+  // one more safety
+  if (cli->tx_modem != NULL && cli->tx_device != NULL && cli->input_file != NULL) {
+    while (!cli->do_exit) {
+      size_t actually_read = fread(cli->input_temp, sizeof(uint8_t), cli->input_temp_size, cli->input_file);
+      if (actually_read < cli->input_temp_size) {
+        break;
+      }
+      float complex *output = NULL;
+      size_t output_len = 0;
+      cli->tx_modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->tx_modem);
+      int code = cli->tx_device->sdr_process_tx(output, output_len, cli->tx_device->plugin);
+      if (code != 0) {
+        break;
+      }
+    }
   }
+
+  if (cli->rx_modem != NULL && cli->rx_device != NULL && cli->output_file != NULL) {
+    while (!cli->do_exit) {
+      float complex *output = NULL;
+      size_t output_len = 0;
+      int code = cli->rx_device->sdr_process_rx(&output, &output_len, cli->rx_device->plugin);
+      if (code != 0) {
+        break;
+      }
+      size_t actually_written = fwrite(output, sizeof(float complex), output_len, cli->output_file);
+      if (actually_written != output_len) {
+        break;
+      }
+    }
+  }
+
   //close files and gracefully terminate
   cli_destroy(cli);
   return 0;
@@ -216,6 +253,9 @@ void cli_destroy(cli *cli) {
   }
   if (cli->tx_modem != NULL) {
     cli->tx_modem_destroy(cli->tx_modem);
+  }
+  if (cli->input_temp != NULL) {
+    free(cli->input_temp);
   }
   free(cli);
 }
