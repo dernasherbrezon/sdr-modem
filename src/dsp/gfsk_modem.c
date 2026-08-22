@@ -37,6 +37,7 @@ struct gfsk_modem_t {
 
   int8_t *output;
   size_t output_len;
+  size_t max_modulation_buffer_length;
 
   interp_fir_filter *filter;
   frequency_modulator *freq_mod;
@@ -196,8 +197,9 @@ int gfsk_modem_create(GfskModemSettings *req, uint32_t max_input_buffer_length, 
     return code;
   }
 
+  result->max_modulation_buffer_length = (int) tx_sps * result->temp_input_len;
   float sensitivity = (float) (2 * M_PI * (double) req->deviation / (double) req->sample_rate);
-  code = frequency_modulator_create(sensitivity, (int) tx_sps * result->temp_input_len, &result->freq_mod);
+  code = frequency_modulator_create(sensitivity, result->max_modulation_buffer_length, &result->freq_mod);
   if (code != 0) {
     gfsk_modem_destroy(result);
     return code;
@@ -205,6 +207,11 @@ int gfsk_modem_create(GfskModemSettings *req, uint32_t max_input_buffer_length, 
 
   *demod = result;
   return 0;
+}
+
+size_t gfsk_modem_max_modulation_buffer_length(void *mod) {
+  gfsk_modem *gfsk = (gfsk_modem *) mod;
+  return gfsk->max_modulation_buffer_length;
 }
 
 void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {

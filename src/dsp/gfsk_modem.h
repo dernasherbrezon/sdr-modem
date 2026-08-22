@@ -15,6 +15,8 @@ void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
 
 void gfsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod);
 
+size_t gfsk_modem_max_modulation_buffer_length(void *mod);
+
 //used in tests
 int gfsk_modem_convolve(float *x, size_t x_len, float *y, size_t y_len, float **out, size_t *out_len);
 

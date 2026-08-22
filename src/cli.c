@@ -28,6 +28,8 @@ struct cli_t {
 
   void (*tx_modem_modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
 
+  size_t (*tx_modem_max_modulation_buffer_length)(void *mod);
+
   void (*tx_modem_destroy)(void *modem);
 
   volatile sig_atomic_t do_exit;
@@ -73,6 +75,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
+  size_t max_modulation_buffer_length = result->tx_modem_max_modulation_buffer_length(result->tx_modem);
   if (config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
     if (tx_config == NULL) {
@@ -82,12 +85,12 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
     tx_config->center_freq = config->tx_req.gfsk->center_freq;
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = config->tx_plutosdr_gain;
-    int code = plutosdr_create(1, false, NULL, tx_config, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->tx_device);
+    int code = plutosdr_create(1, false, NULL, tx_config, config->tx_plutosdr_timeout_millis, max_modulation_buffer_length, config->iio, &result->tx_device);
     if (code != 0) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, config->tx_file, NULL, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, config->buffer_size, &result->tx_device);
+    int code = file_source_create(1, config->tx_file, NULL, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, max_modulation_buffer_length, &result->tx_device);
     if (code != 0) {
       return -1;
     }
@@ -115,12 +118,13 @@ static int cli_create_rx_modem(app_config *config, struct cli_t *result) {
 
 static int cli_create_tx_modem(app_config *config, struct cli_t *result) {
   if (config->tx_modem == MODEM_TYPE_GFSK) {
-    int code = gfsk_modem_create(config->rx_req.gfsk, config->buffer_size, (gfsk_modem **) &result->tx_modem);
+    int code = gfsk_modem_create(config->tx_req.gfsk, config->buffer_size, (gfsk_modem **) &result->tx_modem);
     if (code != 0) {
       return -1;
     }
     result->tx_modem_modulate = gfsk_modem_modulate;
     result->tx_modem_destroy = gfsk_modem_destroy;
+    result->tx_modem_max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
   }
 
   return 0;
@@ -155,13 +159,13 @@ int cli_create(app_config *config, cli **output) {
     }
   }
 
-  code = cli_create_tx_sdr(config, result);
+  code = cli_create_tx_modem(config, result);
   if (code != 0) {
     cli_destroy(result);
     return -1;
   }
 
-  code = cli_create_tx_modem(config, result);
+  code = cli_create_tx_sdr(config, result);
   if (code != 0) {
     cli_destroy(result);
     return -1;
@@ -239,7 +243,7 @@ void cli_destroy(cli *cli) {
     free(cli->rx_device);
   }
   if (cli->tx_device != NULL) {
-    cli->rx_device->destroy(cli->tx_device->plugin);
+    cli->tx_device->destroy(cli->tx_device->plugin);
     free(cli->tx_device);
   }
   if (cli->output_file != NULL) {
