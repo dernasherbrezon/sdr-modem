@@ -61,7 +61,29 @@ static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskMod
     gfsk_modem_settings__init(*to);
   }
 
-  //FIXME
+  GfskModemSettings *settings = *to;
+  //TODO need a better way to determine if property was set
+  if (from->sample_rate != 0) {
+    settings->sample_rate = from->sample_rate;
+  }
+  if (from->baud_rate != 0) {
+    settings->baud_rate = from->baud_rate;
+  }
+  if (from->center_freq != 0) {
+    settings->center_freq = from->center_freq;
+  }
+  if (from->offset != 0) {
+    settings->offset = from->offset;
+  }
+  if (from->deviation != 0) {
+    settings->deviation = from->deviation;
+  }
+  if (from->bt != 0) {
+    settings->bt = from->bt;
+  }
+  if (from->bandwidth != 0) {
+    settings->bandwidth = from->bandwidth;
+  }
 
   return 0;
 }
@@ -524,7 +546,7 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stdout, "rx_plutosdr_gain: %f\n", result->rx_plutosdr_gain);
   }
   if (result->rx_sdr_type == SDR_TYPE_FILE) {
-    fprintf(stdout, "rx: file");
+    fprintf(stdout, "rx: file\n");
     if (result->bind_address != NULL) {
       fprintf(stderr, "<3>rx_sdr_type=file is not supported in the server mode\n");
       return -1;

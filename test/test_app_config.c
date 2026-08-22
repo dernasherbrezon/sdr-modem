@@ -91,6 +91,13 @@ void test_invalid() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
+void test_merge_gfsk_settings() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "/non-existing-directory/in.cf32", "--output", "/some-path", "--tx_sdr_type", "none", "--rx_gfsk_baud_rate", "4800", NULL};
+  int code = app_config_create(13, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(4800, config->rx_req.gfsk->baud_rate);
+}
+
 void tearDown() {
   app_config_destroy(config);
   config = NULL;
@@ -113,5 +120,6 @@ int main(void) {
   RUN_TEST(test_override_from_cli);
   RUN_TEST(test_override_with_invalid);
   RUN_TEST(test_invalid);
+  RUN_TEST(test_merge_gfsk_settings);
   return UNITY_END();
 }
