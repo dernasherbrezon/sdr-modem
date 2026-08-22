@@ -16,10 +16,7 @@ struct file_device_t {
   FILE *rx_file;
   FILE *tx_file;
 
-  nco_crcf nco;
-
   float complex *temp;
-  float complex *nco_output;
   size_t temp_len;
 };
 
@@ -27,7 +24,7 @@ void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **output) {
+int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
     return -ENOMEM;
@@ -39,20 +36,6 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
   if (device->temp == NULL) {
     file_source_destroy(device);
     return -ENOMEM;
-  }
-  device->nco_output = malloc(sizeof(float complex) * device->temp_len);
-  if (device->nco_output == NULL) {
-    file_source_destroy(device);
-    return -ENOMEM;
-  }
-  if (freq_offset != 0) {
-    device->nco = nco_crcf_create(LIQUID_NCO);
-    if (device->nco == NULL) {
-      fprintf(stderr, "<3>[%d] unable to create signal generator\n", device->id);
-      file_source_destroy(device);
-      return -1;
-    }
-    nco_crcf_set_frequency(device->nco, M_2PI * (float) freq_offset / (float) sample_rate);
   }
 
   if (rx_filename != NULL) {
@@ -102,13 +85,7 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
     *output_len = 0;
     return -1;
   }
-  if (device->nco != NULL) {
-    nco_crcf_mix_block_up(device->nco, (liquid_float_complex *) device->temp, (liquid_float_complex *) device->nco_output, actually_read);
-    *output = device->nco_output;
-  } else {
-    *output = device->temp;
-  }
-
+  *output = device->temp;
   *output_len = actually_read;
   return 0;
 }
@@ -123,14 +100,8 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
     fprintf(stderr, "<3>[%d] tx file was not initialized\n", device->id);
     return -1;
   }
-  if (device->nco != NULL) {
-    nco_crcf_mix_block_up(device->nco, (liquid_float_complex *) device->temp, (liquid_float_complex *) device->nco_output, input_len);
-    //ignore actually written
-    fwrite(device->nco_output, sizeof(float complex), input_len, device->tx_file);
-  } else {
-    //ignore actually written
-    fwrite(input, sizeof(float complex), input_len, device->tx_file);
-  }
+  //ignore actually written
+  fwrite(input, sizeof(float complex), input_len, device->tx_file);
   return 0;
 }
 
@@ -147,12 +118,6 @@ void file_source_destroy(void *plugin) {
   }
   if (device->temp != NULL) {
     free(device->temp);
-  }
-  if (device->nco_output != NULL) {
-    free(device->nco_output);
-  }
-  if (device->nco != NULL) {
-    nco_crcf_destroy(device->nco);
   }
   free(device);
 }

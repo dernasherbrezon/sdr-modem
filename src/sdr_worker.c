@@ -87,8 +87,7 @@ bool sdr_worker_find_closest(void *id, void *data) {
   struct sdr_rx *rx = (struct sdr_rx *) id;
   sdr_worker *worker = (sdr_worker *) data;
   if (worker->rx->rx_center_freq == rx->rx_center_freq &&
-      worker->rx->rx_sample_rate >= rx->rx_sample_rate &&
-      worker->rx->rx_offset == rx->rx_offset) {
+      worker->rx->rx_sample_rate >= rx->rx_sample_rate) {
     return true;
   }
   return false;

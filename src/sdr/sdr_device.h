@@ -10,7 +10,6 @@ typedef struct sdr_device_t sdr_device;
 struct sdr_rx {
     uint64_t rx_center_freq;
     uint64_t rx_sample_rate;
-    int64_t rx_offset;
 };
 
 struct sdr_device_t {

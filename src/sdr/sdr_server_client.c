@@ -77,7 +77,7 @@ int sdr_server_client_create(uint32_t id, struct sdr_rx *rx, char *addr, int por
     }
 
     struct sdr_server_request req;
-    req.center_freq = rx->rx_center_freq + rx->rx_offset;
+    req.center_freq = rx->rx_center_freq;
     req.band_freq = rx->rx_center_freq;
     req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
     req.sampling_rate = rx->rx_sample_rate;

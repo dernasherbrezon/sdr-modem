@@ -39,7 +39,6 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
   if (config->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
       .rx_center_freq = config->rx_req.gfsk->center_freq,
-      .rx_offset = config->rx_req.gfsk->offset,
       .rx_sample_rate = config->rx_req.gfsk->sample_rate
     };
     int code = sdr_server_client_create(1, &rx, config->rx_sdr_server_address, config->rx_sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->rx_device);
@@ -53,7 +52,6 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
     }
     rx_config->sample_rate = config->rx_req.gfsk->sample_rate;
     rx_config->center_freq = config->rx_req.gfsk->center_freq + config->rx_req.gfsk->offset;
-    rx_config->offset = config->rx_req.gfsk->offset;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = config->rx_plutosdr_gain;
     int code = plutosdr_create(1, config->tx_sdr_type == SDR_TYPE_PLUTOSDR, rx_config, NULL, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->rx_device);
@@ -61,7 +59,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->rx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, config->rx_file, NULL, config->rx_req.gfsk->sample_rate, config->rx_req.gfsk->offset, config->buffer_size, &result->rx_device);
+    int code = file_source_create(1, config->rx_file, NULL, config->rx_req.gfsk->sample_rate, config->buffer_size, &result->rx_device);
     if (code != 0) {
       return -1;
     }
@@ -90,7 +88,7 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, NULL, config->tx_file, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, max_modulation_buffer_length, &result->tx_device);
+    int code = file_source_create(1, NULL, config->tx_file, config->tx_req.gfsk->sample_rate, max_modulation_buffer_length, &result->tx_device);
     if (code != 0) {
       return -1;
     }

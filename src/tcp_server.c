@@ -81,7 +81,6 @@ static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) 
   if (req->gfsk != NULL) {
     rx->rx_sample_rate = req->gfsk->sample_rate;
     rx->rx_center_freq = req->gfsk->center_freq;
-    rx->rx_offset = req->gfsk->offset;
   }
 
   *result = rx;
@@ -361,10 +360,9 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
     rx_config->sample_rate = rx->rx_sample_rate;
-    rx_config->center_freq = rx->rx_center_freq + rx->rx_offset;
+    rx_config->center_freq = rx->rx_center_freq;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = server->app_config->rx_plutosdr_gain;
-    rx_config->offset = rx->rx_offset;
     sdr_device *rx_device = NULL;
     code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->app_config->tx_plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, &rx_device);
     if (code != 0) {
