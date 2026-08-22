@@ -90,7 +90,7 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, config->tx_file, NULL, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, max_modulation_buffer_length, &result->tx_device);
+    int code = file_source_create(1, NULL, config->tx_file, config->tx_req.gfsk->sample_rate, config->tx_req.gfsk->offset, max_modulation_buffer_length, &result->tx_device);
     if (code != 0) {
       return -1;
     }
@@ -172,9 +172,10 @@ int cli_create(app_config *config, cli **output) {
   }
 
   if (config->tx_sdr_type != SDR_TYPE_NONE) {
-    result->input_file = fopen(config->input_file, "wb");
+    result->input_file = fopen(config->input_file, "rb");
     if (result->input_file == NULL) {
       fprintf(stderr, "<3>unable to open file %s: %s\n", config->input_file, strerror(errno));
+      cli_destroy(result);
       return -1;
     }
     result->input_temp_size = config->buffer_size;
@@ -215,15 +216,15 @@ int cli_process(cli *cli) {
       if (code != 0) {
         break;
       }
-      size_t actually_written = fwrite(output, sizeof(float complex), output_len, cli->output_file);
-      if (actually_written != output_len) {
+      int8_t *demodulated = NULL;
+      size_t demodulated_len = 0;
+      cli->rx_modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->rx_modem);
+      size_t actually_written = fwrite(demodulated, sizeof(int8_t), demodulated_len, cli->output_file);
+      if (actually_written != demodulated_len) {
         break;
       }
     }
   }
-
-  //close files and gracefully terminate
-  cli_destroy(cli);
   return 0;
 }
 
@@ -232,6 +233,9 @@ void cli_stop(cli *cli) {
     return;
   }
   cli->do_exit = 1;
+  if (cli->rx_device != NULL) {
+    cli->rx_device->stop_rx(cli->rx_device->plugin);
+  }
 }
 
 void cli_destroy(cli *cli) {

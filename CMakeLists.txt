@@ -145,6 +145,10 @@ add_test(NAME test_tcp_server COMMAND test_tcp_server)
 add_executable(test_tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_server.c)
 target_link_libraries(test_tcp_server sdr_modemLib sdr_modemTestLib)
 
+add_test(NAME test_cli COMMAND test_cli)
+add_executable(test_cli ${CMAKE_CURRENT_SOURCE_DIR}/test/test_cli.c)
+target_link_libraries(test_cli sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS_INIT})
+
 file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
 

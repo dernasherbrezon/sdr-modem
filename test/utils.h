@@ -20,7 +20,9 @@ void assert_int16_array(const int16_t expected[], size_t expected_size, int16_t 
 
 void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size, int tolerance);
 
-void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual, int tolerance);
+void assert_s8_files(const char *expected, const char *actual, size_t number_of_items_to_compare, int tolerance);
+
+void assert_cf32_files(const char *expected, const char *actual, size_t number_of_items_to_compare, float tolerance);
 
 int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file);
 

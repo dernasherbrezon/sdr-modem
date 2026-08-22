@@ -36,7 +36,10 @@ int main(int argc, char **argv) {
       app_config_destroy(app_config);
       exit(EXIT_FAILURE);
     }
-    return cli_process(cli_runner);
+    code = cli_process(cli_runner);
+    //close files and gracefully terminate
+    cli_destroy(cli_runner);
+    return code;
   }
 
   code = tcp_server_create(app_config, &server);

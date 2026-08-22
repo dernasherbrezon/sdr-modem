@@ -1,7 +1,6 @@
 #include "file_source.h"
 #include <stdio.h>
 #include <errno.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <liquid/liquid.h>
 
@@ -22,18 +21,10 @@ struct file_device_t {
   float complex *temp;
   float complex *nco_output;
   size_t temp_len;
-
-  bool running;
-  pthread_mutex_t mutex;
-  pthread_cond_t condition;
 };
 
 void file_source_stop(void *plugin) {
-  file_device *device = (file_device *) plugin;
-  pthread_mutex_lock(&device->mutex);
-  device->running = false;
-  pthread_cond_broadcast(&device->condition);
-  pthread_mutex_unlock(&device->mutex);
+  //do nothing. file source is not blocking
 }
 
 int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, int64_t freq_offset, uint32_t max_output_buffer_length, sdr_device **output) {
@@ -54,10 +45,6 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
     file_source_destroy(device);
     return -ENOMEM;
   }
-  device->condition = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
-  device->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  device->running = true;
-
   if (freq_offset != 0) {
     device->nco = nco_crcf_create(LIQUID_NCO);
     if (device->nco == NULL) {
@@ -111,18 +98,6 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
   }
   size_t actually_read = fread(device->temp, sizeof(float complex), device->temp_len, device->rx_file);
   if (actually_read == 0) {
-    // on any error terminate early
-    if (ferror(device->rx_file) != 0) {
-      *output = NULL;
-      *output_len = 0;
-      return -1;
-    }
-    // wait until client disconnects
-    pthread_mutex_lock(&device->mutex);
-    while (device->running) {
-      pthread_cond_wait(&device->condition, &device->mutex);
-    }
-    pthread_mutex_unlock(&device->mutex);
     *output = NULL;
     *output_len = 0;
     return -1;

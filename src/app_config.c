@@ -52,10 +52,31 @@ static int app_config_convert_framing_type(const char *type) {
   return -1;
 }
 
-static void app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskModemSettings *to) {
+static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskModemSettings **to) {
+  if (*to == NULL) {
+    *to = malloc(sizeof(GfskModemSettings));
+    if (*to == NULL) {
+      return -ENOMEM;
+    }
+    gfsk_modem_settings__init(*to);
+  }
+
+  //FIXME
+
+  return 0;
 }
 
-static void app_config_load_gfsk_from_file(config_t *libconfig, const char *prefix, GfskModemSettings *settings) {
+static int app_config_load_gfsk_from_file(config_t *libconfig, const char *prefix, GfskModemSettings **to) {
+  if (*to == NULL) {
+    *to = malloc(sizeof(GfskModemSettings));
+    if (*to == NULL) {
+      return -ENOMEM;
+    }
+    gfsk_modem_settings__init(*to);
+  }
+
+  GfskModemSettings *settings = *to;
+
   char name[64];
   const config_setting_t *setting;
 
@@ -99,6 +120,8 @@ static void app_config_load_gfsk_from_file(config_t *libconfig, const char *pref
   if (setting != NULL) {
     settings->use_dc_block = config_setting_get_bool(setting) ? true : false;
   }
+
+  return 0;
 }
 
 static int app_config_load_from_file(config_t *libconfig, const char *path, app_config *result) {
@@ -181,8 +204,10 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   }
   if (result->rx_modem == MODEM_TYPE_GFSK) {
     result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    gfsk_modem_settings__init(result->rx_req.gfsk);
-    app_config_load_gfsk_from_file(libconfig, "rx", result->rx_req.gfsk);
+    code = app_config_load_gfsk_from_file(libconfig, "rx", &result->rx_req.gfsk);
+    if (code != 0) {
+      return code;
+    }
   }
   setting = config_lookup(libconfig, "rx_framing");
   if (setting != NULL) {
@@ -196,8 +221,10 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   }
   if (result->tx_modem == MODEM_TYPE_GFSK) {
     result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    gfsk_modem_settings__init(result->tx_req.gfsk);
-    app_config_load_gfsk_from_file(libconfig, "tx", result->tx_req.gfsk);
+    code = app_config_load_gfsk_from_file(libconfig, "tx", &result->tx_req.gfsk);
+    if (code != 0) {
+      return code;
+    }
   }
   setting = config_lookup(libconfig, "tx_framing");
   if (setting != NULL) {
@@ -430,19 +457,19 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     }
   }
 
-  if (result->tx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, result->tx_req.gfsk);
-  } else if (result->tx_modem == MODEM_TYPE_GFSK) {
+  if (result->tx_modem == MODEM_TYPE_GFSK) {
     result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    gfsk_modem_settings__init(result->tx_req.gfsk);
-    app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, result->tx_req.gfsk);
+    int code = app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, &result->tx_req.gfsk);
+    if (code != 0) {
+      return code;
+    }
   }
-  if (result->rx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, result->rx_req.gfsk);
-  } else if (result->rx_modem == MODEM_TYPE_GFSK) {
+  if (result->rx_modem == MODEM_TYPE_GFSK) {
     result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    gfsk_modem_settings__init(result->rx_req.gfsk);
-    app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, result->rx_req.gfsk);
+    int code = app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, &result->rx_req.gfsk);
+    if (code != 0) {
+      return code;
+    }
   }
 
   return 0;
@@ -598,7 +625,10 @@ int app_config_create(int argc, char **argv, app_config **config) {
   optind = 1;
   opterr = 0; // ignore extra options that can appear
   int opt;
-  while ((opt = getopt_long(argc, argv, "c:", long_options, NULL)) != -1) {
+  // leading '+' disables GNU getopt's argv permutation: this pass only knows
+  // about "-c/--config" and must not reorder/consume the other long flags,
+  // since app_config_load_from_cli() does the real, full parse afterwards
+  while ((opt = getopt_long(argc, argv, "+c:", long_options, NULL)) != -1) {
     switch (opt) {
       case 'c':
         config_path = optarg;
@@ -664,6 +694,12 @@ void app_config_destroy(app_config *config) {
   }
   if (config->output_file != NULL) {
     free(config->output_file);
+  }
+  if (config->rx_req.gfsk != NULL) {
+    free(config->rx_req.gfsk);
+  }
+  if (config->tx_req.gfsk != NULL) {
+    free(config->tx_req.gfsk);
   }
   free(config);
 }

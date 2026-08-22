@@ -105,9 +105,53 @@ int read_data(uint8_t *output, size_t *output_len, size_t len, FILE *file) {
   return result;
 }
 
-void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffer, uint8_t *actual_buffer, size_t batch, FILE *actual, int tolerance) {
+void assert_cf32_files(const char *expected_filename, const char *actual_filename, size_t number_of_items_to_compare, float tolerance) {
+  FILE *expected = fopen(expected_filename, "rb");
   TEST_ASSERT(expected != NULL);
+  FILE *actual = fopen(actual_filename, "rb");
   TEST_ASSERT(actual != NULL);
+  size_t batch = 1024;
+  float complex *expected_buffer = malloc(sizeof(float complex) * batch);
+  float complex *actual_buffer = malloc(sizeof(float complex) * batch);
+  size_t total_read = 0;
+  while (true) {
+    size_t expected_read = 0;
+    int code = read_data((uint8_t *) expected_buffer, &expected_read, sizeof(float complex) * batch, expected);
+    if (code != 0 && expected_read == 0) {
+      break;
+    }
+    size_t actual_read = 0;
+    code = read_data((uint8_t *) actual_buffer, &actual_read, expected_read, actual);
+    if (code != 0 && actual_read == 0) {
+      //the very last batch of file can return code=-1 and some partial batch
+      TEST_ASSERT_EQUAL_INT(0, code);
+    }
+
+    TEST_ASSERT_EQUAL_INT(expected_read, actual_read);
+    for (size_t i = 0; i < actual_read && i < number_of_items_to_compare; i++) {
+      TEST_ASSERT(fabsl(crealf(expected_buffer[i]) - crealf(actual_buffer[i])) < tolerance);
+      TEST_ASSERT(fabsl(cimagf(expected_buffer[i]) - cimagf(actual_buffer[i])) < tolerance);
+    }
+
+    total_read += expected_read;
+    if (number_of_items_to_compare != 0 && total_read > number_of_items_to_compare) {
+      break;
+    }
+  }
+  free(expected_buffer);
+  free(actual_buffer);
+  fclose(expected);
+  fclose(actual);
+}
+
+void assert_s8_files(const char *expected_filename, const char *actual_filename, size_t number_of_items_to_compare, int tolerance) {
+  FILE *expected = fopen(expected_filename, "rb");
+  TEST_ASSERT(expected != NULL);
+  FILE *actual = fopen(actual_filename, "rb");
+  TEST_ASSERT(actual != NULL);
+  size_t batch = 1024;
+  uint8_t *expected_buffer = malloc(sizeof(uint8_t) * batch);
+  uint8_t *actual_buffer = malloc(sizeof(uint8_t) * batch);
   size_t total_read = 0;
   while (true) {
     size_t expected_read = 0;
@@ -124,10 +168,14 @@ void assert_files(FILE *expected, size_t expected_total, uint8_t *expected_buffe
     assert_byte_array((const int8_t *) expected_buffer, expected_read, (int8_t *) actual_buffer, actual_read, tolerance);
 
     total_read += expected_read;
-    if (expected_total != 0 && total_read > expected_total) {
+    if (number_of_items_to_compare != 0 && total_read > number_of_items_to_compare) {
       break;
     }
   }
+  free(expected_buffer);
+  free(actual_buffer);
+  fclose(expected);
+  fclose(actual);
 }
 
 char *utils_read_and_copy_str(const char *value) {
