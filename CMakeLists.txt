@@ -23,6 +23,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
