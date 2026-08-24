@@ -16,7 +16,6 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   }
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
-
   int code = 0;
   uint64_t sample_rate = 0;
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
@@ -74,6 +73,9 @@ void modem_demodulate(const float complex *input, size_t input_len, int8_t **out
 }
 
 size_t modem_max_modulation_buffer_length(sdr_modem *modem) {
+  if (modem == NULL) {
+    return 0;
+  }
   return modem->max_modulation_buffer_length(modem->modem);
 }
 

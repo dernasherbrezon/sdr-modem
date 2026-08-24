@@ -25,6 +25,8 @@ void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
+//TODO add support for different file source - cu8, cf32, cs16
+
 int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {

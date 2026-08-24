@@ -13,8 +13,11 @@ struct sdr_modem_t {
   void *modem;
 
   void (*modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
+
   void (*demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
+
   size_t (*max_modulation_buffer_length)(void *modem);
+
   void (*destroy)(void *modem);
 
   // optional. applied to raw I/Q before demodulate and to the modulated output before tx
