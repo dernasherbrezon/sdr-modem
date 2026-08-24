@@ -25,6 +25,11 @@ struct freq_offset_t {
   double virtual_time;
   uint64_t sample_rate;
 
+  // largest number of samples that can be mixed with a single frequency/phase increment: derived from
+  // the smallest gap between consecutive entries' timestamps, so a batch never straddles an interval
+  // where the offset should have changed
+  size_t max_batch_samples;
+
   nco_crcf nco;
 
   float complex *output;
@@ -118,6 +123,22 @@ int freq_offset_create(const char *file_path, uint64_t sample_rate, size_t max_i
     result->virtual_time = now;
   }
 
+  result->max_batch_samples = SIZE_MAX;
+  if (result->entries_len > 1) {
+    double min_dt = -1.0;
+    for (size_t i = 0; i + 1 < result->entries_len; i++) {
+      double dt = result->entries[i + 1].timestamp - result->entries[i].timestamp;
+      if (dt < 0.0) {
+        dt = 0.0;
+      }
+      if (min_dt < 0.0 || dt < min_dt) {
+        min_dt = dt;
+      }
+    }
+    size_t batch = (size_t) (min_dt * (double) result->sample_rate);
+    result->max_batch_samples = (batch == 0) ? 1 : batch;
+  }
+
   result->nco = nco_crcf_create(LIQUID_NCO);
   if (result->nco == NULL) {
     freq_offset_destroy(result);
@@ -161,19 +182,30 @@ void freq_offset_process(const float complex *input, size_t input_len, float com
     *output_len = 0;
     return;
   }
-  // one frequency/phase increment for the whole batch: mix_block_* steps the nco's internal phase
-  // for every sample as it mixes, so a single set_frequency call here is enough
-  double offset_hz = freq_offset_interpolate(fo);
-  float dtheta = (float) (2.0 * M_PI * fabs(offset_hz) / (double) fo->sample_rate);
-  nco_crcf_set_frequency(fo->nco, dtheta);
-  if (offset_hz >= 0.0) {
-    nco_crcf_mix_block_up(fo->nco, (float complex *) input, fo->output, (unsigned int) input_len);
-  } else {
-    nco_crcf_mix_block_down(fo->nco, (float complex *) input, fo->output, (unsigned int) input_len);
-  }
+  size_t processed = 0;
+  while (processed < input_len) {
+    size_t chunk_len = input_len - processed;
+    if (chunk_len > fo->max_batch_samples) {
+      chunk_len = fo->max_batch_samples;
+    }
 
-  fo->virtual_time += (double) input_len / (double) fo->sample_rate;
-  freq_offset_advance(fo);
+    // one frequency/phase increment per chunk: mix_block_* steps the nco's internal phase for every
+    // sample as it mixes, so a single set_frequency call per chunk is enough. Chunks are capped at
+    // max_batch_samples so the offset doesn't drift within a chunk across an interval boundary.
+    double offset_hz = freq_offset_interpolate(fo);
+    float dtheta = (float) (2.0 * M_PI * fabs(offset_hz) / (double) fo->sample_rate);
+    nco_crcf_set_frequency(fo->nco, dtheta);
+    if (offset_hz >= 0.0) {
+      nco_crcf_mix_block_up(fo->nco, (float complex *) (input + processed), fo->output + processed, (unsigned int) chunk_len);
+    } else {
+      nco_crcf_mix_block_down(fo->nco, (float complex *) (input + processed), fo->output + processed, (unsigned int) chunk_len);
+    }
+
+    fo->virtual_time += (double) chunk_len / (double) fo->sample_rate;
+    freq_offset_advance(fo);
+
+    processed += chunk_len;
+  }
 
   *output = fo->output;
   *output_len = input_len;
