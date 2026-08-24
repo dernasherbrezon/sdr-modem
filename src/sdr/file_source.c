@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <string.h>
 #include <liquid/liquid.h>
 
 #ifndef M_PI
@@ -39,20 +40,28 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
   }
 
   if (rx_filename != NULL) {
-    device->rx_file = fopen(rx_filename, "rb");
-    if (device->rx_file == NULL) {
-      fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
-      file_source_destroy(device);
-      return -1;
+    if (strcmp(rx_filename, "-") == 0) {
+      device->rx_file = stdin;
+    } else {
+      device->rx_file = fopen(rx_filename, "rb");
+      if (device->rx_file == NULL) {
+        fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
+        file_source_destroy(device);
+        return -1;
+      }
     }
   }
 
   if (tx_filename != NULL) {
-    device->tx_file = fopen(tx_filename, "wb");
-    if (device->tx_file == NULL) {
-      fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
-      file_source_destroy(device);
-      return -1;
+    if (strcmp(tx_filename, "-") == 0) {
+      device->tx_file = stdout;
+    } else {
+      device->tx_file = fopen(tx_filename, "wb");
+      if (device->tx_file == NULL) {
+        fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
+        file_source_destroy(device);
+        return -1;
+      }
     }
   }
 
