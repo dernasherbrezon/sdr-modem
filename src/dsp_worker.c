@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
-#include "dsp/gfsk_modem.h"
+#include "dsp/modem.h"
 #include "queue.h"
 #include <complex.h>
 #include "tcp_utils.h"
@@ -12,11 +12,7 @@ struct dsp_worker_t {
   uint32_t id;
   int client_socket;
 
-  void *modem;
-
-  void (*modem_demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
-
-  void (*modem_destroy)(void *modem);
+  sdr_modem *modem;
 
   queue *queue;
   pthread_t dsp_thread;
@@ -66,7 +62,7 @@ static void *dsp_worker_callback(void *arg) {
     int8_t *demod_output = NULL;
     size_t demod_output_len = 0;
     if (worker->modem != NULL) {
-      worker->modem_demodulate(input, input_len, &demod_output, &demod_output_len, worker->modem);
+      modem_demodulate(input, input_len, &demod_output, &demod_output_len, worker->modem);
     }
     if (demod_output == NULL) {
       complete_buffer_processing(worker->queue);
@@ -104,14 +100,7 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->id = id;
   result->client_socket = client_socket;
 
-  int code = 0;
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    code = gfsk_modem_create(req->gfsk,
-                             server_config->buffer_size, (gfsk_modem **) &result->modem);
-    result->modem_demodulate = gfsk_modem_demodulate;
-    result->modem_destroy = gfsk_modem_destroy;
-  }
-
+  int code = modem_create(server_config, req, &result->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", result->id);
     dsp_worker_destroy(result);
@@ -164,7 +153,7 @@ void dsp_worker_destroy(void *data) {
     fclose(worker->demod_file);
   }
   if (worker->modem != NULL) {
-    worker->modem_destroy(worker->modem);
+    modem_destroy(worker->modem);
   }
   free(worker);
 }
