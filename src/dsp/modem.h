@@ -4,7 +4,6 @@
 #include <complex.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include "../app_config.h"
 
 typedef struct sdr_modem_t sdr_modem;
@@ -18,7 +17,7 @@ struct sdr_modem_t {
   void (*destroy)(void *modem);
 };
 
-int modem_create(app_config *config, bool is_tx, sdr_modem **modem);
+int modem_create(app_config *config, struct ModemRequest *req, sdr_modem **modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 

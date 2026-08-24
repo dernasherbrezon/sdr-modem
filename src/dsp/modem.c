@@ -3,9 +3,8 @@
 #include <stdio.h>
 #include "gfsk_modem.h"
 
-int modem_create(app_config *config, bool is_tx, sdr_modem **modem) {
-  int modem_type = is_tx ? config->tx_modem : config->rx_modem;
-  if (modem_type == MODEM_TYPE_NONE) {
+int modem_create(app_config *config, struct ModemRequest *req, sdr_modem **modem) {
+  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
     *modem = NULL;
     return 0;
@@ -18,17 +17,15 @@ int modem_create(app_config *config, bool is_tx, sdr_modem **modem) {
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
 
-  struct ModemRequest *req = is_tx ? &config->tx_req : &config->rx_req;
-
   int code = 0;
-  if (modem_type == MODEM_TYPE_GFSK) {
+  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
     code = gfsk_modem_create(req->gfsk, config->buffer_size, (gfsk_modem **) &result->modem);
     result->modulate = gfsk_modem_modulate;
     result->demodulate = gfsk_modem_demodulate;
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
     result->destroy = gfsk_modem_destroy;
   } else {
-    fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
+    fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
     code = -1;
   }
 

@@ -19,18 +19,10 @@
 #include "api_utils.h"
 #include "dsp_worker.h"
 #include "sdr_worker.h"
-#include "dsp/gfsk_modem.h"
-#include <math.h>
+#include "dsp/modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"
-#include <liquid/liquid.h>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define M_2PI ((float) (2 * M_PI))
 
 struct tcp_worker {
   struct ModemRequest *rx_req;
@@ -45,7 +37,7 @@ struct tcp_worker {
 
   uint32_t buffer_size;
   uint8_t *buffer;
-  gfsk_modem *gfsk_modem;
+  sdr_modem *modem;
   FILE *tx_dump_file;
 
   sdr_device *tx_device;
@@ -133,8 +125,8 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
     }
     float complex *output = NULL;
     size_t output_len = 0;
-    if (worker->gfsk_modem != NULL) {
-      gfsk_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->gfsk_modem);
+    if (worker->modem != NULL) {
+      modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->modem);
     }
 
     if (worker->tx_dump_file != NULL) {
@@ -252,8 +244,8 @@ void tcp_worker_destroy(void *data) {
   if (worker->buffer != NULL) {
     free(worker->buffer);
   }
-  if (worker->gfsk_modem != NULL) {
-    gfsk_modem_destroy(worker->gfsk_modem);
+  if (worker->modem != NULL) {
+    modem_destroy(worker->modem);
   }
   if (worker->tx_dump_file != NULL) {
     fclose(worker->tx_dump_file);
@@ -424,15 +416,12 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  int code;
-  if (tcp_worker->tx_req->gfsk != NULL) {
-    code = gfsk_modem_create(tcp_worker->tx_req->gfsk, tcp_worker->buffer_size, &tcp_worker->gfsk_modem);
-    if (code != 0) {
-      fprintf(stderr, "<3>[%d] unable to create fsk modulator\n", tcp_worker->id);
-      tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-      tcp_worker_destroy(tcp_worker);
-      return;
-    }
+  int code = modem_create(server->app_config, tcp_worker->tx_req, &tcp_worker->modem);
+  if (code != 0) {
+    fprintf(stderr, "<3>[%d] unable to create modem\n", tcp_worker->id);
+    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+    tcp_worker_destroy(tcp_worker);
+    return;
   }
   if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
@@ -481,8 +470,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   tcp_worker->server = server;
   //explicitly init all tx fields to NULL for rx client
   tcp_worker->tx_req = NULL;
-  tcp_worker->gfsk_modem = NULL;
-  tcp_worker->gfsk_modem = NULL;
+  tcp_worker->modem = NULL;
   tcp_worker->tx_dump_file = NULL;
   tcp_worker->tx_device = NULL;
 

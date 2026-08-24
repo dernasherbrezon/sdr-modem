@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <string.h>
 
-#include "dsp/gfsk_modem.h"
+#include "dsp/modem.h"
 #include "sdr/file_source.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_device.h"
@@ -13,24 +13,14 @@
 
 struct cli_t {
   sdr_device *rx_device;
-  void *rx_modem;
+  sdr_modem *rx_modem;
   FILE *output_file;
 
-  void (*rx_modem_demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
-
-  void (*rx_modem_destroy)(void *modem);
-
   sdr_device *tx_device;
-  void *tx_modem;
+  sdr_modem *tx_modem;
   FILE *input_file;
   uint8_t *input_temp;
   size_t input_temp_size;
-
-  void (*tx_modem_modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
-
-  size_t (*tx_modem_max_modulation_buffer_length)(void *mod);
-
-  void (*tx_modem_destroy)(void *modem);
 
   volatile sig_atomic_t do_exit;
 };
@@ -73,7 +63,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
-  size_t max_modulation_buffer_length = result->tx_modem_max_modulation_buffer_length(result->tx_modem);
+  size_t max_modulation_buffer_length = modem_max_modulation_buffer_length(result->tx_modem);
   if (config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
     if (tx_config == NULL) {
@@ -102,30 +92,11 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_rx_modem(app_config *config, struct cli_t *result) {
-  if (config->rx_modem == MODEM_TYPE_GFSK) {
-    int code = gfsk_modem_create(config->rx_req.gfsk, config->buffer_size, (gfsk_modem **) &result->rx_modem);
-    if (code != 0) {
-      return -1;
-    }
-    result->rx_modem_demodulate = gfsk_modem_demodulate;
-    result->rx_modem_destroy = gfsk_modem_destroy;
-  }
-
-  return 0;
+  return modem_create(config, &config->rx_req, &result->rx_modem);
 }
 
 static int cli_create_tx_modem(app_config *config, struct cli_t *result) {
-  if (config->tx_modem == MODEM_TYPE_GFSK) {
-    int code = gfsk_modem_create(config->tx_req.gfsk, config->buffer_size, (gfsk_modem **) &result->tx_modem);
-    if (code != 0) {
-      return -1;
-    }
-    result->tx_modem_modulate = gfsk_modem_modulate;
-    result->tx_modem_destroy = gfsk_modem_destroy;
-    result->tx_modem_max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
-  }
-
-  return 0;
+  return modem_create(config, &config->tx_req, &result->tx_modem);
 }
 
 int cli_create(app_config *config, cli **output) {
@@ -198,7 +169,7 @@ int cli_process(cli *cli) {
       }
       float complex *output = NULL;
       size_t output_len = 0;
-      cli->tx_modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->tx_modem);
+      modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->tx_modem);
       int code = cli->tx_device->sdr_process_tx(output, output_len, cli->tx_device->plugin);
       if (code != 0) {
         break;
@@ -216,7 +187,7 @@ int cli_process(cli *cli) {
       }
       int8_t *demodulated = NULL;
       size_t demodulated_len = 0;
-      cli->rx_modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->rx_modem);
+      modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->rx_modem);
       size_t actually_written = fwrite(demodulated, sizeof(int8_t), demodulated_len, cli->output_file);
       if (actually_written != demodulated_len) {
         break;
@@ -255,10 +226,10 @@ void cli_destroy(cli *cli) {
     fclose(cli->input_file);
   }
   if (cli->rx_modem != NULL) {
-    cli->rx_modem_destroy(cli->rx_modem);
+    modem_destroy(cli->rx_modem);
   }
   if (cli->tx_modem != NULL) {
-    cli->tx_modem_destroy(cli->tx_modem);
+    modem_destroy(cli->tx_modem);
   }
   if (cli->input_temp != NULL) {
     free(cli->input_temp);
