@@ -10,7 +10,6 @@ struct ModemRequest *create_request() {
   gfsk_settings.bandwidth = 15600;
   gfsk_settings.deviation = 5000;
   gfsk_settings.sample_rate = 48000;
-  gfsk_settings.offset = 0;
   gfsk_settings.center_freq = 437525000;
   gfsk_settings.baud_rate = 9600;
   gfsk_settings.bt = 0.5f;

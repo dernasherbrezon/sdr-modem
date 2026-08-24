@@ -232,7 +232,7 @@ void   tx_data__free_unpacked
   assert(message->base.descriptor == &tx_data__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor gfsk_modem_settings__field_descriptors[8] =
+static const ProtobufCFieldDescriptor gfsk_modem_settings__field_descriptors[7] =
 {
   {
     "center_freq",
@@ -253,18 +253,6 @@ static const ProtobufCFieldDescriptor gfsk_modem_settings__field_descriptors[8] 
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
     offsetof(GfskModemSettings, sample_rate),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "offset",
-    3,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(GfskModemSettings, offset),
     NULL,
     NULL,
     0,             /* flags */
@@ -332,19 +320,19 @@ static const ProtobufCFieldDescriptor gfsk_modem_settings__field_descriptors[8] 
   },
 };
 static const unsigned gfsk_modem_settings__field_indices_by_name[] = {
-  5,   /* field[5] = bandwidth */
-  3,   /* field[3] = baud_rate */
-  6,   /* field[6] = bt */
+  4,   /* field[4] = bandwidth */
+  2,   /* field[2] = baud_rate */
+  5,   /* field[5] = bt */
   0,   /* field[0] = center_freq */
-  4,   /* field[4] = deviation */
-  2,   /* field[2] = offset */
+  3,   /* field[3] = deviation */
   1,   /* field[1] = sample_rate */
-  7,   /* field[7] = use_dc_block */
+  6,   /* field[6] = use_dc_block */
 };
-static const ProtobufCIntRange gfsk_modem_settings__number_ranges[1 + 1] =
+static const ProtobufCIntRange gfsk_modem_settings__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 8 }
+  { 4, 2 },
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor =
 {
@@ -354,10 +342,10 @@ const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor =
   "GfskModemSettings",
   "",
   sizeof(GfskModemSettings),
-  8,
+  7,
   gfsk_modem_settings__field_descriptors,
   gfsk_modem_settings__field_indices_by_name,
-  1,  gfsk_modem_settings__number_ranges,
+  2,  gfsk_modem_settings__number_ranges,
   (ProtobufCMessageInit) gfsk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

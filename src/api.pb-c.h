@@ -37,7 +37,6 @@ struct  GfskModemSettings
   ProtobufCMessage base;
   uint64_t center_freq;
   uint64_t sample_rate;
-  int64_t offset;
   uint32_t baud_rate;
   int64_t deviation;
   uint32_t bandwidth;
@@ -46,7 +45,7 @@ struct  GfskModemSettings
 };
 #define GFSK_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&gfsk_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  NoneFraming

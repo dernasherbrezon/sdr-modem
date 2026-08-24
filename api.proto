@@ -3,7 +3,6 @@ syntax = "proto3";
 message gfsk_modem_settings {
     uint64 center_freq = 1;
     uint64 sample_rate = 2;
-    int64 offset = 3;
     uint32 baud_rate = 4;
     int64 deviation = 5;
     uint32 bandwidth = 6;

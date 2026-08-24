@@ -47,8 +47,6 @@ struct tcp_worker {
   uint8_t *buffer;
   gfsk_modem *gfsk_modem;
   FILE *tx_dump_file;
-  nco_crcf nco;
-  float complex *nco_output;
 
   sdr_device *tx_device;
 };
@@ -137,11 +135,6 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
     size_t output_len = 0;
     if (worker->gfsk_modem != NULL) {
       gfsk_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->gfsk_modem);
-    }
-
-    if (worker->nco != NULL) {
-      nco_crcf_mix_block_up(worker->nco, (liquid_float_complex *) output, (liquid_float_complex *) worker->nco_output, (unsigned int) output_len);
-      output = worker->nco_output;
     }
 
     if (worker->tx_dump_file != NULL) {
@@ -261,12 +254,6 @@ void tcp_worker_destroy(void *data) {
   }
   if (worker->gfsk_modem != NULL) {
     gfsk_modem_destroy(worker->gfsk_modem);
-  }
-  if (worker->nco_output != NULL) {
-    free(worker->nco_output);
-  }
-  if (worker->nco != NULL) {
-    nco_crcf_destroy(worker->nco);
   }
   if (worker->tx_dump_file != NULL) {
     fclose(worker->tx_dump_file);
@@ -447,17 +434,6 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
       return;
     }
   }
-  if (tcp_worker->tx_req->gfsk->offset != 0) {
-    tcp_worker->nco = nco_crcf_create(LIQUID_NCO);
-    tcp_worker->nco_output = malloc(sizeof(float complex) * tcp_worker->buffer_size);
-    if (tcp_worker->nco == NULL || tcp_worker->nco_output == NULL) {
-      fprintf(stderr, "<3>[%d] unable to create freq correction block\n", tcp_worker->id);
-      tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-      tcp_worker_destroy(tcp_worker);
-      return;
-    }
-    nco_crcf_set_frequency(tcp_worker->nco, M_2PI * (float) tcp_worker->tx_req->gfsk->offset / (float) tcp_worker->tx_req->gfsk->sample_rate);
-  }
   if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
     code = tcp_server_init_tx_device(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
@@ -488,8 +464,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
   }
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-  fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx offset: %" PRId64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, tcp_worker->tx_req->gfsk->center_freq,
-          tcp_worker->tx_req->gfsk->offset,
+  fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id, tcp_worker->tx_req->gfsk->center_freq,
           tcp_worker->tx_req->gfsk->sample_rate,
           tcp_worker->tx_req->gfsk->baud_rate);
 }
@@ -558,8 +533,8 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   }
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-  fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx offset: %" PRId64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          tcp_worker->rx_req->gfsk->center_freq, tcp_worker->rx_req->gfsk->offset,
+  fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
+          tcp_worker->rx_req->gfsk->center_freq,
           tcp_worker->rx_req->gfsk->sample_rate, tcp_worker->rx_req->gfsk->baud_rate);
 }
 

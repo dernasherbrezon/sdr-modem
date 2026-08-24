@@ -51,7 +51,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
     rx_config->sample_rate = config->rx_req.gfsk->sample_rate;
-    rx_config->center_freq = config->rx_req.gfsk->center_freq + config->rx_req.gfsk->offset;
+    rx_config->center_freq = config->rx_req.gfsk->center_freq;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = config->rx_plutosdr_gain;
     int code = plutosdr_create(1, config->tx_sdr_type == SDR_TYPE_PLUTOSDR, rx_config, NULL, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->rx_device);

@@ -72,9 +72,6 @@ static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskMod
   if (from->center_freq != 0) {
     settings->center_freq = from->center_freq;
   }
-  if (from->offset != 0) {
-    settings->offset = from->offset;
-  }
   if (from->deviation != 0) {
     settings->deviation = from->deviation;
   }
@@ -111,11 +108,6 @@ static int app_config_load_gfsk_from_file(config_t *libconfig, const char *prefi
   setting = config_lookup(libconfig, name);
   if (setting != NULL) {
     settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
-  }
-  snprintf(name, sizeof(name), "%s_gfsk_offset", prefix);
-  setting = config_lookup(libconfig, name);
-  if (setting != NULL) {
-    settings->offset = config_setting_get_int64(setting);
   }
   snprintf(name, sizeof(name), "%s_gfsk_baud_rate", prefix);
   setting = config_lookup(libconfig, name);
@@ -279,7 +271,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_RX_FRAMING,
     OPT_RX_GFSK_CENTER_FREQ,
     OPT_RX_GFSK_SAMPLE_RATE,
-    OPT_RX_GFSK_OFFSET,
     OPT_RX_GFSK_BAUD_RATE,
     OPT_RX_GFSK_DEVIATION,
     OPT_RX_GFSK_BANDWIDTH,
@@ -289,7 +280,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_TX_FRAMING,
     OPT_TX_GFSK_CENTER_FREQ,
     OPT_TX_GFSK_SAMPLE_RATE,
-    OPT_TX_GFSK_OFFSET,
     OPT_TX_GFSK_BAUD_RATE,
     OPT_TX_GFSK_DEVIATION,
     OPT_TX_GFSK_BANDWIDTH,
@@ -318,7 +308,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"rx_framing", required_argument, NULL, OPT_RX_FRAMING},
     {"rx_gfsk_center_freq", required_argument, NULL, OPT_RX_GFSK_CENTER_FREQ},
     {"rx_gfsk_sample_rate", required_argument, NULL, OPT_RX_GFSK_SAMPLE_RATE},
-    {"rx_gfsk_offset", required_argument, NULL, OPT_RX_GFSK_OFFSET},
     {"rx_gfsk_baud_rate", required_argument, NULL, OPT_RX_GFSK_BAUD_RATE},
     {"rx_gfsk_deviation", required_argument, NULL, OPT_RX_GFSK_DEVIATION},
     {"rx_gfsk_bandwidth", required_argument, NULL, OPT_RX_GFSK_BANDWIDTH},
@@ -328,7 +317,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"tx_framing", required_argument, NULL, OPT_TX_FRAMING},
     {"tx_gfsk_center_freq", required_argument, NULL, OPT_TX_GFSK_CENTER_FREQ},
     {"tx_gfsk_sample_rate", required_argument, NULL, OPT_TX_GFSK_SAMPLE_RATE},
-    {"tx_gfsk_offset", required_argument, NULL, OPT_TX_GFSK_OFFSET},
     {"tx_gfsk_baud_rate", required_argument, NULL, OPT_TX_GFSK_BAUD_RATE},
     {"tx_gfsk_deviation", required_argument, NULL, OPT_TX_GFSK_DEVIATION},
     {"tx_gfsk_bandwidth", required_argument, NULL, OPT_TX_GFSK_BANDWIDTH},
@@ -424,9 +412,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_RX_GFSK_SAMPLE_RATE:
         rx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_GFSK_OFFSET:
-        rx_gfsk_settings.offset = strtoll(optarg, NULL, 10);
-        break;
       case OPT_RX_GFSK_BAUD_RATE:
         rx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
         break;
@@ -453,9 +438,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_TX_GFSK_SAMPLE_RATE:
         tx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_GFSK_OFFSET:
-        tx_gfsk_settings.offset = strtoll(optarg, NULL, 10);
         break;
       case OPT_TX_GFSK_BAUD_RATE:
         tx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
