@@ -694,6 +694,12 @@ void app_config_destroy(app_config *config) {
   if (config->rx_sdr_server_address != NULL) {
     free(config->rx_sdr_server_address);
   }
+  if (config->rx_freq_offset_file != NULL) {
+    free(config->rx_freq_offset_file);
+  }
+  if (config->tx_freq_offset_file != NULL) {
+    free(config->tx_freq_offset_file);
+  }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
   }

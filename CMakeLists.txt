@@ -21,6 +21,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/clock_recovery_mm.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
@@ -97,6 +98,10 @@ target_link_libraries(test_dc_blocker sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_file_source COMMAND test_file_source)
 add_executable(test_file_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_file_source.c)
 target_link_libraries(test_file_source sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_freq_offset COMMAND test_freq_offset)
+add_executable(test_freq_offset ${CMAKE_CURRENT_SOURCE_DIR}/test/test_freq_offset.c)
+target_link_libraries(test_freq_offset sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_frequency_modulator COMMAND test_frequency_modulator)
 add_executable(test_frequency_modulator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_frequency_modulator.c)
