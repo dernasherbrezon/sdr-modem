@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 #include <liquid/liquid.h>
 #include <zlib.h>
 
@@ -20,8 +21,14 @@ struct file_device_t {
   gzFile rx_gz;
   gzFile tx_gz;
 
+  int rx_format;
+  int tx_format;
+
   float complex *temp;
   size_t temp_len;
+
+  //raw on-disk bytes for formats that don't use float complex directly (e.g. cu8)
+  uint8_t *raw_temp;
 };
 
 static bool has_gz_suffix(const char *filename) {
@@ -29,24 +36,64 @@ static bool has_gz_suffix(const char *filename) {
   return len > 3 && strcmp(filename + len - 3, ".gz") == 0;
 }
 
+static bool is_valid_file_format(int format) {
+  return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32;
+}
+
+static void cu8_to_cf32(const uint8_t *raw, float complex *out, size_t nsamples) {
+  for (size_t i = 0; i < nsamples; i++) {
+    float re = ((float) raw[2 * i] - 127.5f) / 127.5f;
+    float im = ((float) raw[2 * i + 1] - 127.5f) / 127.5f;
+    out[i] = re + im * I;
+  }
+}
+
+static uint8_t clamp_u8(float value) {
+  if (value < 0.0f) {
+    return 0;
+  }
+  if (value > 255.0f) {
+    return 255;
+  }
+  return (uint8_t) value;
+}
+
+static void cf32_to_cu8(const float complex *in, uint8_t *raw, size_t nsamples) {
+  for (size_t i = 0; i < nsamples; i++) {
+    raw[2 * i] = clamp_u8(roundf(crealf(in[i]) * 127.5f + 127.5f));
+    raw[2 * i + 1] = clamp_u8(roundf(cimagf(in[i]) * 127.5f + 127.5f));
+  }
+}
+
 void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-//TODO add support for different file source - cu8, cf32, cs16
-
-int file_source_create(uint32_t id, const char *rx_filename, const char *tx_filename, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
+int file_source_create(uint32_t id, const char *rx_filename, int rx_format, const char *tx_filename, int tx_format, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
+  if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
+    fprintf(stderr, "<3>[%d] unsupported file format\n", id);
+    return -1;
+  }
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
     return -ENOMEM;
   }
   *device = (struct file_device_t){0};
   device->id = id;
+  device->rx_format = rx_format;
+  device->tx_format = tx_format;
   device->temp_len = max_output_buffer_length;
   device->temp = malloc(sizeof(float complex) * device->temp_len);
   if (device->temp == NULL) {
     file_source_destroy(device);
     return -ENOMEM;
+  }
+  if (rx_format == FILE_FORMAT_CU8 || tx_format == FILE_FORMAT_CU8) {
+    device->raw_temp = malloc(sizeof(uint8_t) * 2 * device->temp_len);
+    if (device->raw_temp == NULL) {
+      file_source_destroy(device);
+      return -ENOMEM;
+    }
   }
 
   if (rx_filename != NULL) {
@@ -106,17 +153,19 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
 
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin) {
   file_device *device = (file_device *) plugin;
+  size_t bytes_per_sample = (device->rx_format == FILE_FORMAT_CU8) ? (2 * sizeof(uint8_t)) : sizeof(float complex);
+  void *read_buf = (device->rx_format == FILE_FORMAT_CU8) ? (void *) device->raw_temp : (void *) device->temp;
   size_t actually_read;
   if (device->rx_gz != NULL) {
-    int result = gzread(device->rx_gz, device->temp, (unsigned int) (sizeof(float complex) * device->temp_len));
+    int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->temp_len));
     if (result <= 0) {
       *output = NULL;
       *output_len = 0;
       return -1;
     }
-    actually_read = (size_t) result / sizeof(float complex);
+    actually_read = (size_t) result / bytes_per_sample;
   } else if (device->rx_file != NULL) {
-    actually_read = fread(device->temp, sizeof(float complex), device->temp_len, device->rx_file);
+    actually_read = fread(read_buf, bytes_per_sample, device->temp_len, device->rx_file);
     if (actually_read == 0) {
       *output = NULL;
       *output_len = 0;
@@ -127,6 +176,9 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
     *output = NULL;
     *output_len = 0;
     return -1;
+  }
+  if (device->rx_format == FILE_FORMAT_CU8) {
+    cu8_to_cf32(device->raw_temp, device->temp, actually_read);
   }
   *output = device->temp;
   *output_len = actually_read;
@@ -139,11 +191,21 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, device->temp_len);
     return -1;
   }
+  const void *write_buf;
+  size_t bytes_per_sample;
+  if (device->tx_format == FILE_FORMAT_CU8) {
+    cf32_to_cu8(input, device->raw_temp, input_len);
+    write_buf = device->raw_temp;
+    bytes_per_sample = 2 * sizeof(uint8_t);
+  } else {
+    write_buf = input;
+    bytes_per_sample = sizeof(float complex);
+  }
   //ignore actually written
   if (device->tx_gz != NULL) {
-    gzwrite(device->tx_gz, input, (unsigned int) (sizeof(float complex) * input_len));
+    gzwrite(device->tx_gz, write_buf, (unsigned int) (bytes_per_sample * input_len));
   } else if (device->tx_file != NULL) {
-    fwrite(input, sizeof(float complex), input_len, device->tx_file);
+    fwrite(write_buf, bytes_per_sample, input_len, device->tx_file);
   } else {
     fprintf(stderr, "<3>[%d] tx file was not initialized\n", device->id);
     return -1;
@@ -170,6 +232,9 @@ void file_source_destroy(void *plugin) {
   }
   if (device->temp != NULL) {
     free(device->temp);
+  }
+  if (device->raw_temp != NULL) {
+    free(device->raw_temp);
   }
   free(device);
 }

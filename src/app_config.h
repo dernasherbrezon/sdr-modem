@@ -16,6 +16,9 @@
 
 #define FRAMING_TYPE_NONE 0
 
+#define FILE_FORMAT_CU8 1
+#define FILE_FORMAT_CF32 2
+
 typedef struct {
   // socket settings
   char *bind_address;
@@ -30,7 +33,9 @@ typedef struct {
   int rx_sdr_server_port;
 
   char *rx_file;
+  int rx_file_format;
   char *tx_file;
+  int tx_file_format;
 
   int tx_sdr_type;
   double tx_plutosdr_gain;

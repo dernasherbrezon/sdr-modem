@@ -49,7 +49,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->rx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, config->rx_file, NULL, config->rx_req.gfsk->sample_rate, config->buffer_size, &result->rx_device);
+    int code = file_source_create(1, config->rx_file, config->rx_file_format, NULL, config->tx_file_format, config->rx_req.gfsk->sample_rate, config->buffer_size, &result->rx_device);
     if (code != 0) {
       return -1;
     }
@@ -78,7 +78,7 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, NULL, config->tx_file, config->tx_req.gfsk->sample_rate, max_modulation_buffer_length, &result->tx_device);
+    int code = file_source_create(1, NULL, config->rx_file_format, config->tx_file, config->tx_file_format, config->tx_req.gfsk->sample_rate, max_modulation_buffer_length, &result->tx_device);
     if (code != 0) {
       return -1;
     }

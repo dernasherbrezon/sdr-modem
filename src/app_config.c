@@ -38,6 +38,15 @@ static int app_config_convert_sdr_type(const char *type) {
   return -1;
 }
 
+static int app_config_convert_file_format(const char *format) {
+  if (strcmp(format, "cu8") == 0) {
+    return FILE_FORMAT_CU8;
+  } else if (strcmp(format, "cf32") == 0) {
+    return FILE_FORMAT_CF32;
+  }
+  return -1;
+}
+
 static int app_config_convert_modem_type(const char *type) {
   if (strcmp(type, "gfsk") == 0) {
     return MODEM_TYPE_GFSK;
@@ -196,6 +205,12 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
       result->rx_plutosdr_gain = config_setting_get_float(setting);
     }
   }
+  if (result->rx_sdr_type == SDR_TYPE_FILE) {
+    setting = config_lookup(libconfig, "rx_file_format");
+    if (setting != NULL) {
+      result->rx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
+    }
+  }
 
   setting = config_lookup(libconfig, "tx_sdr_type");
   if (setting != NULL) {
@@ -209,6 +224,12 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     setting = config_lookup(libconfig, "tx_plutosdr_timeout_millis");
     if (setting != NULL) {
       result->tx_plutosdr_timeout_millis = config_setting_get_int(setting);
+    }
+  }
+  if (result->tx_sdr_type == SDR_TYPE_FILE) {
+    setting = config_lookup(libconfig, "tx_file_format");
+    if (setting != NULL) {
+      result->tx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
     }
   }
 
@@ -263,7 +284,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_RX_PLUTOSDR_GAIN,
     OPT_TX_PLUTOSDR_TIMEOUT_MILLIS,
     OPT_TX_FILE,
+    OPT_TX_FILE_FORMAT,
     OPT_RX_FILE,
+    OPT_RX_FILE_FORMAT,
     OPT_CONFIG,
     OPT_INPUT,
     OPT_OUTPUT,
@@ -304,7 +327,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"rx_plutosdr_gain", required_argument, NULL, OPT_RX_PLUTOSDR_GAIN},
     {"tx_plutosdr_timeout_millis", required_argument, NULL, OPT_TX_PLUTOSDR_TIMEOUT_MILLIS},
     {"tx_file", required_argument, NULL, OPT_TX_FILE},
+    {"tx_file_format", required_argument, NULL, OPT_TX_FILE_FORMAT},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
+    {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
     {"config", required_argument, NULL, OPT_CONFIG},
     {"input", required_argument, NULL, OPT_INPUT},
     {"output", required_argument, NULL, OPT_OUTPUT},
@@ -399,8 +424,14 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_TX_FILE:
         result->tx_file = strdup(optarg);
         break;
+      case OPT_TX_FILE_FORMAT:
+        result->tx_file_format = app_config_convert_file_format(optarg);
+        break;
       case OPT_RX_FILE:
         result->rx_file = strdup(optarg);
+        break;
+      case OPT_RX_FILE_FORMAT:
+        result->rx_file_format = app_config_convert_file_format(optarg);
         break;
       case OPT_INPUT:
         result->input_file = strdup(optarg);
@@ -558,6 +589,14 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     fprintf(stdout, "rx_file: %s\n", result->rx_file);
+    if (result->rx_file_format == 0) {
+      result->rx_file_format = FILE_FORMAT_CF32;
+    }
+    if (result->rx_file_format < 0) {
+      fprintf(stderr, "<3>invalid rx_file_format\n");
+      return -1;
+    }
+    fprintf(stdout, "rx_file_format: %s\n", result->rx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
   }
   if (result->bind_address == NULL && result->rx_sdr_type != SDR_TYPE_NONE && result->output_file == NULL) {
     fprintf(stderr, "<3>rx sdr is enabled, but the output file is missing\n");
@@ -594,6 +633,14 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     fprintf(stdout, "tx_file: %s\n", result->tx_file);
+    if (result->tx_file_format == 0) {
+      result->tx_file_format = FILE_FORMAT_CF32;
+    }
+    if (result->tx_file_format < 0) {
+      fprintf(stderr, "<3>invalid tx_file_format\n");
+      return -1;
+    }
+    fprintf(stdout, "tx_file_format: %s\n", result->tx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
   }
   if (result->tx_sdr_type == SDR_TYPE_NONE) {
     fprintf(stdout, "tx: none\n");
