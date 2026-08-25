@@ -16,6 +16,7 @@
 
 #define FRAMING_TYPE_NONE 0
 
+#define FILE_FORMAT_GUESS 0
 #define FILE_FORMAT_CU8 1
 #define FILE_FORMAT_CF32 2
 

@@ -98,6 +98,40 @@ void test_merge_gfsk_settings() {
   TEST_ASSERT_EQUAL_INT(4800, config->rx_req.gfsk->baud_rate);
 }
 
+void test_guess_rx_file_format_cf32() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->rx_file_format);
+}
+
+void test_guess_rx_file_format_cf32_gz() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cf32.gz", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->rx_file_format);
+}
+
+void test_guess_rx_file_format_cu8() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cu8", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->rx_file_format);
+}
+
+void test_guess_rx_file_format_unknown() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.raw", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(-1, code);
+}
+
+void test_guess_tx_file_format_cu8() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--tx_sdr_type", "file", "--tx_file", "out.cu8", "--input", "/some-path", "--rx_sdr_type", "none", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->tx_file_format);
+}
+
 void tearDown() {
   app_config_destroy(config);
   config = NULL;
@@ -121,5 +155,10 @@ int main(void) {
   RUN_TEST(test_override_with_invalid);
   RUN_TEST(test_invalid);
   RUN_TEST(test_merge_gfsk_settings);
+  RUN_TEST(test_guess_rx_file_format_cf32);
+  RUN_TEST(test_guess_rx_file_format_cf32_gz);
+  RUN_TEST(test_guess_rx_file_format_cu8);
+  RUN_TEST(test_guess_rx_file_format_unknown);
+  RUN_TEST(test_guess_tx_file_format_cu8);
   return UNITY_END();
 }

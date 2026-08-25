@@ -47,6 +47,23 @@ static int app_config_convert_file_format(const char *format) {
   return -1;
 }
 
+static int app_config_guess_file_format(const char *filename) {
+  if (filename == NULL) {
+    return -1;
+  }
+  size_t len = strlen(filename);
+  if (len > 3 && strcmp(filename + len - 3, ".gz") == 0) {
+    len -= 3;
+  }
+  if (len > 5 && strncmp(filename + len - 5, ".cf32", 5) == 0) {
+    return FILE_FORMAT_CF32;
+  }
+  if (len > 4 && strncmp(filename + len - 4, ".cu8", 4) == 0) {
+    return FILE_FORMAT_CU8;
+  }
+  return -1;
+}
+
 static int app_config_convert_modem_type(const char *type) {
   if (strcmp(type, "gfsk") == 0) {
     return MODEM_TYPE_GFSK;
@@ -589,11 +606,11 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     fprintf(stdout, "rx_file: %s\n", result->rx_file);
-    if (result->rx_file_format == 0) {
-      result->rx_file_format = FILE_FORMAT_CF32;
+    if (result->rx_file_format == FILE_FORMAT_GUESS) {
+      result->rx_file_format = app_config_guess_file_format(result->rx_file);
     }
     if (result->rx_file_format < 0) {
-      fprintf(stderr, "<3>invalid rx_file_format\n");
+      fprintf(stderr, "<3>invalid or unable to guess rx_file_format\n");
       return -1;
     }
     fprintf(stdout, "rx_file_format: %s\n", result->rx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
@@ -633,11 +650,11 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     fprintf(stdout, "tx_file: %s\n", result->tx_file);
-    if (result->tx_file_format == 0) {
-      result->tx_file_format = FILE_FORMAT_CF32;
+    if (result->tx_file_format == FILE_FORMAT_GUESS) {
+      result->tx_file_format = app_config_guess_file_format(result->tx_file);
     }
     if (result->tx_file_format < 0) {
-      fprintf(stderr, "<3>invalid tx_file_format\n");
+      fprintf(stderr, "<3>invalid or unable to guess tx_file_format\n");
       return -1;
     }
     fprintf(stdout, "tx_file_format: %s\n", result->tx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
