@@ -277,6 +277,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_RX_GFSK_BT,
     OPT_RX_GFSK_USE_DC_BLOCK,
     OPT_RX_FREQ_OFFSET_FILE,
+    OPT_RX_DEBUG_FREQ_OFFSET_FILE,
     OPT_TX_MODEM,
     OPT_TX_FRAMING,
     OPT_TX_GFSK_CENTER_FREQ,
@@ -286,7 +287,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_TX_GFSK_BANDWIDTH,
     OPT_TX_GFSK_BT,
     OPT_TX_GFSK_USE_DC_BLOCK,
-    OPT_TX_FREQ_OFFSET_FILE
+    OPT_TX_FREQ_OFFSET_FILE,
+    OPT_TX_DEBUG_FREQ_OFFSET_FILE
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
@@ -316,6 +318,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"rx_gfsk_bt", required_argument, NULL, OPT_RX_GFSK_BT},
     {"rx_gfsk_use_dc_block", required_argument, NULL, OPT_RX_GFSK_USE_DC_BLOCK},
     {"rx_freq_offset_file", required_argument, NULL, OPT_RX_FREQ_OFFSET_FILE},
+    {"rx_debug_freq_offset_file", required_argument, NULL, OPT_RX_DEBUG_FREQ_OFFSET_FILE},
     {"tx_modem", required_argument, NULL, OPT_TX_MODEM},
     {"tx_framing", required_argument, NULL, OPT_TX_FRAMING},
     {"tx_gfsk_center_freq", required_argument, NULL, OPT_TX_GFSK_CENTER_FREQ},
@@ -326,6 +329,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"tx_gfsk_bt", required_argument, NULL, OPT_TX_GFSK_BT},
     {"tx_gfsk_use_dc_block", required_argument, NULL, OPT_TX_GFSK_USE_DC_BLOCK},
     {"tx_freq_offset_file", required_argument, NULL, OPT_TX_FREQ_OFFSET_FILE},
+    {"tx_debug_freq_offset_file", required_argument, NULL, OPT_TX_DEBUG_FREQ_OFFSET_FILE},
     {NULL, 0, NULL, 0}
   };
 
@@ -434,6 +438,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_RX_FREQ_OFFSET_FILE:
         result->rx_freq_offset_file = strdup(optarg);
         break;
+      case OPT_RX_DEBUG_FREQ_OFFSET_FILE:
+        result->rx_debug_freq_offset_file = strdup(optarg);
+        break;
       case OPT_TX_MODEM:
         result->tx_modem = app_config_convert_modem_type(optarg);
         break;
@@ -463,6 +470,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_TX_FREQ_OFFSET_FILE:
         result->tx_freq_offset_file = strdup(optarg);
+        break;
+      case OPT_TX_DEBUG_FREQ_OFFSET_FILE:
+        result->tx_debug_freq_offset_file = strdup(optarg);
         break;
       case OPT_CONFIG:
       default:
@@ -699,6 +709,12 @@ void app_config_destroy(app_config *config) {
   }
   if (config->tx_freq_offset_file != NULL) {
     free(config->tx_freq_offset_file);
+  }
+  if (config->rx_debug_freq_offset_file != NULL) {
+    free(config->rx_debug_freq_offset_file);
+  }
+  if (config->tx_debug_freq_offset_file != NULL) {
+    free(config->tx_debug_freq_offset_file);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);

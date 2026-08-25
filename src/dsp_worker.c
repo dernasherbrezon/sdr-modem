@@ -100,7 +100,7 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->id = id;
   result->client_socket = client_socket;
 
-  int code = modem_create(server_config, req, NULL, &result->modem);
+  int code = modem_create(server_config, req, NULL, NULL, &result->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", result->id);
     dsp_worker_destroy(result);

@@ -2,6 +2,7 @@
 #define SDR_MODEM_MODEM_H
 
 #include <complex.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include "../app_config.h"
@@ -22,10 +23,16 @@ struct sdr_modem_t {
 
   // optional. applied to raw I/Q before demodulate and to the modulated output before tx
   freq_offset *freq_offset;
+
+  // optional. dumps raw I/Q samples for debugging: on rx, the (possibly freq_offset-corrected)
+  // samples right before demodulate; on tx, the modulated samples right after modulate, before
+  // freq_offset correction is applied
+  FILE *debug_freq_offset_file;
 };
 
 // freq_offset_file may be NULL, in which case no frequency correction is applied
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem);
+// debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 

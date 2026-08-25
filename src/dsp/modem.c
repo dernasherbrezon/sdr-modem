@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "gfsk_modem.h"
 
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem) {
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
     *modem = NULL;
@@ -50,12 +50,24 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     }
   }
 
+  if (debug_freq_offset_file != NULL) {
+    result->debug_freq_offset_file = fopen(debug_freq_offset_file, "wb");
+    if (result->debug_freq_offset_file == NULL) {
+      fprintf(stderr, "<3>unable to open debug freq offset file: %s\n", debug_freq_offset_file);
+      modem_destroy(result);
+      return -1;
+    }
+  }
+
   *modem = result;
   return 0;
 }
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
   modem->modulate(input, input_len, output, output_len, modem->modem);
+  if (modem->debug_freq_offset_file != NULL && *output != NULL) {
+    fwrite(*output, sizeof(float complex), *output_len, modem->debug_freq_offset_file);
+  }
   if (modem->freq_offset != NULL && *output != NULL) {
     freq_offset_process(*output, *output_len, output, output_len, modem->freq_offset);
   }
@@ -68,6 +80,9 @@ void modem_demodulate(const float complex *input, size_t input_len, int8_t **out
     freq_offset_process(input, input_len, &corrected, &corrected_len, modem->freq_offset);
     input = corrected;
     input_len = corrected_len;
+  }
+  if (modem->debug_freq_offset_file != NULL) {
+    fwrite(input, sizeof(float complex), input_len, modem->debug_freq_offset_file);
   }
   modem->demodulate(input, input_len, output, output_len, modem->modem);
 }
@@ -86,6 +101,9 @@ void modem_destroy(sdr_modem *modem) {
   modem->destroy(modem->modem);
   if (modem->freq_offset != NULL) {
     freq_offset_destroy(modem->freq_offset);
+  }
+  if (modem->debug_freq_offset_file != NULL) {
+    fclose(modem->debug_freq_offset_file);
   }
   free(modem);
 }
