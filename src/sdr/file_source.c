@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <liquid/liquid.h>
+#include <zlib.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -16,10 +17,17 @@ struct file_device_t {
 
   FILE *rx_file;
   FILE *tx_file;
+  gzFile rx_gz;
+  gzFile tx_gz;
 
   float complex *temp;
   size_t temp_len;
 };
+
+static bool has_gz_suffix(const char *filename) {
+  size_t len = strlen(filename);
+  return len > 3 && strcmp(filename + len - 3, ".gz") == 0;
+}
 
 void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
@@ -44,6 +52,13 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
   if (rx_filename != NULL) {
     if (strcmp(rx_filename, "-") == 0) {
       device->rx_file = stdin;
+    } else if (has_gz_suffix(rx_filename)) {
+      device->rx_gz = gzopen(rx_filename, "rb");
+      if (device->rx_gz == NULL) {
+        fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
+        file_source_destroy(device);
+        return -1;
+      }
     } else {
       device->rx_file = fopen(rx_filename, "rb");
       if (device->rx_file == NULL) {
@@ -57,6 +72,13 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
   if (tx_filename != NULL) {
     if (strcmp(tx_filename, "-") == 0) {
       device->tx_file = stdout;
+    } else if (has_gz_suffix(tx_filename)) {
+      device->tx_gz = gzopen(tx_filename, "wb");
+      if (device->tx_gz == NULL) {
+        fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
+        file_source_destroy(device);
+        return -1;
+      }
     } else {
       device->tx_file = fopen(tx_filename, "wb");
       if (device->tx_file == NULL) {
@@ -84,14 +106,24 @@ int file_source_create(uint32_t id, const char *rx_filename, const char *tx_file
 
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin) {
   file_device *device = (file_device *) plugin;
-  if (device->rx_file == NULL) {
+  size_t actually_read;
+  if (device->rx_gz != NULL) {
+    int result = gzread(device->rx_gz, device->temp, (unsigned int) (sizeof(float complex) * device->temp_len));
+    if (result <= 0) {
+      *output = NULL;
+      *output_len = 0;
+      return -1;
+    }
+    actually_read = (size_t) result / sizeof(float complex);
+  } else if (device->rx_file != NULL) {
+    actually_read = fread(device->temp, sizeof(float complex), device->temp_len, device->rx_file);
+    if (actually_read == 0) {
+      *output = NULL;
+      *output_len = 0;
+      return -1;
+    }
+  } else {
     fprintf(stderr, "<3>[%d] rx file was not initialized\n", device->id);
-    *output = NULL;
-    *output_len = 0;
-    return -1;
-  }
-  size_t actually_read = fread(device->temp, sizeof(float complex), device->temp_len, device->rx_file);
-  if (actually_read == 0) {
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -107,12 +139,15 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, device->temp_len);
     return -1;
   }
-  if (device->tx_file == NULL) {
+  //ignore actually written
+  if (device->tx_gz != NULL) {
+    gzwrite(device->tx_gz, input, (unsigned int) (sizeof(float complex) * input_len));
+  } else if (device->tx_file != NULL) {
+    fwrite(input, sizeof(float complex), input_len, device->tx_file);
+  } else {
     fprintf(stderr, "<3>[%d] tx file was not initialized\n", device->id);
     return -1;
   }
-  //ignore actually written
-  fwrite(input, sizeof(float complex), input_len, device->tx_file);
   return 0;
 }
 
@@ -126,6 +161,12 @@ void file_source_destroy(void *plugin) {
   }
   if (device->tx_file != NULL) {
     fclose(device->tx_file);
+  }
+  if (device->rx_gz != NULL) {
+    gzclose(device->rx_gz);
+  }
+  if (device->tx_gz != NULL) {
+    gzclose(device->tx_gz);
   }
   if (device->temp != NULL) {
     free(device->temp);

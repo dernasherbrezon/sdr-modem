@@ -66,6 +66,9 @@ find_package(Threads REQUIRED)
 target_link_libraries(sdr_modemLib ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(sdr_modemLib m ${CMAKE_DL_LIBS})
 
+find_package(ZLIB REQUIRED)
+target_link_libraries(sdr_modemLib ZLIB::ZLIB)
+
 add_executable(sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
 target_link_libraries(sdr_modem sdr_modemLib)
 

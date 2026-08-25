@@ -7,6 +7,7 @@
 const char *tmp_folder;
 sdr_device *device = NULL;
 char filename[4096];
+char gz_filename[4096];
 
 void test_rx_invalid_arguments() {
   int max_output_buffer_length = 2000;
@@ -61,6 +62,26 @@ void test_success() {
   assert_complex_array(buffer, buffer_len, output, output_len);
 }
 
+void test_gz_success() {
+  int code = file_source_create(1, NULL, gz_filename, 48000, 2000, &device);
+  TEST_ASSERT_EQUAL_INT(0, code);
+
+  const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
+  code = device->sdr_process_tx((complex float *) buffer, buffer_len, device->plugin);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  device->destroy(device->plugin);
+  free(device);
+  device = NULL;
+
+  code = file_source_create(1, gz_filename, NULL, 48000, 2000, &device);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  complex float *output = NULL;
+  size_t output_len = 0;
+  device->sdr_process_rx(&output, &output_len, device->plugin);
+  assert_complex_array(buffer, buffer_len, output, output_len);
+}
+
 void tearDown() {
   if (device != NULL) {
     device->destroy(device->plugin);
@@ -75,11 +96,13 @@ void setUp() {
     tmp_folder = "/tmp";
   }
   snprintf(filename, sizeof(filename), "%s/tx.cf32", tmp_folder);
+  snprintf(gz_filename, sizeof(gz_filename), "%s/tx.cf32.gz", tmp_folder);
 }
 
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_success);
+  RUN_TEST(test_gz_success);
   RUN_TEST(test_tx_invalid_arguments);
   RUN_TEST(test_rx_invalid_arguments);
   return UNITY_END();
