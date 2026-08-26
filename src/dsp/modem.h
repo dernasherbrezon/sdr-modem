@@ -35,17 +35,6 @@ struct sdr_modem_t {
   FILE *debug_freq_offset_file;
 };
 
-// number of half-band decimation stages needed so the decimated sample rate stays at least
-// MODEM_HALFBAND_MIN_OVERSAMPLE times the signal bandwidth. returns 0 if no decimation is needed.
-unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth);
-
-// creates a half-band decimator sized for sample_rate/bandwidth, if decimation is required.
-// on return, *halfband is NULL and *decimated_sample_rate/*decimated_max_input_buffer_length are
-// left equal to sample_rate/max_input_buffer_length when no decimation is needed.
-int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
-                                halfband_decim **halfband, uint64_t *decimated_sample_rate,
-                                uint32_t *decimated_max_input_buffer_length);
-
 // freq_offset_file may be NULL, in which case no frequency correction is applied
 // debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem);

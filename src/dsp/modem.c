@@ -11,7 +11,14 @@
 #define MODEM_HALFBAND_MIN_OVERSAMPLE 2.0f
 #define MODEM_HALFBAND_MAX_STAGES 6
 
-unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
+static uint64_t modem_get_sample_rate(ModemRequest *req) {
+  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
+    return req->gfsk->sample_rate;
+  }
+  return 0;
+}
+
+static unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
   if (bandwidth == 0) {
     return 0;
   }
@@ -23,9 +30,9 @@ unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandw
   return num_stages;
 }
 
-int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
-                                halfband_decim **halfband, uint64_t *decimated_sample_rate,
-                                uint32_t *decimated_max_input_buffer_length) {
+static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
+                                       halfband_decim **halfband, uint64_t *decimated_sample_rate,
+                                       uint32_t *decimated_max_input_buffer_length) {
   *halfband = NULL;
   *decimated_sample_rate = sample_rate;
   *decimated_max_input_buffer_length = max_input_buffer_length;
@@ -65,16 +72,20 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
   int code = 0;
-  uint64_t sample_rate = 0;
+  uint64_t sample_rate = modem_get_sample_rate(req);
+  uint64_t decimated_sample_rate = sample_rate;
+  uint32_t decimated_buffer_length = config->buffer_size;
+  code = modem_halfband_decim_create(sample_rate, req->gfsk->bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
+  if (code != 0) {
+    modem_destroy(result);
+    return code;
+  }
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    sample_rate = req->gfsk->sample_rate;
-    uint64_t decimated_sample_rate = sample_rate;
-    uint32_t decimated_buffer_length = config->buffer_size;
-    code = modem_halfband_decim_create(sample_rate, req->gfsk->bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
-    if (code != 0) {
-
-    }
     code = gfsk_modem_create(req->gfsk, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
     result->modulate = gfsk_modem_modulate;
     result->demodulate = gfsk_modem_demodulate;
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
@@ -82,14 +93,6 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   } else {
     fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
     code = -1;
-  }
-
-  if (code != 0) {
-    if (result->halfband != NULL) {
-      halfband_decim_destroy(result->halfband);
-    }
-    free(result);
-    return code;
   }
 
   if (freq_offset_file != NULL) {
