@@ -18,6 +18,13 @@ static uint64_t modem_get_sample_rate(ModemRequest *req) {
   return 0;
 }
 
+static uint32_t modem_get_bandwidth(ModemRequest *req) {
+  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
+    return req->gfsk->bandwidth;
+  }
+  return 0;
+}
+
 static unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
   if (bandwidth == 0) {
     return 0;
@@ -73,9 +80,10 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   *result = (struct sdr_modem_t){0};
   int code = 0;
   uint64_t sample_rate = modem_get_sample_rate(req);
+  uint32_t bandwidth = modem_get_bandwidth(req);
   uint64_t decimated_sample_rate = sample_rate;
   uint32_t decimated_buffer_length = config->buffer_size;
-  code = modem_halfband_decim_create(sample_rate, req->gfsk->bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
+  code = modem_halfband_decim_create(sample_rate, bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
   if (code != 0) {
     modem_destroy(result);
     return code;
