@@ -2,7 +2,6 @@
 #include "quadrature_demod.h"
 #include "clock_recovery_mm.h"
 #include "dc_blocker.h"
-#include "halfband_decim.h"
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -16,18 +15,10 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// hardcoded per design: half-band decimator stop-band attenuation
-#define GFSK_MODEM_STOPBAND_ATTENUATION_DB 60.0f
-// half-band decimator: keep the decimated rate at least this many times the signal bandwidth
-// so that the half-band filter's own transition band does not clip the signal
-#define GFSK_MODEM_HALFBAND_MIN_OVERSAMPLE 2.0f
-#define GFSK_MODEM_HALFBAND_MAX_STAGES 6
 // matched filter: keep at least this many samples per symbol so clock recovery has room to lock
 #define GFSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER 2.0f
 
 struct gfsk_modem_t {
-  // NULL when the sample rate is already close enough to the required bandwidth
-  halfband_decim *halfband;
   quadrature_demod *quad_demod;
   // fine gaussian matched filter, decimates the discriminator output down to just above
   // GFSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER samples per symbol
@@ -46,18 +37,6 @@ struct gfsk_modem_t {
   size_t temp_input_len;
 };
 
-static unsigned int gfsk_modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
-  if (bandwidth == 0) {
-    return 0;
-  }
-  uint64_t required_rate = (uint64_t) ceilf(GFSK_MODEM_HALFBAND_MIN_OVERSAMPLE * (float) bandwidth);
-  unsigned int num_stages = 0;
-  while (num_stages < GFSK_MODEM_HALFBAND_MAX_STAGES && (sample_rate >> (num_stages + 1)) >= required_rate) {
-    num_stages++;
-  }
-  return num_stages;
-}
-
 // choose the decimation factor for the matched filter so that the resulting samples per symbol
 // stay above GFSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER.
 static unsigned int gfsk_modem_estimate_decimation(float sps) {
@@ -71,7 +50,7 @@ static unsigned int gfsk_modem_estimate_decimation(float sps) {
   return decimation;
 }
 
-int gfsk_modem_create(GfskModemSettings *req, uint32_t max_input_buffer_length, gfsk_modem **demod) {
+int gfsk_modem_create(GfskModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem **demod) {
   struct gfsk_modem_t *result = malloc(sizeof(struct gfsk_modem_t));
   if (result == NULL) {
     return -ENOMEM;
@@ -79,27 +58,7 @@ int gfsk_modem_create(GfskModemSettings *req, uint32_t max_input_buffer_length, 
   // init all fields with 0 so that destroy_* method would work
   *result = (struct gfsk_modem_t){0};
 
-  unsigned int halfband_stages = gfsk_modem_estimate_halfband_stages(req->sample_rate, req->bandwidth);
-  uint64_t sample_rate = req->sample_rate;
-  int code;
-  if (halfband_stages > 0) {
-    sample_rate = req->sample_rate >> halfband_stages;
-    float cutoff = ((float) req->bandwidth / 2.0f) / (float) sample_rate;
-    // liquid advise avoid 0 and 0.5, so put some guards here
-    if (cutoff < 0.05f) {
-      cutoff = 0.05f;
-    } else if (cutoff > 0.45f) {
-      cutoff = 0.45f;
-    }
-    code = halfband_decim_create(halfband_stages, cutoff, GFSK_MODEM_STOPBAND_ATTENUATION_DB, max_input_buffer_length, &result->halfband);
-    if (code != 0) {
-      gfsk_modem_destroy(result);
-      return code;
-    }
-    max_input_buffer_length = max_input_buffer_length / (1u << halfband_stages) + 1;
-  }
-
-  code = quadrature_demod_create((float) ((double) sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
+  int code = quadrature_demod_create((float) ((double) sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
   if (code != 0) {
     gfsk_modem_destroy(result);
     return code;
@@ -217,19 +176,9 @@ size_t gfsk_modem_max_modulation_buffer_length(void *mod) {
 void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   gfsk_modem *demod = (gfsk_modem *) modem;
 
-  const float complex *quad_input = input;
-  size_t quad_input_len = input_len;
-  if (demod->halfband != NULL) {
-    float complex *halfband_output = NULL;
-    size_t halfband_output_len = 0;
-    halfband_decim_process(input, input_len, &halfband_output, &halfband_output_len, demod->halfband);
-    quad_input = halfband_output;
-    quad_input_len = halfband_output_len;
-  }
-
   float *qd_output = NULL;
   size_t qd_output_len = 0;
-  quadrature_demod_process((float complex *) quad_input, quad_input_len, &qd_output, &qd_output_len, demod->quad_demod);
+  quadrature_demod_process((float complex *) input, input_len, &qd_output, &qd_output_len, demod->quad_demod);
 
   float *matched_output = NULL;
   size_t matched_output_len = 0;
@@ -326,9 +275,6 @@ void gfsk_modem_destroy(void *modem) {
     return;
   }
   gfsk_modem *demod = (gfsk_modem *) modem;
-  if (demod->halfband != NULL) {
-    halfband_decim_destroy(demod->halfband);
-  }
   if (demod->quad_demod != NULL) {
     quadrature_demod_destroy(demod->quad_demod);
   }

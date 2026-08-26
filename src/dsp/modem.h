@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "../app_config.h"
 #include "freq_offset.h"
+#include "halfband_decim.h"
 
 typedef struct sdr_modem_t sdr_modem;
 
@@ -21,6 +22,10 @@ struct sdr_modem_t {
 
   void (*destroy)(void *modem);
 
+  // optional. decimates raw I/Q down to just above the signal bandwidth before demodulate, so the
+  // wrapped modem's own DSP chain runs at a lower, cheaper sample rate
+  halfband_decim *halfband;
+
   // optional. applied to raw I/Q before demodulate and to the modulated output before tx
   freq_offset *freq_offset;
 
@@ -29,6 +34,17 @@ struct sdr_modem_t {
   // freq_offset correction is applied
   FILE *debug_freq_offset_file;
 };
+
+// number of half-band decimation stages needed so the decimated sample rate stays at least
+// MODEM_HALFBAND_MIN_OVERSAMPLE times the signal bandwidth. returns 0 if no decimation is needed.
+unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth);
+
+// creates a half-band decimator sized for sample_rate/bandwidth, if decimation is required.
+// on return, *halfband is NULL and *decimated_sample_rate/*decimated_max_input_buffer_length are
+// left equal to sample_rate/max_input_buffer_length when no decimation is needed.
+int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
+                                halfband_decim **halfband, uint64_t *decimated_sample_rate,
+                                uint32_t *decimated_max_input_buffer_length);
 
 // freq_offset_file may be NULL, in which case no frequency correction is applied
 // debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written

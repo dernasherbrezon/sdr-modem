@@ -9,7 +9,10 @@
 
 typedef struct gfsk_modem_t gfsk_modem;
 
-int gfsk_modem_create(GfskModemSettings *settings, uint32_t max_input_buffer_length, gfsk_modem **demod);
+// sample_rate is the rate the demodulator's DSP chain runs at (i.e. after any decimation the
+// caller applied upstream); it may differ from settings->sample_rate, which is always the raw
+// input/output rate and is still used as-is for the TX (modulate) chain
+int gfsk_modem_create(GfskModemSettings *settings, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem **demod);
 
 void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *demod);
 

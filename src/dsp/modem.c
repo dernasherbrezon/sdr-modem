@@ -1,7 +1,55 @@
 #include "modem.h"
 #include <errno.h>
 #include <stdio.h>
+#include <math.h>
 #include "gfsk_modem.h"
+
+// hardcoded per design: half-band decimator stop-band attenuation
+#define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
+// half-band decimator: keep the decimated rate at least this many times the signal bandwidth
+// so that the half-band filter's own transition band does not clip the signal
+#define MODEM_HALFBAND_MIN_OVERSAMPLE 2.0f
+#define MODEM_HALFBAND_MAX_STAGES 6
+
+unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
+  if (bandwidth == 0) {
+    return 0;
+  }
+  uint64_t required_rate = (uint64_t) ceilf(MODEM_HALFBAND_MIN_OVERSAMPLE * (float) bandwidth);
+  unsigned int num_stages = 0;
+  while (num_stages < MODEM_HALFBAND_MAX_STAGES && (sample_rate >> (num_stages + 1)) >= required_rate) {
+    num_stages++;
+  }
+  return num_stages;
+}
+
+int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
+                                halfband_decim **halfband, uint64_t *decimated_sample_rate,
+                                uint32_t *decimated_max_input_buffer_length) {
+  *halfband = NULL;
+  *decimated_sample_rate = sample_rate;
+  *decimated_max_input_buffer_length = max_input_buffer_length;
+
+  unsigned int halfband_stages = modem_estimate_halfband_stages(sample_rate, bandwidth);
+  if (halfband_stages == 0) {
+    return 0;
+  }
+
+  *decimated_sample_rate = sample_rate >> halfband_stages;
+  float cutoff = ((float) bandwidth / 2.0f) / (float) *decimated_sample_rate;
+  // liquid advise avoid 0 and 0.5, so put some guards here
+  if (cutoff < 0.05f) {
+    cutoff = 0.05f;
+  } else if (cutoff > 0.45f) {
+    cutoff = 0.45f;
+  }
+  int code = halfband_decim_create(halfband_stages, cutoff, MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_input_buffer_length, halfband);
+  if (code != 0) {
+    return code;
+  }
+  *decimated_max_input_buffer_length = max_input_buffer_length / (1u << halfband_stages) + 1;
+  return 0;
+}
 
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
@@ -20,7 +68,13 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   uint64_t sample_rate = 0;
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
     sample_rate = req->gfsk->sample_rate;
-    code = gfsk_modem_create(req->gfsk, config->buffer_size, (gfsk_modem **) &result->modem);
+    uint64_t decimated_sample_rate = sample_rate;
+    uint32_t decimated_buffer_length = config->buffer_size;
+    code = modem_halfband_decim_create(sample_rate, req->gfsk->bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
+    if (code != 0) {
+
+    }
+    code = gfsk_modem_create(req->gfsk, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
     result->modulate = gfsk_modem_modulate;
     result->demodulate = gfsk_modem_demodulate;
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
@@ -31,6 +85,9 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   }
 
   if (code != 0) {
+    if (result->halfband != NULL) {
+      halfband_decim_destroy(result->halfband);
+    }
     free(result);
     return code;
   }
@@ -84,6 +141,13 @@ void modem_demodulate(const float complex *input, size_t input_len, int8_t **out
   if (modem->debug_freq_offset_file != NULL) {
     fwrite(input, sizeof(float complex), input_len, modem->debug_freq_offset_file);
   }
+  if (modem->halfband != NULL) {
+    float complex *halfband_output = NULL;
+    size_t halfband_output_len = 0;
+    halfband_decim_process(input, input_len, &halfband_output, &halfband_output_len, modem->halfband);
+    input = halfband_output;
+    input_len = halfband_output_len;
+  }
   modem->demodulate(input, input_len, output, output_len, modem->modem);
 }
 
@@ -99,6 +163,9 @@ void modem_destroy(sdr_modem *modem) {
     return;
   }
   modem->destroy(modem->modem);
+  if (modem->halfband != NULL) {
+    halfband_decim_destroy(modem->halfband);
+  }
   if (modem->freq_offset != NULL) {
     freq_offset_destroy(modem->freq_offset);
   }

@@ -105,7 +105,7 @@ void test_exceeded_input() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, 10, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, 10, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_byte_data(&mod_input, 0, 11);
@@ -125,7 +125,7 @@ void test_modulation() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, 1000, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, 1000, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_byte_data(&mod_input, 0, 10);
@@ -162,7 +162,7 @@ void test_demodulation() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("nusat.cf32", "nusat.expected.s8");
 }
@@ -176,7 +176,7 @@ void test_nan() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("inputnan.cf32", "nan.s8");
 }
@@ -190,7 +190,7 @@ void test_handle_lucky7() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.s8");
 }
@@ -204,7 +204,7 @@ void test_no_dc() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  int code = gfsk_modem_create(&settings, max_buffer_length, &demod);
+  int code = gfsk_modem_create(&settings, settings.sample_rate, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
   assert_files_and_demod("lucky7.expected.cf32", "lucky7.expected.nodc.s8");
 }
@@ -218,7 +218,7 @@ void test_invalid_parameters() {
     .bt = 0.5f,
     .use_dc_block = true
   };
-  TEST_ASSERT_NOT_EQUAL_INT(0, gfsk_modem_create(&settings, max_buffer_length, &demod));
+  TEST_ASSERT_NOT_EQUAL_INT(0, gfsk_modem_create(&settings, settings.sample_rate, max_buffer_length, &demod));
 }
 
 void tearDown() {
