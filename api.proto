@@ -10,12 +10,25 @@ message gfsk_modem_settings {
     bool use_dc_block = 8;
 }
 
+message bpsk_modem_settings {
+    uint64 center_freq = 1;
+    uint64 sample_rate = 2;
+    uint32 baud_rate = 4;
+    float rrc_beta = 5;
+    uint32 rrc_delay = 6;
+    float costas_bandwidth = 7;
+    uint32 symsync_filter_bank_size = 8;
+}
+
 message none_framing {
 }
 
 message ModemRequest {
     oneof modem_settings {
         gfsk_modem_settings gfsk = 1;
+        bpsk_modem_settings bpsk = 2;
+        bpsk_modem_settings dpsk = 3;
+        bpsk_modem_settings sdpsk = 4;
     }
     oneof framing {
         none_framing none = 9;
