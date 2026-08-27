@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <liquid/liquid.h>
 #include <complex.h>
 
@@ -9,10 +10,29 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// stopband attenuation for the arbitrary-rate resamplers used when sample_rate is not
+// an exact multiple of baud_rate. 60dB is liquid-dsp's typical default for msresamp_crcf.
+#define BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB 60.0f
+// extra headroom (in samples) added on top of the theoretical ceil(len * rate) output size,
+// since msresamp_crcf's actual output count for a given input block can vary slightly
+#define BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN 16
+
 struct bpsk_modem_t {
   uint64_t sample_rate;
   uint32_t baud_rate;
   unsigned int samples_per_symbol;
+  size_t max_input_buffer_length;
+
+  // present only when sample_rate is not an exact multiple of baud_rate: bridges the actual
+  // I/Q sample rate and the nearest internal rate (samples_per_symbol * baud_rate) that the
+  // rest of the pipeline below (symsync/firinterp) requires to be an integer multiple
+  bool needs_resampling;
+  msresamp_crcf resampler_rx;
+  float complex *resampler_rx_output;
+  size_t resampler_rx_output_len;
+  msresamp_crcf resampler_tx;
+  float complex *resampler_tx_output;
+  size_t resampler_tx_output_len;
 
   // matched RRC filter + symbol timing recovery (Mueller & Muller-style timing error detector),
   // realized from an RRC prototype internally by liquid-dsp
@@ -47,15 +67,26 @@ struct bpsk_modem_t {
 };
 
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
-  if (settings->baud_rate == 0 || settings->sample_rate % settings->baud_rate != 0) {
-    fprintf(stderr, "<3>bpsk modem: sample_rate (%llu) must be an integer multiple of baud_rate (%u)\n", (unsigned long long) settings->sample_rate, settings->baud_rate);
+  if (settings->baud_rate == 0) {
+    fprintf(stderr, "<3>bpsk modem: baud_rate must not be 0\n");
     return -EINVAL;
   }
-  unsigned int sps = (unsigned int) (settings->sample_rate / settings->baud_rate);
+  bool needs_resampling = (settings->sample_rate % settings->baud_rate) != 0;
+  unsigned int sps;
+  if (needs_resampling) {
+    sps = (unsigned int) llround((double) settings->sample_rate / (double) settings->baud_rate);
+  } else {
+    sps = (unsigned int) (settings->sample_rate / settings->baud_rate);
+  }
   if (sps < 2) {
     fprintf(stderr, "<3>bpsk modem: samples per symbol (%u) must be at least 2\n", sps);
     return -EINVAL;
   }
+  // internal working rate the rest of the pipeline (symsync/firinterp) operates at: the
+  // nearest exact multiple of baud_rate to the requested sample_rate
+  uint64_t internal_sample_rate = (uint64_t) sps * (uint64_t) settings->baud_rate;
+  double resample_rate_rx = needs_resampling ? (double) internal_sample_rate / (double) settings->sample_rate : 1.0;
+  double resample_rate_tx = needs_resampling ? (double) settings->sample_rate / (double) internal_sample_rate : 1.0;
 
   struct bpsk_modem_t *result = malloc(sizeof(struct bpsk_modem_t));
   if (result == NULL) {
@@ -66,7 +97,24 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->sample_rate = settings->sample_rate;
   result->baud_rate = settings->baud_rate;
   result->samples_per_symbol = sps;
+  result->max_input_buffer_length = max_input_buffer_length;
+  result->needs_resampling = needs_resampling;
   result->type = settings->type;
+
+  if (needs_resampling) {
+    result->resampler_rx = msresamp_crcf_create((float) resample_rate_rx, BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
+    result->resampler_tx = msresamp_crcf_create((float) resample_rate_tx, BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
+    if (result->resampler_rx == NULL || result->resampler_tx == NULL) {
+      bpsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->resampler_rx_output_len = (size_t) ceil((double) max_input_buffer_length * resample_rate_rx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
+    result->resampler_rx_output = malloc(sizeof(float complex) * result->resampler_rx_output_len);
+    if (result->resampler_rx_output == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
+  }
 
   result->symbol_sync = symsync_crcf_create_rnyquist(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, settings->symsync_filter_bank_size);
   if (result->symbol_sync == NULL) {
@@ -99,9 +147,11 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->tx_prev_symbol = 1.0f + 0.0f * I;
   result->rx_prev_symbol = 1.0f + 0.0f * I;
 
-  // one output symbol for every sps input samples, at most
-  result->output_len = max_input_buffer_length;
-  result->symsync_output_len = max_input_buffer_length;
+  // one output symbol for every sps samples fed to the symbol synchronizer, at most. when
+  // resampling, that input is the resampled buffer (resampler_rx_output_len), not the raw one
+  size_t symsync_input_capacity = needs_resampling ? result->resampler_rx_output_len : max_input_buffer_length;
+  result->output_len = symsync_input_capacity;
+  result->symsync_output_len = symsync_input_capacity;
   result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
   result->bit_output = malloc(sizeof(int8_t) * result->output_len);
 
@@ -116,6 +166,15 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   if (result->modulation_output == NULL) {
     bpsk_modem_destroy(result);
     return -ENOMEM;
+  }
+
+  if (needs_resampling) {
+    result->resampler_tx_output_len = (size_t) ceil((double) result->max_modulation_buffer_length * resample_rate_tx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
+    result->resampler_tx_output = malloc(sizeof(float complex) * result->resampler_tx_output_len);
+    if (result->resampler_tx_output == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
   }
 
   if (debug_constellation_file != NULL) {
@@ -133,20 +192,29 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
 
 size_t bpsk_modem_max_modulation_buffer_length(void *modem_v) {
   bpsk_modem *modem = modem_v;
-  return modem->max_modulation_buffer_length;
+  return modem->needs_resampling ? modem->resampler_tx_output_len : modem->max_modulation_buffer_length;
 }
 
 void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *demod_v) {
   bpsk_modem *demod = demod_v;
-  if (input_len > demod->symsync_output_len) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->symsync_output_len);
+  if (input_len > demod->max_input_buffer_length) {
+    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return;
   }
 
+  const float complex *symsync_input = input;
+  unsigned int symsync_input_len = (unsigned int) input_len;
+  if (demod->needs_resampling) {
+    unsigned int resampled_len = 0;
+    msresamp_crcf_execute(demod->resampler_rx, (float complex *) input, (unsigned int) input_len, demod->resampler_rx_output, &resampled_len);
+    symsync_input = demod->resampler_rx_output;
+    symsync_input_len = resampled_len;
+  }
+
   unsigned int num_symbols = 0;
-  symsync_crcf_execute(demod->symbol_sync, (float complex *) input, (unsigned int) input_len, demod->symsync_output, &num_symbols);
+  symsync_crcf_execute(demod->symbol_sync, (float complex *) symsync_input, symsync_input_len, demod->symsync_output, &num_symbols);
 
   if (demod->debug_constellation_file != NULL) {
     fwrite(demod->symsync_output, sizeof(float complex), num_symbols, demod->debug_constellation_file);
@@ -219,8 +287,15 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
     }
   }
 
-  *output = mod->modulation_output;
-  *output_len = sample_index;
+  if (mod->needs_resampling) {
+    unsigned int resampled_len = 0;
+    msresamp_crcf_execute(mod->resampler_tx, mod->modulation_output, (unsigned int) sample_index, mod->resampler_tx_output, &resampled_len);
+    *output = mod->resampler_tx_output;
+    *output_len = resampled_len;
+  } else {
+    *output = mod->modulation_output;
+    *output_len = sample_index;
+  }
 }
 
 void bpsk_modem_destroy(void *modem_v) {
@@ -239,6 +314,18 @@ void bpsk_modem_destroy(void *modem_v) {
   }
   if (modem->interp != NULL) {
     firinterp_crcf_destroy(modem->interp);
+  }
+  if (modem->resampler_rx != NULL) {
+    msresamp_crcf_destroy(modem->resampler_rx);
+  }
+  if (modem->resampler_tx != NULL) {
+    msresamp_crcf_destroy(modem->resampler_tx);
+  }
+  if (modem->resampler_rx_output != NULL) {
+    free(modem->resampler_rx_output);
+  }
+  if (modem->resampler_tx_output != NULL) {
+    free(modem->resampler_tx_output);
   }
   if (modem->symsync_output != NULL) {
     free(modem->symsync_output);

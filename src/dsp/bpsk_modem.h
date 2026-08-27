@@ -16,7 +16,9 @@ typedef enum {
 
 typedef struct {
   uint64_t sample_rate;      // sample rate of the input/output I/Q stream, in Hz
-  uint32_t baud_rate;        // symbol rate, in Hz. sample_rate / baud_rate must be an integer >= 2
+  uint32_t baud_rate;        // symbol rate, in Hz. round(sample_rate / baud_rate) must be >= 2.
+                              // if sample_rate is not an exact multiple of baud_rate, an arbitrary-rate
+                              // resampler is inserted to bridge sample_rate and the nearest working rate
   float rrc_beta;            // root-raised-cosine excess bandwidth (rolloff), 0 < rrc_beta <= 1
   unsigned int rrc_delay;    // root-raised-cosine filter delay, in symbols (m). typically 5-11
   float costas_bandwidth;    // normalized loop bandwidth of the costas (carrier recovery) loop, > 0. typically 0.001-0.05
