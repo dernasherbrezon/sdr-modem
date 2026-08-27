@@ -416,7 +416,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  int code = modem_create(server->app_config, tcp_worker->tx_req, NULL, NULL, &tcp_worker->modem);
+  int code = modem_create(server->app_config, tcp_worker->tx_req, NULL, NULL, NULL, &tcp_worker->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", tcp_worker->id);
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);

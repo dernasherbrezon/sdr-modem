@@ -42,9 +42,11 @@ struct bpsk_modem_t {
   size_t max_modulation_input_bits;
   size_t max_modulation_buffer_length;
   float complex *modulation_output;
+
+  FILE *debug_constellation_file;
 };
 
-int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem) {
+int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
   if (settings->baud_rate == 0 || settings->sample_rate % settings->baud_rate != 0) {
     fprintf(stderr, "<3>bpsk modem: sample_rate (%llu) must be an integer multiple of baud_rate (%u)\n", (unsigned long long) settings->sample_rate, settings->baud_rate);
     return -EINVAL;
@@ -117,6 +119,15 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -ENOMEM;
   }
 
+  if (debug_constellation_file != NULL) {
+    result->debug_constellation_file = fopen(debug_constellation_file, "wb");
+    if (result->debug_constellation_file == NULL) {
+      fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
+      bpsk_modem_destroy(result);
+      return -1;
+    }
+  }
+
   *modem = result;
   return 0;
 }
@@ -137,6 +148,10 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
 
   unsigned int num_symbols = 0;
   symsync_crcf_execute(demod->symbol_sync, (float complex *) input, (unsigned int) input_len, demod->symsync_output, &num_symbols);
+
+  if (demod->debug_constellation_file != NULL) {
+    fwrite(demod->symsync_output, sizeof(float complex), num_symbols, demod->debug_constellation_file);
+  }
 
   for (unsigned int i = 0; i < num_symbols; i++) {
     float complex mixed;
@@ -197,6 +212,9 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
       } else {
         modemcf_modulate(mod->mod, sym, &symbol);
       }
+      if (mod->debug_constellation_file != NULL) {
+        fwrite(&symbol, sizeof(float complex), 1, mod->debug_constellation_file);
+      }
       firinterp_crcf_execute(mod->interp, symbol, mod->modulation_output + sample_index);
       sample_index += mod->samples_per_symbol;
     }
@@ -231,6 +249,9 @@ void bpsk_modem_destroy(void *modem_v) {
   }
   if (modem->modulation_output != NULL) {
     free(modem->modulation_output);
+  }
+  if (modem->debug_constellation_file != NULL) {
+    fclose(modem->debug_constellation_file);
   }
   free(modem);
 }

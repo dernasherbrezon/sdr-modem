@@ -55,12 +55,14 @@ typedef struct {
   struct ModemRequest rx_req;
   char *rx_freq_offset_file;
   char *rx_debug_freq_offset_file;
+  char *rx_debug_constellation_file;
 
   int tx_modem;
   int tx_framing;
   struct ModemRequest tx_req;
   char *tx_freq_offset_file;
   char *tx_debug_freq_offset_file;
+  char *tx_debug_constellation_file;
 
 } app_config;
 

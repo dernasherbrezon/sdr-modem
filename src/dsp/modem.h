@@ -37,7 +37,9 @@ struct sdr_modem_t {
 
 // freq_offset_file may be NULL, in which case no frequency correction is applied
 // debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem);
+// debug_constellation_file may be NULL, in which case no debug constellation dump is written.
+// only honored by bpsk/dpsk/sdpsk modems.
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, sdr_modem **modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 

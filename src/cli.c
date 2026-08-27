@@ -92,11 +92,11 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_rx_modem(app_config *config, struct cli_t *result) {
-  return modem_create(config, &config->rx_req, config->rx_freq_offset_file, config->rx_debug_freq_offset_file, &result->rx_modem);
+  return modem_create(config, &config->rx_req, config->rx_freq_offset_file, config->rx_debug_freq_offset_file, config->rx_debug_constellation_file, &result->rx_modem);
 }
 
 static int cli_create_tx_modem(app_config *config, struct cli_t *result) {
-  return modem_create(config, &config->tx_req, config->tx_freq_offset_file, config->tx_debug_freq_offset_file, &result->tx_modem);
+  return modem_create(config, &config->tx_req, config->tx_freq_offset_file, config->tx_debug_freq_offset_file, config->tx_debug_constellation_file, &result->tx_modem);
 }
 
 int cli_create(app_config *config, cli **output) {
