@@ -68,8 +68,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->samples_per_symbol = sps;
   result->type = settings->type;
 
-  unsigned int num_filters = settings->symsync_filter_bank_size > 0 ? settings->symsync_filter_bank_size : 32;
-  result->symbol_sync = symsync_crcf_create_rnyquist(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, num_filters);
+  result->symbol_sync = symsync_crcf_create_rnyquist(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, settings->symsync_filter_bank_size);
   if (result->symbol_sync == NULL) {
     bpsk_modem_destroy(result);
     return -EINVAL;

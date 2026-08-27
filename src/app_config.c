@@ -946,6 +946,36 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>invalid rx_modem\n");
     return -1;
   }
+  BpskModemSettings *bpsk_settings = NULL;
+  switch (result->rx_req.modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+      bpsk_settings = result->rx_req.bpsk;
+      break;
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+      bpsk_settings = result->rx_req.dpsk;
+      break;
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      bpsk_settings = result->rx_req.sdpsk;
+      break;
+    default:
+      // do nothing
+      break;
+  }
+  if (bpsk_settings != NULL) {
+    if (bpsk_settings->symsync_filter_bank_size == 0) {
+      bpsk_settings->symsync_filter_bank_size = 32;
+    }
+    if (bpsk_settings->rrc_delay == 0) {
+      bpsk_settings->rrc_delay = 5;
+    }
+    if (bpsk_settings->rrc_beta == 0.0f) {
+      bpsk_settings->rrc_beta = 0.35f;
+    }
+    if (bpsk_settings->costas_bandwidth == 0.0f) {
+      bpsk_settings->costas_bandwidth = 0.01f;
+    }
+  }
+
   if (result->rx_framing < 0) {
     fprintf(stderr, "<3>invalid rx_framing\n");
     return -1;
