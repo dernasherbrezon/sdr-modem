@@ -56,6 +56,7 @@ typedef struct {
   char *rx_freq_offset_file;
   char *rx_debug_freq_offset_file;
   char *rx_debug_constellation_file;
+  char *rx_debug_baseband_file;
 
   int tx_modem;
   int tx_framing;

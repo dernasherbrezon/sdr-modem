@@ -91,7 +91,7 @@ static int modem_create_bpsk_family(BpskModemSettings *req, uint64_t sample_rate
   return bpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
 }
 
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, sdr_modem **modem) {
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
     *modem = NULL;
@@ -183,6 +183,15 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     }
   }
 
+  if (debug_baseband_file != NULL) {
+    result->debug_baseband_file = fopen(debug_baseband_file, "wb");
+    if (result->debug_baseband_file == NULL) {
+      fprintf(stderr, "<3>unable to open debug baseband file: %s\n", debug_baseband_file);
+      modem_destroy(result);
+      return -1;
+    }
+  }
+
   *modem = result;
   return 0;
 }
@@ -215,6 +224,9 @@ void modem_demodulate(const float complex *input, size_t input_len, int8_t **out
     input = halfband_output;
     input_len = halfband_output_len;
   }
+  if (modem->debug_baseband_file != NULL) {
+    fwrite(input, sizeof(float complex), input_len, modem->debug_baseband_file);
+  }
   modem->demodulate(input, input_len, output, output_len, modem->modem);
 }
 
@@ -240,6 +252,9 @@ void modem_destroy(sdr_modem *modem) {
   }
   if (modem->debug_freq_offset_file != NULL) {
     fclose(modem->debug_freq_offset_file);
+  }
+  if (modem->debug_baseband_file != NULL) {
+    fclose(modem->debug_baseband_file);
   }
   free(modem);
 }

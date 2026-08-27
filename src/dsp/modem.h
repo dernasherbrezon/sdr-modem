@@ -33,13 +33,19 @@ struct sdr_modem_t {
   // samples right before demodulate; on tx, the modulated samples right after modulate, before
   // freq_offset correction is applied
   FILE *debug_freq_offset_file;
+
+  // optional. rx only: dumps the baseband I/Q samples right after halfband decimation
+  // (i.e. right before the wrapped demodulator runs), or the freq_offset-corrected raw
+  // input when no halfband decimation is configured
+  FILE *debug_baseband_file;
 };
 
 // freq_offset_file may be NULL, in which case no frequency correction is applied
 // debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
 // debug_constellation_file may be NULL, in which case no debug constellation dump is written.
 // only honored by bpsk/dpsk/sdpsk modems.
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, sdr_modem **modem);
+// debug_baseband_file may be NULL, in which case no debug baseband dump is written. rx only.
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 

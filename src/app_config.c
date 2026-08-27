@@ -390,6 +390,14 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     }
   }
 
+  setting = config_lookup(libconfig, "rx_debug_baseband_file");
+  if (setting != NULL) {
+    result->rx_debug_baseband_file = strdup(config_setting_get_string(setting));
+    if (result->rx_debug_baseband_file == NULL) {
+      return -ENOMEM;
+    }
+  }
+
   setting = config_lookup(libconfig, "tx_modem");
   if (setting != NULL) {
     result->tx_modem = app_config_convert_modem_type(config_setting_get_string(setting));
@@ -475,6 +483,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_RX_FREQ_OFFSET_FILE,
     OPT_RX_DEBUG_FREQ_OFFSET_FILE,
     OPT_RX_DEBUG_CONSTELLATION_FILE,
+    OPT_RX_DEBUG_BASEBAND_FILE,
     OPT_TX_MODEM,
     OPT_TX_FRAMING,
     OPT_TX_GFSK_CENTER_FREQ,
@@ -534,6 +543,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"rx_freq_offset_file", required_argument, NULL, OPT_RX_FREQ_OFFSET_FILE},
     {"rx_debug_freq_offset_file", required_argument, NULL, OPT_RX_DEBUG_FREQ_OFFSET_FILE},
     {"rx_debug_constellation_file", required_argument, NULL, OPT_RX_DEBUG_CONSTELLATION_FILE},
+    {"rx_debug_baseband_file", required_argument, NULL, OPT_RX_DEBUG_BASEBAND_FILE},
     {"tx_modem", required_argument, NULL, OPT_TX_MODEM},
     {"tx_framing", required_argument, NULL, OPT_TX_FRAMING},
     {"tx_gfsk_center_freq", required_argument, NULL, OPT_TX_GFSK_CENTER_FREQ},
@@ -695,6 +705,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_RX_DEBUG_CONSTELLATION_FILE:
         result->rx_debug_constellation_file = strdup(optarg);
+        break;
+      case OPT_RX_DEBUG_BASEBAND_FILE:
+        result->rx_debug_baseband_file = strdup(optarg);
         break;
       case OPT_TX_MODEM:
         result->tx_modem = app_config_convert_modem_type(optarg);
@@ -1082,6 +1095,9 @@ void app_config_destroy(app_config *config) {
   }
   if (config->tx_debug_constellation_file != NULL) {
     free(config->tx_debug_constellation_file);
+  }
+  if (config->rx_debug_baseband_file != NULL) {
+    free(config->rx_debug_baseband_file);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
