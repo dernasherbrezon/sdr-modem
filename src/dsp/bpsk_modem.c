@@ -121,11 +121,13 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   return 0;
 }
 
-size_t bpsk_modem_max_modulation_buffer_length(bpsk_modem *modem) {
+size_t bpsk_modem_max_modulation_buffer_length(void *modem_v) {
+  bpsk_modem *modem = modem_v;
   return modem->max_modulation_buffer_length;
 }
 
-void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, bpsk_modem *demod) {
+void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *demod_v) {
+  bpsk_modem *demod = demod_v;
   if (input_len > demod->symsync_output_len) {
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->symsync_output_len);
     *output = NULL;
@@ -173,7 +175,8 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
   *output_len = num_symbols;
 }
 
-void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, bpsk_modem *mod) {
+void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
+  bpsk_modem *mod = mod_v;
   if (input_len * 8 > mod->max_modulation_input_bits) {
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, mod->max_modulation_input_bits / 8);
     *output = NULL;
@@ -203,7 +206,8 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
   *output_len = sample_index;
 }
 
-void bpsk_modem_destroy(bpsk_modem *modem) {
+void bpsk_modem_destroy(void *modem_v) {
+  bpsk_modem *modem = modem_v;
   if (modem == NULL) {
     return;
   }

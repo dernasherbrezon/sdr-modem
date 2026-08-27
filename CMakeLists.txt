@@ -18,6 +18,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cli.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_server.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/bpsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/clock_recovery_mm.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c

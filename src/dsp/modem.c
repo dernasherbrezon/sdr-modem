@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "gfsk_modem.h"
+#include "bpsk_modem.h"
 
 // hardcoded per design: half-band decimator stop-band attenuation
 #define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
@@ -12,16 +13,24 @@
 #define MODEM_HALFBAND_MAX_STAGES 6
 
 static uint64_t modem_get_sample_rate(ModemRequest *req) {
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    return req->gfsk->sample_rate;
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->sample_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
+      return req->bpsk->sample_rate;
+    default:
+      return 0;
   }
-  return 0;
 }
 
 static uint32_t modem_get_bandwidth(ModemRequest *req) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
     return req->gfsk->bandwidth;
   }
+  // bpsk/dpsk/sdpsk settings have no explicit bandwidth field, so no halfband decimation is applied
   return 0;
 }
 
@@ -65,6 +74,18 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
+static int modem_create_bpsk_family(BpskModemSettings *req, bpsk_modem_type type, uint32_t max_input_buffer_length, bpsk_modem **modem) {
+  bpsk_modem_settings settings = {0};
+  settings.sample_rate = req->sample_rate;
+  settings.baud_rate = req->baud_rate;
+  settings.rrc_beta = req->rrc_beta;
+  settings.rrc_delay = req->rrc_delay;
+  settings.costas_bandwidth = req->costas_bandwidth;
+  settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
+  settings.type = type;
+  return bpsk_modem_create(&settings, max_input_buffer_length, modem);
+}
+
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
@@ -98,6 +119,36 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->demodulate = gfsk_modem_demodulate;
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
     result->destroy = gfsk_modem_destroy;
+  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
+    code = modem_create_bpsk_family(req->bpsk, NORMAL, decimated_buffer_length, (bpsk_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
+    result->modulate = bpsk_modem_modulate;
+    result->demodulate = bpsk_modem_demodulate;
+    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
+    result->destroy = bpsk_modem_destroy;
+  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_DPSK) {
+    code = modem_create_bpsk_family(req->dpsk, DIFFERENTIAL, decimated_buffer_length, (bpsk_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
+    result->modulate = bpsk_modem_modulate;
+    result->demodulate = bpsk_modem_demodulate;
+    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
+    result->destroy = bpsk_modem_destroy;
+  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_SDPSK) {
+    code = modem_create_bpsk_family(req->sdpsk, SYMMETRIC_DIFFERENTIAL, decimated_buffer_length, (bpsk_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
+    result->modulate = bpsk_modem_modulate;
+    result->demodulate = bpsk_modem_demodulate;
+    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
+    result->destroy = bpsk_modem_destroy;
   } else {
     fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
     code = -1;

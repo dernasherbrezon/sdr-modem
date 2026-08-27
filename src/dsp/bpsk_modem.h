@@ -28,12 +28,12 @@ typedef struct {
 // single call, and (in bytes) the max input passed to dpsk_modem_modulate() in a single call.
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem);
 
-void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, bpsk_modem *modem);
+void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 
-void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, bpsk_modem *modem);
+void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
 
-size_t bpsk_modem_max_modulation_buffer_length(bpsk_modem *modem);
+size_t bpsk_modem_max_modulation_buffer_length(void *modem);
 
-void bpsk_modem_destroy(bpsk_modem *modem);
+void bpsk_modem_destroy(void *modem);
 
 #endif /* DSP_BPSK_MODEM_H_ */

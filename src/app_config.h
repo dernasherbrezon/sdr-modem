@@ -13,6 +13,9 @@
 
 #define MODEM_TYPE_NONE 0
 #define MODEM_TYPE_GFSK 1
+#define MODEM_TYPE_BPSK 2
+#define MODEM_TYPE_DPSK 3
+#define MODEM_TYPE_SDPSK 4
 
 #define FRAMING_TYPE_NONE 0
 
