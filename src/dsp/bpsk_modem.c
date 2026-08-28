@@ -34,6 +34,12 @@ struct bpsk_modem_t {
   float complex *resampler_tx_output;
   size_t resampler_tx_output_len;
 
+  // automatic gain control: normalizes input signal amplitude ahead of the symbol
+  // synchronizer, since symsync's timing error detector assumes a roughly constant envelope
+  agc_crcf rx_agc;
+  float complex *agc_output;
+  size_t agc_output_len;
+
   // matched RRC filter + symbol timing recovery (Mueller & Muller-style timing error detector),
   // realized from an RRC prototype internally by liquid-dsp
   symsync_crcf symbol_sync;
@@ -54,6 +60,8 @@ struct bpsk_modem_t {
   float complex tx_prev_symbol;
   float complex rx_prev_symbol;
 
+  // soft-decision bits: one signed byte per demodulated bit. sign indicates the hard decision
+  // (>=0 -> 1, <0 -> 0) and magnitude indicates confidence, scaled to the full int8_t range
   int8_t *bit_output;
   size_t output_len;
 
@@ -155,6 +163,18 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
   result->bit_output = malloc(sizeof(int8_t) * result->output_len);
 
+  result->agc_output_len = symsync_input_capacity;
+  result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
+  if (result->agc_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
+  }
+  result->rx_agc = agc_crcf_create();
+  if (result->rx_agc == NULL) {
+    bpsk_modem_destroy(result);
+    return -EINVAL;
+  }
+
   result->interp = firinterp_crcf_create_prototype(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, 0.0f);
   if (result->interp == NULL) {
     bpsk_modem_destroy(result);
@@ -213,8 +233,10 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     symsync_input_len = resampled_len;
   }
 
+  agc_crcf_execute_block(demod->rx_agc, (float complex *) symsync_input, symsync_input_len, demod->agc_output);
+
   unsigned int num_symbols = 0;
-  symsync_crcf_execute(demod->symbol_sync, (float complex *) symsync_input, symsync_input_len, demod->symsync_output, &num_symbols);
+  symsync_crcf_execute(demod->symbol_sync, demod->agc_output, symsync_input_len, demod->symsync_output, &num_symbols);
 
   if (demod->debug_constellation_file != NULL) {
     fwrite(demod->symsync_output, sizeof(float complex), num_symbols, demod->debug_constellation_file);
@@ -243,13 +265,25 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     nco_crcf_step(demod->costas);
 
     if (demod->type == SYMMETRIC_DIFFERENTIAL) {
+      // no modemcf involved for this type (see field comment above), so the soft metric is
+      // derived directly from the differential detector: cimagf(diff) is ~+-1 for a confident
+      // decision and shrinks toward 0 near the decision boundary, same shape as a soft bit
       float complex diff = mixed * conjf(demod->rx_prev_symbol);
-      demod->bit_output[i] = (cimagf(diff) > 0.0f) ? 1 : 0;
+      float soft = cimagf(diff) * 127.0f;
+      if (soft > 127.0f) {
+        soft = 127.0f;
+      } else if (soft < -127.0f) {
+        soft = -127.0f;
+      }
+      demod->bit_output[i] = (int8_t) soft;
       demod->rx_prev_symbol = mixed;
     } else {
       unsigned int sym = 0;
-      modemcf_demodulate(demod->mod, mixed, &sym);
-      demod->bit_output[i] = (int8_t) sym;
+      unsigned char soft_bit = 0;
+      modemcf_demodulate_soft(demod->mod, mixed, &sym, &soft_bit);
+      // liquid-dsp's soft bit is unsigned [0,255] with 255 = confident 1; recenter to signed
+      // int8_t range so the sign alone recovers the hard decision, matching the branch above
+      demod->bit_output[i] = (int8_t) ((int) soft_bit - 128);
     }
   }
 
@@ -302,6 +336,12 @@ void bpsk_modem_destroy(void *modem_v) {
   bpsk_modem *modem = modem_v;
   if (modem == NULL) {
     return;
+  }
+  if (modem->rx_agc != NULL) {
+    agc_crcf_destroy(modem->rx_agc);
+  }
+  if (modem->agc_output != NULL) {
+    free(modem->agc_output);
   }
   if (modem->symbol_sync != NULL) {
     symsync_crcf_destroy(modem->symbol_sync);

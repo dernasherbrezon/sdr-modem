@@ -33,6 +33,8 @@ typedef struct {
 // before the interpolating filter (modulate).
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem);
 
+// output is soft-decision bits, one signed byte per bit: sign gives the hard decision (>=0 -> 1,
+// < 0 -> 0) and magnitude gives confidence, scaled to the full int8_t range
 void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 
 void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
