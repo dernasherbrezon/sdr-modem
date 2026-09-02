@@ -72,6 +72,8 @@ struct bpsk_modem_t {
   float complex *modulation_output;
 
   FILE *debug_constellation_file;
+  float complex *debug_constellation;
+  size_t debug_constellation_len;
 };
 
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
@@ -161,7 +163,15 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->output_len = symsync_input_capacity;
   result->symsync_output_len = symsync_input_capacity;
   result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
+  if (result->symsync_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
+  }
   result->bit_output = malloc(sizeof(int8_t) * result->output_len);
+  if (result->bit_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
+  }
 
   result->agc_output_len = symsync_input_capacity;
   result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
@@ -204,6 +214,12 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
       bpsk_modem_destroy(result);
       return -1;
     }
+    result->debug_constellation_len = result->symsync_output_len;
+    result->debug_constellation = malloc(sizeof(float complex) * result->debug_constellation_len);
+    if (result->debug_constellation == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
   }
 
   *modem = result;
@@ -238,13 +254,13 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
   unsigned int num_symbols = 0;
   symsync_crcf_execute(demod->symbol_sync, demod->agc_output, symsync_input_len, demod->symsync_output, &num_symbols);
 
-  if (demod->debug_constellation_file != NULL) {
-    fwrite(demod->symsync_output, sizeof(float complex), num_symbols, demod->debug_constellation_file);
-  }
-
   for (unsigned int i = 0; i < num_symbols; i++) {
-    float complex mixed;
+    float complex mixed; // = demod->symsync_output[i];
     nco_crcf_mix_down(demod->costas, demod->symsync_output[i], &mixed);
+
+    if (demod->debug_constellation != NULL) {
+      demod->debug_constellation[i] = mixed;
+    }
 
     float phase_error;
     if (demod->type == SYMMETRIC_DIFFERENTIAL) {
@@ -285,6 +301,10 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
       // int8_t range so the sign alone recovers the hard decision, matching the branch above
       demod->bit_output[i] = (int8_t) ((int) soft_bit - 128);
     }
+  }
+
+  if (demod->debug_constellation_file != NULL && demod->debug_constellation != NULL) {
+    fwrite(demod->debug_constellation, sizeof(float complex), num_symbols, demod->debug_constellation_file);
   }
 
   *output = demod->bit_output;
