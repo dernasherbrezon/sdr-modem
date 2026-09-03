@@ -20,6 +20,22 @@ message psk_modem_settings {
     uint32 symsync_filter_bank_size = 8;
 }
 
+// PCM/PSK/PM: bits BPSK-modulate a subcarrier, and that subcarrier waveform phase-modulates the
+// RF carrier. Shares the psk_modem_settings fields (they configure the inner subcarrier BPSK
+// modem) plus the fields specific to the outer phase modulation.
+message psk_pm_modem_settings {
+    uint64 center_freq = 1;
+    uint64 sample_rate = 2;
+    uint32 baud_rate = 3;
+    float rrc_beta = 4;
+    uint32 rrc_delay = 5;
+    float costas_bandwidth = 6;
+    uint32 symsync_filter_bank_size = 7;
+    uint32 subcarrier_frequency = 8;
+    float modulation_index = 9;
+    float carrier_pll_bandwidth = 10;
+}
+
 message none_framing {
 }
 
@@ -30,6 +46,7 @@ message ModemRequest {
         psk_modem_settings dpsk = 3;
         psk_modem_settings sdpsk = 4;
         psk_modem_settings oqpsk = 5;
+        psk_pm_modem_settings psk_pm = 6;
     }
     oneof framing {
         none_framing none = 9;

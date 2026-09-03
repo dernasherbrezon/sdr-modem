@@ -5,6 +5,7 @@
 #include "gfsk_modem.h"
 #include "bpsk_modem.h"
 #include "oqpsk_modem.h"
+#include "psk_pm_modem.h"
 
 // hardcoded per design: half-band decimator stop-band attenuation
 #define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
@@ -24,6 +25,8 @@ static uint64_t modem_get_sample_rate(ModemRequest *req) {
       return req->bpsk->sample_rate;
     case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
       return req->oqpsk->sample_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->sample_rate;
     default:
       return 0;
   }
@@ -40,6 +43,8 @@ uint64_t modem_request_get_center_freq(const struct ModemRequest *req) {
       return req->bpsk->center_freq;
     case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
       return req->oqpsk->center_freq;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->center_freq;
     default:
       return 0;
   }
@@ -59,6 +64,8 @@ uint32_t modem_request_get_baud_rate(const struct ModemRequest *req) {
       return req->bpsk->baud_rate;
     case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
       return req->oqpsk->baud_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->baud_rate;
     default:
       return 0;
   }
@@ -74,6 +81,10 @@ static uint32_t modem_get_bandwidth(ModemRequest *req) {
       return (uint32_t) ((1 + req->bpsk->rrc_beta) * req->bpsk->baud_rate);
     case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
       return (uint32_t) ((1 + req->oqpsk->rrc_beta) * req->oqpsk->baud_rate);
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      // occupied bandwidth spans the subcarrier tone on both sides of the (suppressed) carrier,
+      // plus the subcarrier's own RRC-shaped sidebands
+      return 2 * (req->psk_pm->subcarrier_frequency + (uint32_t) ((1 + req->psk_pm->rrc_beta) * req->psk_pm->baud_rate));
     default:
       return 0;
   }
@@ -139,6 +150,20 @@ static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint3
   settings.rrc_delay = req->rrc_delay;
   settings.costas_bandwidth = req->costas_bandwidth;
   return oqpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
+}
+
+static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, psk_pm_modem **modem) {
+  psk_pm_modem_settings settings = {0};
+  settings.sample_rate = sample_rate;
+  settings.baud_rate = req->baud_rate;
+  settings.rrc_beta = req->rrc_beta;
+  settings.rrc_delay = req->rrc_delay;
+  settings.costas_bandwidth = req->costas_bandwidth;
+  settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
+  settings.subcarrier_frequency = req->subcarrier_frequency;
+  settings.modulation_index = req->modulation_index;
+  settings.carrier_pll_bandwidth = req->carrier_pll_bandwidth;
+  return psk_pm_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
 }
 
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem) {
@@ -214,6 +239,16 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->demodulate = oqpsk_modem_demodulate;
     result->max_modulation_buffer_length = oqpsk_modem_max_modulation_buffer_length;
     result->destroy = oqpsk_modem_destroy;
+  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
+    code = modem_create_psk_pm(req->psk_pm, decimated_sample_rate, decimated_buffer_length, debug_constellation_file, (psk_pm_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
+    result->modulate = psk_pm_modem_modulate;
+    result->demodulate = psk_pm_modem_demodulate;
+    result->max_modulation_buffer_length = psk_pm_modem_max_modulation_buffer_length;
+    result->destroy = psk_pm_modem_destroy;
   } else {
     fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
     code = -1;

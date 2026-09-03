@@ -40,7 +40,7 @@ struct sdr_modem_t {
   FILE *debug_baseband_file;
 };
 
-// generic accessors for the fields common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk).
+// generic accessors for the fields common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk/psk_pm).
 // return 0 if req->modem_settings_case is MODEM_REQUEST__MODEM_SETTINGS__NOT_SET or unrecognized.
 uint64_t modem_request_get_center_freq(const struct ModemRequest *req);
 
@@ -51,7 +51,7 @@ uint32_t modem_request_get_baud_rate(const struct ModemRequest *req);
 // freq_offset_file may be NULL, in which case no frequency correction is applied
 // debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
 // debug_constellation_file may be NULL, in which case no debug constellation dump is written.
-// only honored by bpsk/dpsk/sdpsk modems.
+// only honored by bpsk/dpsk/sdpsk/oqpsk/psk_pm modems.
 // debug_baseband_file may be NULL, in which case no debug baseband dump is written. rx only.
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem);
 

@@ -31,6 +31,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/oqpsk_modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/psk_pm_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
@@ -115,6 +116,10 @@ target_link_libraries(test_frequency_modulator sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_gfsk_modem COMMAND test_gfsk_modem)
 add_executable(test_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_modem.c)
 target_link_libraries(test_gfsk_modem sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_psk_pm_modem COMMAND test_psk_pm_modem)
+add_executable(test_psk_pm_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_psk_pm_modem.c)
+target_link_libraries(test_psk_pm_modem sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_gaussian_taps COMMAND test_gaussian_taps)
 add_executable(test_gaussian_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gaussian_taps.c)

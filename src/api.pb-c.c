@@ -97,6 +97,51 @@ void   psk_modem_settings__free_unpacked
   assert(message->base.descriptor == &psk_modem_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   psk_pm_modem_settings__init
+                     (PskPmModemSettings         *message)
+{
+  static const PskPmModemSettings init_value = PSK_PM_MODEM_SETTINGS__INIT;
+  *message = init_value;
+}
+size_t psk_pm_modem_settings__get_packed_size
+                     (const PskPmModemSettings *message)
+{
+  assert(message->base.descriptor == &psk_pm_modem_settings__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t psk_pm_modem_settings__pack
+                     (const PskPmModemSettings *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &psk_pm_modem_settings__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t psk_pm_modem_settings__pack_to_buffer
+                     (const PskPmModemSettings *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &psk_pm_modem_settings__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+PskPmModemSettings *
+       psk_pm_modem_settings__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (PskPmModemSettings *)
+     protobuf_c_message_unpack (&psk_pm_modem_settings__descriptor,
+                                allocator, len, data);
+}
+void   psk_pm_modem_settings__free_unpacked
+                     (PskPmModemSettings *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &psk_pm_modem_settings__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   none_framing__init
                      (NoneFraming         *message)
 {
@@ -511,6 +556,161 @@ const ProtobufCMessageDescriptor psk_modem_settings__descriptor =
   (ProtobufCMessageInit) psk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor psk_pm_modem_settings__field_descriptors[10] =
+{
+  {
+    "center_freq",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, center_freq),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "sample_rate",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, sample_rate),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "baud_rate",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, baud_rate),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "rrc_beta",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, rrc_beta),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "rrc_delay",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, rrc_delay),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "costas_bandwidth",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, costas_bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "symsync_filter_bank_size",
+    7,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, symsync_filter_bank_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "subcarrier_frequency",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, subcarrier_frequency),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "modulation_index",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, modulation_index),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "carrier_pll_bandwidth",
+    10,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, carrier_pll_bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned psk_pm_modem_settings__field_indices_by_name[] = {
+  2,   /* field[2] = baud_rate */
+  9,   /* field[9] = carrier_pll_bandwidth */
+  0,   /* field[0] = center_freq */
+  5,   /* field[5] = costas_bandwidth */
+  8,   /* field[8] = modulation_index */
+  3,   /* field[3] = rrc_beta */
+  4,   /* field[4] = rrc_delay */
+  1,   /* field[1] = sample_rate */
+  7,   /* field[7] = subcarrier_frequency */
+  6,   /* field[6] = symsync_filter_bank_size */
+};
+static const ProtobufCIntRange psk_pm_modem_settings__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 10 }
+};
+const ProtobufCMessageDescriptor psk_pm_modem_settings__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "psk_pm_modem_settings",
+  "PskPmModemSettings",
+  "PskPmModemSettings",
+  "",
+  sizeof(PskPmModemSettings),
+  10,
+  psk_pm_modem_settings__field_descriptors,
+  psk_pm_modem_settings__field_indices_by_name,
+  1,  psk_pm_modem_settings__number_ranges,
+  (ProtobufCMessageInit) psk_pm_modem_settings__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 #define none_framing__field_descriptors NULL
 #define none_framing__field_indices_by_name NULL
 #define none_framing__number_ranges NULL
@@ -529,7 +729,7 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
   (ProtobufCMessageInit) none_framing__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor modem_request__field_descriptors[6] =
+static const ProtobufCFieldDescriptor modem_request__field_descriptors[7] =
 {
   {
     "gfsk",
@@ -592,6 +792,18 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[6] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
+    "psk_pm",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(ModemRequest, modem_settings_case),
+    offsetof(ModemRequest, psk_pm),
+    &psk_pm_modem_settings__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
     "none",
     9,
     PROTOBUF_C_LABEL_NONE,
@@ -608,15 +820,16 @@ static const unsigned modem_request__field_indices_by_name[] = {
   1,   /* field[1] = bpsk */
   2,   /* field[2] = dpsk */
   0,   /* field[0] = gfsk */
-  5,   /* field[5] = none */
+  6,   /* field[6] = none */
   4,   /* field[4] = oqpsk */
+  5,   /* field[5] = psk_pm */
   3,   /* field[3] = sdpsk */
 };
 static const ProtobufCIntRange modem_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 9, 5 },
-  { 0, 6 }
+  { 9, 6 },
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor modem_request__descriptor =
 {
@@ -626,7 +839,7 @@ const ProtobufCMessageDescriptor modem_request__descriptor =
   "ModemRequest",
   "",
   sizeof(ModemRequest),
-  6,
+  7,
   modem_request__field_descriptors,
   modem_request__field_indices_by_name,
   2,  modem_request__number_ranges,
