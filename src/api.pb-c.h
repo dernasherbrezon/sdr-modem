@@ -16,7 +16,7 @@ PROTOBUF_C__BEGIN_DECLS
 
 
 typedef struct GfskModemSettings GfskModemSettings;
-typedef struct BpskModemSettings BpskModemSettings;
+typedef struct PskModemSettings PskModemSettings;
 typedef struct NoneFraming NoneFraming;
 typedef struct ModemRequest ModemRequest;
 typedef struct Response Response;
@@ -49,7 +49,7 @@ struct  GfskModemSettings
 , 0, 0, 0, 0, 0, 0, 0 }
 
 
-struct  BpskModemSettings
+struct  PskModemSettings
 {
   ProtobufCMessage base;
   uint64_t center_freq;
@@ -60,8 +60,8 @@ struct  BpskModemSettings
   float costas_bandwidth;
   uint32_t symsync_filter_bank_size;
 };
-#define BPSK_MODEM_SETTINGS__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&bpsk_modem_settings__descriptor) \
+#define PSK_MODEM_SETTINGS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&psk_modem_settings__descriptor) \
 , 0, 0, 0, 0, 0, 0, 0 }
 
 
@@ -79,7 +79,8 @@ typedef enum {
   MODEM_REQUEST__MODEM_SETTINGS_GFSK = 1,
   MODEM_REQUEST__MODEM_SETTINGS_BPSK = 2,
   MODEM_REQUEST__MODEM_SETTINGS_DPSK = 3,
-  MODEM_REQUEST__MODEM_SETTINGS_SDPSK = 4
+  MODEM_REQUEST__MODEM_SETTINGS_SDPSK = 4,
+  MODEM_REQUEST__MODEM_SETTINGS_OQPSK = 5
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MODEM_REQUEST__MODEM_SETTINGS__CASE)
 } ModemRequest__ModemSettingsCase;
 
@@ -94,10 +95,11 @@ struct  ModemRequest
   ProtobufCMessage base;
   ModemRequest__ModemSettingsCase modem_settings_case;
   union {
-    BpskModemSettings *bpsk;
-    BpskModemSettings *dpsk;
+    PskModemSettings *bpsk;
+    PskModemSettings *dpsk;
     GfskModemSettings *gfsk;
-    BpskModemSettings *sdpsk;
+    PskModemSettings *oqpsk;
+    PskModemSettings *sdpsk;
   };
   ModemRequest__FramingCase framing_case;
   union {
@@ -149,24 +151,24 @@ GfskModemSettings *
 void   gfsk_modem_settings__free_unpacked
                      (GfskModemSettings *message,
                       ProtobufCAllocator *allocator);
-/* BpskModemSettings methods */
-void   bpsk_modem_settings__init
-                     (BpskModemSettings         *message);
-size_t bpsk_modem_settings__get_packed_size
-                     (const BpskModemSettings   *message);
-size_t bpsk_modem_settings__pack
-                     (const BpskModemSettings   *message,
+/* PskModemSettings methods */
+void   psk_modem_settings__init
+                     (PskModemSettings         *message);
+size_t psk_modem_settings__get_packed_size
+                     (const PskModemSettings   *message);
+size_t psk_modem_settings__pack
+                     (const PskModemSettings   *message,
                       uint8_t             *out);
-size_t bpsk_modem_settings__pack_to_buffer
-                     (const BpskModemSettings   *message,
+size_t psk_modem_settings__pack_to_buffer
+                     (const PskModemSettings   *message,
                       ProtobufCBuffer     *buffer);
-BpskModemSettings *
-       bpsk_modem_settings__unpack
+PskModemSettings *
+       psk_modem_settings__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   bpsk_modem_settings__free_unpacked
-                     (BpskModemSettings *message,
+void   psk_modem_settings__free_unpacked
+                     (PskModemSettings *message,
                       ProtobufCAllocator *allocator);
 /* NoneFraming methods */
 void   none_framing__init
@@ -249,8 +251,8 @@ void   tx_data__free_unpacked
 typedef void (*GfskModemSettings_Closure)
                  (const GfskModemSettings *message,
                   void *closure_data);
-typedef void (*BpskModemSettings_Closure)
-                 (const BpskModemSettings *message,
+typedef void (*PskModemSettings_Closure)
+                 (const PskModemSettings *message,
                   void *closure_data);
 typedef void (*NoneFraming_Closure)
                  (const NoneFraming *message,
@@ -272,7 +274,7 @@ typedef void (*TxData_Closure)
 
 extern const ProtobufCEnumDescriptor    response_status__descriptor;
 extern const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor;
-extern const ProtobufCMessageDescriptor bpsk_modem_settings__descriptor;
+extern const ProtobufCMessageDescriptor psk_modem_settings__descriptor;
 extern const ProtobufCMessageDescriptor none_framing__descriptor;
 extern const ProtobufCMessageDescriptor modem_request__descriptor;
 extern const ProtobufCMessageDescriptor response__descriptor;

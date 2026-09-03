@@ -52,49 +52,49 @@ void   gfsk_modem_settings__free_unpacked
   assert(message->base.descriptor == &gfsk_modem_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   bpsk_modem_settings__init
-                     (BpskModemSettings         *message)
+void   psk_modem_settings__init
+                     (PskModemSettings         *message)
 {
-  static const BpskModemSettings init_value = BPSK_MODEM_SETTINGS__INIT;
+  static const PskModemSettings init_value = PSK_MODEM_SETTINGS__INIT;
   *message = init_value;
 }
-size_t bpsk_modem_settings__get_packed_size
-                     (const BpskModemSettings *message)
+size_t psk_modem_settings__get_packed_size
+                     (const PskModemSettings *message)
 {
-  assert(message->base.descriptor == &bpsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &psk_modem_settings__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t bpsk_modem_settings__pack
-                     (const BpskModemSettings *message,
+size_t psk_modem_settings__pack
+                     (const PskModemSettings *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &bpsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &psk_modem_settings__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t bpsk_modem_settings__pack_to_buffer
-                     (const BpskModemSettings *message,
+size_t psk_modem_settings__pack_to_buffer
+                     (const PskModemSettings *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &bpsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &psk_modem_settings__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-BpskModemSettings *
-       bpsk_modem_settings__unpack
+PskModemSettings *
+       psk_modem_settings__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (BpskModemSettings *)
-     protobuf_c_message_unpack (&bpsk_modem_settings__descriptor,
+  return (PskModemSettings *)
+     protobuf_c_message_unpack (&psk_modem_settings__descriptor,
                                 allocator, len, data);
 }
-void   bpsk_modem_settings__free_unpacked
-                     (BpskModemSettings *message,
+void   psk_modem_settings__free_unpacked
+                     (PskModemSettings *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &bpsk_modem_settings__descriptor);
+  assert(message->base.descriptor == &psk_modem_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   none_framing__init
@@ -394,7 +394,7 @@ const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor =
   (ProtobufCMessageInit) gfsk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] =
+static const ProtobufCFieldDescriptor psk_modem_settings__field_descriptors[7] =
 {
   {
     "center_freq",
@@ -402,7 +402,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, center_freq),
+    offsetof(PskModemSettings, center_freq),
     NULL,
     NULL,
     0,             /* flags */
@@ -414,7 +414,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT64,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, sample_rate),
+    offsetof(PskModemSettings, sample_rate),
     NULL,
     NULL,
     0,             /* flags */
@@ -426,7 +426,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, baud_rate),
+    offsetof(PskModemSettings, baud_rate),
     NULL,
     NULL,
     0,             /* flags */
@@ -438,7 +438,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_FLOAT,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, rrc_beta),
+    offsetof(PskModemSettings, rrc_beta),
     NULL,
     NULL,
     0,             /* flags */
@@ -450,7 +450,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, rrc_delay),
+    offsetof(PskModemSettings, rrc_delay),
     NULL,
     NULL,
     0,             /* flags */
@@ -462,7 +462,7 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_FLOAT,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, costas_bandwidth),
+    offsetof(PskModemSettings, costas_bandwidth),
     NULL,
     NULL,
     0,             /* flags */
@@ -474,14 +474,14 @@ static const ProtobufCFieldDescriptor bpsk_modem_settings__field_descriptors[7] 
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(BpskModemSettings, symsync_filter_bank_size),
+    offsetof(PskModemSettings, symsync_filter_bank_size),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned bpsk_modem_settings__field_indices_by_name[] = {
+static const unsigned psk_modem_settings__field_indices_by_name[] = {
   2,   /* field[2] = baud_rate */
   0,   /* field[0] = center_freq */
   5,   /* field[5] = costas_bandwidth */
@@ -490,25 +490,25 @@ static const unsigned bpsk_modem_settings__field_indices_by_name[] = {
   1,   /* field[1] = sample_rate */
   6,   /* field[6] = symsync_filter_bank_size */
 };
-static const ProtobufCIntRange bpsk_modem_settings__number_ranges[2 + 1] =
+static const ProtobufCIntRange psk_modem_settings__number_ranges[2 + 1] =
 {
   { 1, 0 },
   { 4, 2 },
   { 0, 7 }
 };
-const ProtobufCMessageDescriptor bpsk_modem_settings__descriptor =
+const ProtobufCMessageDescriptor psk_modem_settings__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "bpsk_modem_settings",
-  "BpskModemSettings",
-  "BpskModemSettings",
+  "psk_modem_settings",
+  "PskModemSettings",
+  "PskModemSettings",
   "",
-  sizeof(BpskModemSettings),
+  sizeof(PskModemSettings),
   7,
-  bpsk_modem_settings__field_descriptors,
-  bpsk_modem_settings__field_indices_by_name,
-  2,  bpsk_modem_settings__number_ranges,
-  (ProtobufCMessageInit) bpsk_modem_settings__init,
+  psk_modem_settings__field_descriptors,
+  psk_modem_settings__field_indices_by_name,
+  2,  psk_modem_settings__number_ranges,
+  (ProtobufCMessageInit) psk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 #define none_framing__field_descriptors NULL
@@ -529,7 +529,7 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
   (ProtobufCMessageInit) none_framing__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor modem_request__field_descriptors[5] =
+static const ProtobufCFieldDescriptor modem_request__field_descriptors[6] =
 {
   {
     "gfsk",
@@ -550,7 +550,7 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[5] =
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(ModemRequest, modem_settings_case),
     offsetof(ModemRequest, bpsk),
-    &bpsk_modem_settings__descriptor,
+    &psk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -562,7 +562,7 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[5] =
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(ModemRequest, modem_settings_case),
     offsetof(ModemRequest, dpsk),
-    &bpsk_modem_settings__descriptor,
+    &psk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -574,7 +574,19 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[5] =
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(ModemRequest, modem_settings_case),
     offsetof(ModemRequest, sdpsk),
-    &bpsk_modem_settings__descriptor,
+    &psk_modem_settings__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "oqpsk",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(ModemRequest, modem_settings_case),
+    offsetof(ModemRequest, oqpsk),
+    &psk_modem_settings__descriptor,
     NULL,
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -596,14 +608,15 @@ static const unsigned modem_request__field_indices_by_name[] = {
   1,   /* field[1] = bpsk */
   2,   /* field[2] = dpsk */
   0,   /* field[0] = gfsk */
-  4,   /* field[4] = none */
+  5,   /* field[5] = none */
+  4,   /* field[4] = oqpsk */
   3,   /* field[3] = sdpsk */
 };
 static const ProtobufCIntRange modem_request__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 9, 4 },
-  { 0, 5 }
+  { 9, 5 },
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor modem_request__descriptor =
 {
@@ -613,7 +626,7 @@ const ProtobufCMessageDescriptor modem_request__descriptor =
   "ModemRequest",
   "",
   sizeof(ModemRequest),
-  5,
+  6,
   modem_request__field_descriptors,
   modem_request__field_indices_by_name,
   2,  modem_request__number_ranges,

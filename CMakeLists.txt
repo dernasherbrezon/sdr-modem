@@ -30,6 +30,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/oqpsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c

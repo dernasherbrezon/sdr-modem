@@ -4,6 +4,7 @@
 #include <math.h>
 #include "gfsk_modem.h"
 #include "bpsk_modem.h"
+#include "oqpsk_modem.h"
 
 // hardcoded per design: half-band decimator stop-band attenuation
 #define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
@@ -21,6 +22,8 @@ static uint64_t modem_get_sample_rate(ModemRequest *req) {
     case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
       // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
       return req->bpsk->sample_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      return req->oqpsk->sample_rate;
     default:
       return 0;
   }
@@ -34,6 +37,8 @@ static uint32_t modem_get_bandwidth(ModemRequest *req) {
     case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
     case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
       return (uint32_t) ((1 + req->bpsk->rrc_beta) * req->bpsk->baud_rate);
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      return (uint32_t) ((1 + req->oqpsk->rrc_beta) * req->oqpsk->baud_rate);
     default:
       return 0;
   }
@@ -79,7 +84,7 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
-static int modem_create_bpsk_family(BpskModemSettings *req, uint64_t sample_rate, bpsk_modem_type type, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
+static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, bpsk_modem_type type, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
   bpsk_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
   settings.baud_rate = req->baud_rate;
@@ -89,6 +94,16 @@ static int modem_create_bpsk_family(BpskModemSettings *req, uint64_t sample_rate
   settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
   settings.type = type;
   return bpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
+}
+
+static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, oqpsk_modem **modem) {
+  oqpsk_modem_settings settings = {0};
+  settings.sample_rate = sample_rate;
+  settings.baud_rate = req->baud_rate;
+  settings.rrc_beta = req->rrc_beta;
+  settings.rrc_delay = req->rrc_delay;
+  settings.costas_bandwidth = req->costas_bandwidth;
+  return oqpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
 }
 
 int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem) {
@@ -154,6 +169,16 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->demodulate = bpsk_modem_demodulate;
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
+  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_OQPSK) {
+    code = modem_create_oqpsk(req->oqpsk, decimated_sample_rate, decimated_buffer_length, debug_constellation_file, (oqpsk_modem **) &result->modem);
+    if (code != 0) {
+      modem_destroy(result);
+      return code;
+    }
+    result->modulate = oqpsk_modem_modulate;
+    result->demodulate = oqpsk_modem_demodulate;
+    result->max_modulation_buffer_length = oqpsk_modem_max_modulation_buffer_length;
+    result->destroy = oqpsk_modem_destroy;
   } else {
     fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
     code = -1;

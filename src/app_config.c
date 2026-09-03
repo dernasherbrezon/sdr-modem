@@ -117,18 +117,18 @@ static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskMod
   return 0;
 }
 
-// bpsk, dpsk and sdpsk all share the same settings shape (BpskModemSettings), so config keys and
+// bpsk, dpsk and sdpsk all share the same settings shape (PskModemSettings), so config keys and
 // cli flags for all three are named with a common "psk" prefix rather than being duplicated per type
-static int app_config_merge_psk_modem_settings(BpskModemSettings *from, BpskModemSettings **to) {
+static int app_config_merge_psk_modem_settings(PskModemSettings *from, PskModemSettings **to) {
   if (*to == NULL) {
-    *to = malloc(sizeof(BpskModemSettings));
+    *to = malloc(sizeof(PskModemSettings));
     if (*to == NULL) {
       return -ENOMEM;
     }
-    bpsk_modem_settings__init(*to);
+    psk_modem_settings__init(*to);
   }
 
-  BpskModemSettings *settings = *to;
+  PskModemSettings *settings = *to;
   //TODO need a better way to determine if property was set
   if (from->sample_rate != 0) {
     settings->sample_rate = from->sample_rate;
@@ -155,16 +155,16 @@ static int app_config_merge_psk_modem_settings(BpskModemSettings *from, BpskMode
   return 0;
 }
 
-static int app_config_load_psk_from_file(config_t *libconfig, const char *prefix, BpskModemSettings **to) {
+static int app_config_load_psk_from_file(config_t *libconfig, const char *prefix, PskModemSettings **to) {
   if (*to == NULL) {
-    *to = malloc(sizeof(BpskModemSettings));
+    *to = malloc(sizeof(PskModemSettings));
     if (*to == NULL) {
       return -ENOMEM;
     }
-    bpsk_modem_settings__init(*to);
+    psk_modem_settings__init(*to);
   }
 
-  BpskModemSettings *settings = *to;
+  PskModemSettings *settings = *to;
 
   char name[64];
   const config_setting_t *setting;
@@ -570,8 +570,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   // then discard if different type was selected
   GfskModemSettings tx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
   GfskModemSettings rx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
-  BpskModemSettings tx_psk_settings = BPSK_MODEM_SETTINGS__INIT;
-  BpskModemSettings rx_psk_settings = BPSK_MODEM_SETTINGS__INIT;
+  PskModemSettings tx_psk_settings = PSK_MODEM_SETTINGS__INIT;
+  PskModemSettings rx_psk_settings = PSK_MODEM_SETTINGS__INIT;
 
   optind = 1;
   opterr = 1;
@@ -959,7 +959,7 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>invalid rx_modem\n");
     return -1;
   }
-  BpskModemSettings *bpsk_settings = NULL;
+  PskModemSettings *bpsk_settings = NULL;
   switch (result->rx_req.modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
       bpsk_settings = result->rx_req.bpsk;
