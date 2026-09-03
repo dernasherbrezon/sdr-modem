@@ -29,6 +29,41 @@ static uint64_t modem_get_sample_rate(ModemRequest *req) {
   }
 }
 
+uint64_t modem_request_get_center_freq(const struct ModemRequest *req) {
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->center_freq;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
+      return req->bpsk->center_freq;
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      return req->oqpsk->center_freq;
+    default:
+      return 0;
+  }
+}
+
+uint64_t modem_request_get_sample_rate(const struct ModemRequest *req) {
+  return modem_get_sample_rate((ModemRequest *) req);
+}
+
+uint32_t modem_request_get_baud_rate(const struct ModemRequest *req) {
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->baud_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      return req->bpsk->baud_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      return req->oqpsk->baud_rate;
+    default:
+      return 0;
+  }
+}
+
 static uint32_t modem_get_bandwidth(ModemRequest *req) {
   switch (req->modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS_GFSK:

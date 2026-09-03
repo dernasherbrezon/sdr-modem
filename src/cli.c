@@ -28,8 +28,8 @@ struct cli_t {
 static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
   if (config->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
-      .rx_center_freq = config->rx_req.gfsk->center_freq,
-      .rx_sample_rate = config->rx_req.gfsk->sample_rate
+      .rx_center_freq = modem_request_get_center_freq(&config->rx_req),
+      .rx_sample_rate = modem_request_get_sample_rate(&config->rx_req)
     };
     int code = sdr_server_client_create(1, &rx, config->rx_sdr_server_address, config->rx_sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->rx_device);
     if (code != 0) {
@@ -40,8 +40,8 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
     if (rx_config == NULL) {
       return -1;
     }
-    rx_config->sample_rate = config->rx_req.gfsk->sample_rate;
-    rx_config->center_freq = config->rx_req.gfsk->center_freq;
+    rx_config->sample_rate = modem_request_get_sample_rate(&config->rx_req);
+    rx_config->center_freq = modem_request_get_center_freq(&config->rx_req);
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     rx_config->manual_gain = config->rx_plutosdr_gain;
     int code = plutosdr_create(1, config->tx_sdr_type == SDR_TYPE_PLUTOSDR, rx_config, NULL, config->tx_plutosdr_timeout_millis, config->buffer_size, config->iio, &result->rx_device);
@@ -49,7 +49,7 @@ static int cli_create_rx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->rx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, config->rx_file, config->rx_file_format, NULL, config->tx_file_format, config->rx_req.gfsk->sample_rate, config->buffer_size, &result->rx_device);
+    int code = file_source_create(1, config->rx_file, config->rx_file_format, NULL, config->tx_file_format, modem_request_get_sample_rate(&config->rx_req), config->buffer_size, &result->rx_device);
     if (code != 0) {
       return -1;
     }
@@ -69,8 +69,8 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
     if (tx_config == NULL) {
       return -1;
     }
-    tx_config->sample_rate = config->tx_req.gfsk->sample_rate;
-    tx_config->center_freq = config->tx_req.gfsk->center_freq;
+    tx_config->sample_rate = modem_request_get_sample_rate(&config->tx_req);
+    tx_config->center_freq = modem_request_get_center_freq(&config->tx_req);
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = config->tx_plutosdr_gain;
     int code = plutosdr_create(1, false, NULL, tx_config, config->tx_plutosdr_timeout_millis, max_modulation_buffer_length, config->iio, &result->tx_device);
@@ -78,7 +78,7 @@ static int cli_create_tx_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->tx_sdr_type == SDR_TYPE_FILE) {
-    int code = file_source_create(1, NULL, config->rx_file_format, config->tx_file, config->tx_file_format, config->tx_req.gfsk->sample_rate, max_modulation_buffer_length, &result->tx_device);
+    int code = file_source_create(1, NULL, config->rx_file_format, config->tx_file, config->tx_file_format, modem_request_get_sample_rate(&config->tx_req), max_modulation_buffer_length, &result->tx_device);
     if (code != 0) {
       return -1;
     }

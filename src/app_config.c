@@ -73,6 +73,8 @@ static int app_config_convert_modem_type(const char *type) {
     return MODEM_TYPE_DPSK;
   } else if (strcmp(type, "sdpsk") == 0) {
     return MODEM_TYPE_SDPSK;
+  } else if (strcmp(type, "oqpsk") == 0) {
+    return MODEM_TYPE_OQPSK;
   }
   return -1;
 }
@@ -375,6 +377,12 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     if (code != 0) {
       return code;
     }
+  } else if (result->rx_modem == MODEM_TYPE_OQPSK) {
+    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    code = app_config_load_psk_from_file(libconfig, "rx", &result->rx_req.oqpsk);
+    if (code != 0) {
+      return code;
+    }
   }
   setting = config_lookup(libconfig, "rx_framing");
   if (setting != NULL) {
@@ -423,6 +431,12 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   } else if (result->tx_modem == MODEM_TYPE_SDPSK) {
     result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
     code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.sdpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->tx_modem == MODEM_TYPE_OQPSK) {
+    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.oqpsk);
     if (code != 0) {
       return code;
     }
@@ -797,6 +811,12 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     if (code != 0) {
       return code;
     }
+  } else if (result->tx_modem == MODEM_TYPE_OQPSK) {
+    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    int code = app_config_merge_psk_modem_settings(&tx_psk_settings, &result->tx_req.oqpsk);
+    if (code != 0) {
+      return code;
+    }
   }
   if (result->rx_modem == MODEM_TYPE_GFSK) {
     result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
@@ -819,6 +839,12 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   } else if (result->rx_modem == MODEM_TYPE_SDPSK) {
     result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
     int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.sdpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->rx_modem == MODEM_TYPE_OQPSK) {
+    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.oqpsk);
     if (code != 0) {
       return code;
     }
@@ -969,6 +995,9 @@ static int app_config_validate_and_log(app_config *result) {
       break;
     case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
       bpsk_settings = result->rx_req.sdpsk;
+      break;
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      bpsk_settings = result->rx_req.oqpsk;
       break;
     default:
       // do nothing
