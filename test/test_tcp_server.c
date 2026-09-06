@@ -103,11 +103,11 @@ void init_server_with_plutosdr_support(size_t expected_tx_len) {
   TEST_ASSERT(expected_tx != NULL);
   code = iio_lib_mock_create(NULL, 0, expected_tx, &config->iio);
   TEST_ASSERT_EQUAL_INT(0, code);
-  config->tx_sdr_type = SDR_TYPE_PLUTOSDR;
+  config->sdr_type = SDR_TYPE_PLUTOSDR;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
-  code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
@@ -229,10 +229,9 @@ void test_invalid_requests() {
   //make server timeout a bit less than client's
   //this will allow to read response for partial requests
   config->read_timeout_seconds = 2;
-  config->tx_sdr_type = SDR_TYPE_NONE;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
-  code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   reconnect_client();
@@ -275,7 +274,7 @@ void test_invalid_requests() {
   tcp_server_destroy(server);
   tcp_server_join_thread(server);
   server = NULL;
-  config->tx_sdr_type = SDR_TYPE_PLUTOSDR;
+  config->sdr_type = SDR_TYPE_PLUTOSDR;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -314,7 +313,7 @@ void test_unable_to_connect_to_sdr_server() {
   int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // non-existing port
-  config->rx_sdr_server_port = 9999;
+  config->sdr_server_port = 9999;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -334,7 +333,7 @@ void test_multiple_clients() {
   config->read_timeout_seconds = 2;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
-  code = sdr_server_mock_create(config->rx_sdr_server_address, config->rx_sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   uint32_t batch_size = 256;

@@ -23,21 +23,15 @@ void test_invalid_timeout() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-void test_unknown_tx_sdr_type() {
-  char *argv[] = {"test_app_config", "--config", "invalid.tx_sdr_type.conf", NULL};
-  int code = app_config_create(3, argv, &config);
-  TEST_ASSERT_EQUAL_INT(-1, code);
-}
-
-void test_unknown_rx_sdr_type() {
-  char *argv[] = {"test_app_config", "--config", "invalid.rx_sdr_type.conf", NULL};
+void test_unknown_sdr_type() {
+  char *argv[] = {"test_app_config", "--config", "invalid.sdr_type.conf", NULL};
   int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_minimal_config() {
-  char *argv[] = {"test_app_config", "--config", "minimal.conf", "--rx_sdr_type", "none", NULL};
-  int code = app_config_create(5, argv, &config);
+  char *argv[] = {"test_app_config", "--config", "minimal.conf", "--direction", "rx", "--sdr_type", "sdr-server", NULL};
+  int code = app_config_create(7, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
@@ -45,10 +39,10 @@ void test_pluto_enabled() {
   char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", NULL};
   int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(SDR_TYPE_PLUTOSDR, config->tx_sdr_type);
+  TEST_ASSERT_EQUAL_INT(SDR_TYPE_PLUTOSDR, config->sdr_type);
   TEST_ASSERT(config->iio != NULL);
-  TEST_ASSERT(fabsl(10.0 - config->tx_plutosdr_gain) < 0.001);
-  TEST_ASSERT_EQUAL_INT(20000, config->tx_plutosdr_timeout_millis);
+  TEST_ASSERT(fabsl(10.0 - config->plutosdr_gain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(20000, config->plutosdr_timeout_millis);
 }
 
 void test_success() {
@@ -59,12 +53,11 @@ void test_success() {
   TEST_ASSERT_EQUAL_INT(8091, config->port);
   TEST_ASSERT_EQUAL_INT(10, config->read_timeout_seconds);
   TEST_ASSERT_EQUAL_INT(2048, config->buffer_size);
-  TEST_ASSERT_EQUAL_INT(SDR_TYPE_SDR_SERVER, config->rx_sdr_type);
+  TEST_ASSERT_EQUAL_INT(SDR_TYPE_SDR_SERVER, config->sdr_type);
   TEST_ASSERT_EQUAL_INT(64, config->queue_size);
-  TEST_ASSERT_EQUAL_INT(SDR_TYPE_NONE, config->tx_sdr_type);
   TEST_ASSERT(config->iio == NULL);
-  TEST_ASSERT(fabsl(0.0 - config->tx_plutosdr_gain) < 0.001);
-  TEST_ASSERT_EQUAL_INT(0, config->tx_plutosdr_timeout_millis);
+  TEST_ASSERT(fabsl(0.0 - config->plutosdr_gain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(0, config->plutosdr_timeout_millis);
 }
 
 void test_override_from_cli() {
@@ -82,54 +75,54 @@ void test_override_with_invalid() {
 }
 
 void test_invalid() {
-  char *argv1[] = {"test_app_config", "--rx_sdr_type", "file", "--bind_address", "127.0.0.1", NULL};
+  char *argv1[] = {"test_app_config", "--sdr_type", "file", "--bind_address", "127.0.0.1", NULL};
   int code = app_config_create(5, argv1, &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  char *argv2[] = {"test_app_config", "--rx_sdr_type", "file", NULL};
+  char *argv2[] = {"test_app_config", "--sdr_type", "file", NULL};
   code = app_config_create(3, argv2, &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_merge_gfsk_settings() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "/non-existing-directory/in.cf32", "--output", "/some-path", "--tx_sdr_type", "none", "--rx_gfsk_baud_rate", "4800", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "/non-existing-directory/in.cf32", "--output", "/some-path", "--gfsk_baud_rate", "4800", NULL};
   int code = app_config_create(13, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(4800, config->rx_req.gfsk->baud_rate);
+  TEST_ASSERT_EQUAL_INT(4800, config->req.gfsk->baud_rate);
 }
 
 void test_guess_rx_file_format_cf32() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->rx_file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->file_format);
 }
 
 void test_guess_rx_file_format_cf32_gz() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cf32.gz", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32.gz", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->rx_file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->file_format);
 }
 
 void test_guess_rx_file_format_cu8() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.cu8", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cu8", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->rx_file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
 }
 
 void test_guess_rx_file_format_unknown() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--rx_sdr_type", "file", "--rx_file", "in.raw", "--output", "/some-path", "--tx_sdr_type", "none", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.raw", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_guess_tx_file_format_cu8() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--tx_sdr_type", "file", "--tx_file", "out.cu8", "--input", "/some-path", "--rx_sdr_type", "none", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--file", "out.cu8", "--input", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->tx_file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
 }
 
 void tearDown() {
@@ -148,8 +141,7 @@ int main(void) {
   RUN_TEST(test_invalid_timeout);
   RUN_TEST(test_invalid_format);
   RUN_TEST(test_missing_file);
-  RUN_TEST(test_unknown_tx_sdr_type);
-  RUN_TEST(test_unknown_rx_sdr_type);
+  RUN_TEST(test_unknown_sdr_type);
   RUN_TEST(test_pluto_enabled);
   RUN_TEST(test_override_from_cli);
   RUN_TEST(test_override_with_invalid);
