@@ -88,6 +88,15 @@ static int app_config_convert_framing_type(const char *type) {
   return -1;
 }
 
+static int app_config_convert_direction(const char *direction) {
+  if (strcmp(direction, "rx") == 0) {
+    return DIRECTION_RX;
+  } else if (strcmp(direction, "tx") == 0) {
+    return DIRECTION_TX;
+  }
+  return -1;
+}
+
 static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskModemSettings **to) {
   if (*to == NULL) {
     *to = malloc(sizeof(GfskModemSettings));
@@ -204,7 +213,7 @@ static int app_config_merge_psk_pm_modem_settings(PskPmModemSettings *from, PskP
   return 0;
 }
 
-static int app_config_load_psk_from_file(config_t *libconfig, const char *prefix, PskModemSettings **to) {
+static int app_config_load_psk_from_file(config_t *libconfig, PskModemSettings **to) {
   if (*to == NULL) {
     *to = malloc(sizeof(PskModemSettings));
     if (*to == NULL) {
@@ -215,41 +224,33 @@ static int app_config_load_psk_from_file(config_t *libconfig, const char *prefix
 
   PskModemSettings *settings = *to;
 
-  char name[64];
   const config_setting_t *setting;
 
-  snprintf(name, sizeof(name), "%s_psk_center_freq", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_center_freq");
   if (setting != NULL) {
     settings->center_freq = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_sample_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_sample_rate");
   if (setting != NULL) {
     settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_baud_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_rrc_beta", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_rrc_beta");
   if (setting != NULL) {
     settings->rrc_beta = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_rrc_delay", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_rrc_delay");
   if (setting != NULL) {
     settings->rrc_delay = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_costas_bandwidth", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_costas_bandwidth");
   if (setting != NULL) {
     settings->costas_bandwidth = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_symsync_filter_bank_size", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_symsync_filter_bank_size");
   if (setting != NULL) {
     settings->symsync_filter_bank_size = (uint32_t) config_setting_get_int(setting);
   }
@@ -257,7 +258,7 @@ static int app_config_load_psk_from_file(config_t *libconfig, const char *prefix
   return 0;
 }
 
-static int app_config_load_gfsk_from_file(config_t *libconfig, const char *prefix, GfskModemSettings **to) {
+static int app_config_load_gfsk_from_file(config_t *libconfig, GfskModemSettings **to) {
   if (*to == NULL) {
     *to = malloc(sizeof(GfskModemSettings));
     if (*to == NULL) {
@@ -268,41 +269,33 @@ static int app_config_load_gfsk_from_file(config_t *libconfig, const char *prefi
 
   GfskModemSettings *settings = *to;
 
-  char name[64];
   const config_setting_t *setting;
 
-  snprintf(name, sizeof(name), "%s_gfsk_center_freq", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_center_freq");
   if (setting != NULL) {
     settings->center_freq = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_sample_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_sample_rate");
   if (setting != NULL) {
     settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_baud_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_deviation", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_deviation");
   if (setting != NULL) {
     settings->deviation = config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_bandwidth", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_bandwidth");
   if (setting != NULL) {
     settings->bandwidth = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_bt", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_bt");
   if (setting != NULL) {
     settings->bt = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_gfsk_use_dc_block", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "gfsk_use_dc_block");
   if (setting != NULL) {
     settings->use_dc_block = config_setting_get_bool(setting) ? true : false;
   }
@@ -310,7 +303,7 @@ static int app_config_load_gfsk_from_file(config_t *libconfig, const char *prefi
   return 0;
 }
 
-static int app_config_load_psk_pm_from_file(config_t *libconfig, const char *prefix, PskPmModemSettings **to) {
+static int app_config_load_psk_pm_from_file(config_t *libconfig, PskPmModemSettings **to) {
   if (*to == NULL) {
     *to = malloc(sizeof(PskPmModemSettings));
     if (*to == NULL) {
@@ -321,56 +314,45 @@ static int app_config_load_psk_pm_from_file(config_t *libconfig, const char *pre
 
   PskPmModemSettings *settings = *to;
 
-  char name[64];
   const config_setting_t *setting;
 
-  snprintf(name, sizeof(name), "%s_psk_pm_center_freq", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_center_freq");
   if (setting != NULL) {
     settings->center_freq = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_sample_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_sample_rate");
   if (setting != NULL) {
     settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_baud_rate", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_rrc_beta", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_rrc_beta");
   if (setting != NULL) {
     settings->rrc_beta = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_rrc_delay", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_rrc_delay");
   if (setting != NULL) {
     settings->rrc_delay = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_costas_bandwidth", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_costas_bandwidth");
   if (setting != NULL) {
     settings->costas_bandwidth = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_symsync_filter_bank_size", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_symsync_filter_bank_size");
   if (setting != NULL) {
     settings->symsync_filter_bank_size = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_subcarrier_frequency", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_subcarrier_frequency");
   if (setting != NULL) {
     settings->subcarrier_frequency = (uint32_t) config_setting_get_int(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_modulation_index", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_modulation_index");
   if (setting != NULL) {
     settings->modulation_index = config_setting_get_float(setting);
   }
-  snprintf(name, sizeof(name), "%s_psk_pm_carrier_pll_bandwidth", prefix);
-  setting = config_lookup(libconfig, name);
+  setting = config_lookup(libconfig, "psk_pm_carrier_pll_bandwidth");
   if (setting != NULL) {
     settings->carrier_pll_bandwidth = config_setting_get_float(setting);
   }
@@ -412,171 +394,105 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     result->queue_size = config_setting_get_int(setting);
   }
 
-  setting = config_lookup(libconfig, "rx_sdr_type");
+  setting = config_lookup(libconfig, "direction");
   if (setting != NULL) {
-    result->rx_sdr_type = app_config_convert_sdr_type(config_setting_get_string(setting));
+    result->direction = app_config_convert_direction(config_setting_get_string(setting));
   }
 
-  if (result->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
-    setting = config_lookup(libconfig, "rx_sdr_server_address");
+  setting = config_lookup(libconfig, "sdr_type");
+  if (setting != NULL) {
+    result->sdr_type = app_config_convert_sdr_type(config_setting_get_string(setting));
+  }
+
+  if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
+    setting = config_lookup(libconfig, "sdr_server_address");
     if (setting != NULL) {
-      result->rx_sdr_server_address = strdup(config_setting_get_string(setting));
-      if (result->rx_sdr_server_address == NULL) {
+      result->sdr_server_address = strdup(config_setting_get_string(setting));
+      if (result->sdr_server_address == NULL) {
         return -ENOMEM;
       }
     }
-    setting = config_lookup(libconfig, "rx_sdr_server_port");
+    setting = config_lookup(libconfig, "sdr_server_port");
     if (setting != NULL) {
-      result->rx_sdr_server_port = config_setting_get_int(setting);
+      result->sdr_server_port = config_setting_get_int(setting);
     }
   }
-  if (result->rx_sdr_type == SDR_TYPE_PLUTOSDR) {
-    setting = config_lookup(libconfig, "rx_plutosdr_gain");
+  if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
+    setting = config_lookup(libconfig, "plutosdr_gain");
     if (setting != NULL) {
-      result->rx_plutosdr_gain = config_setting_get_float(setting);
+      result->plutosdr_gain = config_setting_get_float(setting);
+    }
+    setting = config_lookup(libconfig, "plutosdr_timeout_millis");
+    if (setting != NULL) {
+      result->plutosdr_timeout_millis = config_setting_get_int(setting);
     }
   }
-  if (result->rx_sdr_type == SDR_TYPE_FILE) {
-    setting = config_lookup(libconfig, "rx_file_format");
+  if (result->sdr_type == SDR_TYPE_FILE) {
+    setting = config_lookup(libconfig, "file_format");
     if (setting != NULL) {
-      result->rx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
+      result->file_format = app_config_convert_file_format(config_setting_get_string(setting));
     }
   }
 
-  setting = config_lookup(libconfig, "tx_sdr_type");
+  setting = config_lookup(libconfig, "modem");
   if (setting != NULL) {
-    result->tx_sdr_type = app_config_convert_sdr_type(config_setting_get_string(setting));
+    result->modem = app_config_convert_modem_type(config_setting_get_string(setting));
   }
-  if (result->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
-    setting = config_lookup(libconfig, "tx_plutosdr_gain");
-    if (setting != NULL) {
-      result->tx_plutosdr_gain = config_setting_get_float(setting);
+  if (result->modem == MODEM_TYPE_GFSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    code = app_config_load_gfsk_from_file(libconfig, &result->req.gfsk);
+    if (code != 0) {
+      return code;
     }
-    setting = config_lookup(libconfig, "tx_plutosdr_timeout_millis");
-    if (setting != NULL) {
-      result->tx_plutosdr_timeout_millis = config_setting_get_int(setting);
+  } else if (result->modem == MODEM_TYPE_BPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
+    code = app_config_load_psk_from_file(libconfig, &result->req.bpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->modem == MODEM_TYPE_DPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
+    code = app_config_load_psk_from_file(libconfig, &result->req.dpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->modem == MODEM_TYPE_SDPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
+    code = app_config_load_psk_from_file(libconfig, &result->req.sdpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->modem == MODEM_TYPE_OQPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    code = app_config_load_psk_from_file(libconfig, &result->req.oqpsk);
+    if (code != 0) {
+      return code;
+    }
+  } else if (result->modem == MODEM_TYPE_PSK_PM) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
+    code = app_config_load_psk_pm_from_file(libconfig, &result->req.psk_pm);
+    if (code != 0) {
+      return code;
     }
   }
-  if (result->tx_sdr_type == SDR_TYPE_FILE) {
-    setting = config_lookup(libconfig, "tx_file_format");
-    if (setting != NULL) {
-      result->tx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
-    }
-  }
-
-  setting = config_lookup(libconfig, "rx_modem");
+  setting = config_lookup(libconfig, "framing");
   if (setting != NULL) {
-    result->rx_modem = app_config_convert_modem_type(config_setting_get_string(setting));
-  }
-  if (result->rx_modem == MODEM_TYPE_GFSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    code = app_config_load_gfsk_from_file(libconfig, "rx", &result->rx_req.gfsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_BPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
-    code = app_config_load_psk_from_file(libconfig, "rx", &result->rx_req.bpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_DPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
-    code = app_config_load_psk_from_file(libconfig, "rx", &result->rx_req.dpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_SDPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
-    code = app_config_load_psk_from_file(libconfig, "rx", &result->rx_req.sdpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_OQPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    code = app_config_load_psk_from_file(libconfig, "rx", &result->rx_req.oqpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_PSK_PM) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
-    code = app_config_load_psk_pm_from_file(libconfig, "rx", &result->rx_req.psk_pm);
-    if (code != 0) {
-      return code;
-    }
-  }
-  setting = config_lookup(libconfig, "rx_framing");
-  if (setting != NULL) {
-    result->rx_framing = app_config_convert_framing_type(config_setting_get_string(setting));
+    result->framing = app_config_convert_framing_type(config_setting_get_string(setting));
     //ignore framing for now
   }
 
-  setting = config_lookup(libconfig, "rx_debug_constellation_file");
+  setting = config_lookup(libconfig, "debug_constellation_file");
   if (setting != NULL) {
-    result->rx_debug_constellation_file = strdup(config_setting_get_string(setting));
-    if (result->rx_debug_constellation_file == NULL) {
+    result->debug_constellation_file = strdup(config_setting_get_string(setting));
+    if (result->debug_constellation_file == NULL) {
       return -ENOMEM;
     }
   }
 
-  setting = config_lookup(libconfig, "rx_debug_baseband_file");
+  setting = config_lookup(libconfig, "debug_baseband_file");
   if (setting != NULL) {
-    result->rx_debug_baseband_file = strdup(config_setting_get_string(setting));
-    if (result->rx_debug_baseband_file == NULL) {
-      return -ENOMEM;
-    }
-  }
-
-  setting = config_lookup(libconfig, "tx_modem");
-  if (setting != NULL) {
-    result->tx_modem = app_config_convert_modem_type(config_setting_get_string(setting));
-  }
-  if (result->tx_modem == MODEM_TYPE_GFSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    code = app_config_load_gfsk_from_file(libconfig, "tx", &result->tx_req.gfsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->tx_modem == MODEM_TYPE_BPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
-    code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.bpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->tx_modem == MODEM_TYPE_DPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
-    code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.dpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->tx_modem == MODEM_TYPE_SDPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
-    code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.sdpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->tx_modem == MODEM_TYPE_OQPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    code = app_config_load_psk_from_file(libconfig, "tx", &result->tx_req.oqpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->tx_modem == MODEM_TYPE_PSK_PM) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
-    code = app_config_load_psk_pm_from_file(libconfig, "tx", &result->tx_req.psk_pm);
-    if (code != 0) {
-      return code;
-    }
-  }
-  setting = config_lookup(libconfig, "tx_framing");
-  if (setting != NULL) {
-    result->tx_framing = app_config_convert_framing_type(config_setting_get_string(setting));
-  }
-
-  setting = config_lookup(libconfig, "tx_debug_constellation_file");
-  if (setting != NULL) {
-    result->tx_debug_constellation_file = strdup(config_setting_get_string(setting));
-    if (result->tx_debug_constellation_file == NULL) {
+    result->debug_baseband_file = strdup(config_setting_get_string(setting));
+    if (result->debug_baseband_file == NULL) {
       return -ENOMEM;
     }
   }
@@ -591,79 +507,47 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_BUFFER_SIZE,
     OPT_READ_TIMEOUT_SECONDS,
     OPT_QUEUE_SIZE,
-    OPT_RX_SDR_TYPE,
-    OPT_RX_SDR_SERVER_ADDRESS,
-    OPT_RX_SDR_SERVER_PORT,
-    OPT_TX_SDR_TYPE,
-    OPT_TX_PLUTOSDR_GAIN,
-    OPT_RX_PLUTOSDR_GAIN,
-    OPT_TX_PLUTOSDR_TIMEOUT_MILLIS,
-    OPT_TX_FILE,
-    OPT_TX_FILE_FORMAT,
-    OPT_RX_FILE,
-    OPT_RX_FILE_FORMAT,
+    OPT_DIRECTION,
+    OPT_SDR_TYPE,
+    OPT_SDR_SERVER_ADDRESS,
+    OPT_SDR_SERVER_PORT,
+    OPT_PLUTOSDR_GAIN,
+    OPT_PLUTOSDR_TIMEOUT_MILLIS,
+    OPT_FILE,
+    OPT_FILE_FORMAT,
     OPT_CONFIG,
     OPT_INPUT,
     OPT_OUTPUT,
-    OPT_RX_MODEM,
-    OPT_RX_FRAMING,
-    OPT_RX_GFSK_CENTER_FREQ,
-    OPT_RX_GFSK_SAMPLE_RATE,
-    OPT_RX_GFSK_BAUD_RATE,
-    OPT_RX_GFSK_DEVIATION,
-    OPT_RX_GFSK_BANDWIDTH,
-    OPT_RX_GFSK_BT,
-    OPT_RX_GFSK_USE_DC_BLOCK,
-    OPT_RX_PSK_CENTER_FREQ,
-    OPT_RX_PSK_SAMPLE_RATE,
-    OPT_RX_PSK_BAUD_RATE,
-    OPT_RX_PSK_RRC_BETA,
-    OPT_RX_PSK_RRC_DELAY,
-    OPT_RX_PSK_COSTAS_BANDWIDTH,
-    OPT_RX_PSK_SYMSYNC_FILTER_BANK_SIZE,
-    OPT_RX_PSK_PM_CENTER_FREQ,
-    OPT_RX_PSK_PM_SAMPLE_RATE,
-    OPT_RX_PSK_PM_BAUD_RATE,
-    OPT_RX_PSK_PM_RRC_BETA,
-    OPT_RX_PSK_PM_RRC_DELAY,
-    OPT_RX_PSK_PM_COSTAS_BANDWIDTH,
-    OPT_RX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE,
-    OPT_RX_PSK_PM_SUBCARRIER_FREQUENCY,
-    OPT_RX_PSK_PM_MODULATION_INDEX,
-    OPT_RX_PSK_PM_CARRIER_PLL_BANDWIDTH,
-    OPT_RX_FREQ_OFFSET_FILE,
-    OPT_RX_DEBUG_FREQ_OFFSET_FILE,
-    OPT_RX_DEBUG_CONSTELLATION_FILE,
-    OPT_RX_DEBUG_BASEBAND_FILE,
-    OPT_TX_MODEM,
-    OPT_TX_FRAMING,
-    OPT_TX_GFSK_CENTER_FREQ,
-    OPT_TX_GFSK_SAMPLE_RATE,
-    OPT_TX_GFSK_BAUD_RATE,
-    OPT_TX_GFSK_DEVIATION,
-    OPT_TX_GFSK_BANDWIDTH,
-    OPT_TX_GFSK_BT,
-    OPT_TX_GFSK_USE_DC_BLOCK,
-    OPT_TX_PSK_CENTER_FREQ,
-    OPT_TX_PSK_SAMPLE_RATE,
-    OPT_TX_PSK_BAUD_RATE,
-    OPT_TX_PSK_RRC_BETA,
-    OPT_TX_PSK_RRC_DELAY,
-    OPT_TX_PSK_COSTAS_BANDWIDTH,
-    OPT_TX_PSK_SYMSYNC_FILTER_BANK_SIZE,
-    OPT_TX_PSK_PM_CENTER_FREQ,
-    OPT_TX_PSK_PM_SAMPLE_RATE,
-    OPT_TX_PSK_PM_BAUD_RATE,
-    OPT_TX_PSK_PM_RRC_BETA,
-    OPT_TX_PSK_PM_RRC_DELAY,
-    OPT_TX_PSK_PM_COSTAS_BANDWIDTH,
-    OPT_TX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE,
-    OPT_TX_PSK_PM_SUBCARRIER_FREQUENCY,
-    OPT_TX_PSK_PM_MODULATION_INDEX,
-    OPT_TX_PSK_PM_CARRIER_PLL_BANDWIDTH,
-    OPT_TX_FREQ_OFFSET_FILE,
-    OPT_TX_DEBUG_FREQ_OFFSET_FILE,
-    OPT_TX_DEBUG_CONSTELLATION_FILE
+    OPT_MODEM,
+    OPT_FRAMING,
+    OPT_GFSK_CENTER_FREQ,
+    OPT_GFSK_SAMPLE_RATE,
+    OPT_GFSK_BAUD_RATE,
+    OPT_GFSK_DEVIATION,
+    OPT_GFSK_BANDWIDTH,
+    OPT_GFSK_BT,
+    OPT_GFSK_USE_DC_BLOCK,
+    OPT_PSK_CENTER_FREQ,
+    OPT_PSK_SAMPLE_RATE,
+    OPT_PSK_BAUD_RATE,
+    OPT_PSK_RRC_BETA,
+    OPT_PSK_RRC_DELAY,
+    OPT_PSK_COSTAS_BANDWIDTH,
+    OPT_PSK_SYMSYNC_FILTER_BANK_SIZE,
+    OPT_PSK_PM_CENTER_FREQ,
+    OPT_PSK_PM_SAMPLE_RATE,
+    OPT_PSK_PM_BAUD_RATE,
+    OPT_PSK_PM_RRC_BETA,
+    OPT_PSK_PM_RRC_DELAY,
+    OPT_PSK_PM_COSTAS_BANDWIDTH,
+    OPT_PSK_PM_SYMSYNC_FILTER_BANK_SIZE,
+    OPT_PSK_PM_SUBCARRIER_FREQUENCY,
+    OPT_PSK_PM_MODULATION_INDEX,
+    OPT_PSK_PM_CARRIER_PLL_BANDWIDTH,
+    OPT_FREQ_OFFSET_FILE,
+    OPT_DEBUG_FREQ_OFFSET_FILE,
+    OPT_DEBUG_CONSTELLATION_FILE,
+    OPT_DEBUG_BASEBAND_FILE
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
@@ -671,90 +555,55 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"buffer_size", required_argument, NULL, OPT_BUFFER_SIZE},
     {"read_timeout_seconds", required_argument, NULL, OPT_READ_TIMEOUT_SECONDS},
     {"queue_size", required_argument, NULL, OPT_QUEUE_SIZE},
-    {"rx_sdr_type", required_argument, NULL, OPT_RX_SDR_TYPE},
-    {"rx_sdr_server_address", required_argument, NULL, OPT_RX_SDR_SERVER_ADDRESS},
-    {"rx_sdr_server_port", required_argument, NULL, OPT_RX_SDR_SERVER_PORT},
-    {"tx_sdr_type", required_argument, NULL, OPT_TX_SDR_TYPE},
-    {"tx_plutosdr_gain", required_argument, NULL, OPT_TX_PLUTOSDR_GAIN},
-    {"rx_plutosdr_gain", required_argument, NULL, OPT_RX_PLUTOSDR_GAIN},
-    {"tx_plutosdr_timeout_millis", required_argument, NULL, OPT_TX_PLUTOSDR_TIMEOUT_MILLIS},
-    {"tx_file", required_argument, NULL, OPT_TX_FILE},
-    {"tx_file_format", required_argument, NULL, OPT_TX_FILE_FORMAT},
-    {"rx_file", required_argument, NULL, OPT_RX_FILE},
-    {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
+    {"direction", required_argument, NULL, OPT_DIRECTION},
+    {"sdr_type", required_argument, NULL, OPT_SDR_TYPE},
+    {"sdr_server_address", required_argument, NULL, OPT_SDR_SERVER_ADDRESS},
+    {"sdr_server_port", required_argument, NULL, OPT_SDR_SERVER_PORT},
+    {"plutosdr_gain", required_argument, NULL, OPT_PLUTOSDR_GAIN},
+    {"plutosdr_timeout_millis", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MILLIS},
+    {"file", required_argument, NULL, OPT_FILE},
+    {"file_format", required_argument, NULL, OPT_FILE_FORMAT},
     {"config", required_argument, NULL, OPT_CONFIG},
     {"input", required_argument, NULL, OPT_INPUT},
     {"output", required_argument, NULL, OPT_OUTPUT},
-    {"rx_modem", required_argument, NULL, OPT_RX_MODEM},
-    {"rx_framing", required_argument, NULL, OPT_RX_FRAMING},
-    {"rx_gfsk_center_freq", required_argument, NULL, OPT_RX_GFSK_CENTER_FREQ},
-    {"rx_gfsk_sample_rate", required_argument, NULL, OPT_RX_GFSK_SAMPLE_RATE},
-    {"rx_gfsk_baud_rate", required_argument, NULL, OPT_RX_GFSK_BAUD_RATE},
-    {"rx_gfsk_deviation", required_argument, NULL, OPT_RX_GFSK_DEVIATION},
-    {"rx_gfsk_bandwidth", required_argument, NULL, OPT_RX_GFSK_BANDWIDTH},
-    {"rx_gfsk_bt", required_argument, NULL, OPT_RX_GFSK_BT},
-    {"rx_gfsk_use_dc_block", required_argument, NULL, OPT_RX_GFSK_USE_DC_BLOCK},
-    {"rx_psk_center_freq", required_argument, NULL, OPT_RX_PSK_CENTER_FREQ},
-    {"rx_psk_sample_rate", required_argument, NULL, OPT_RX_PSK_SAMPLE_RATE},
-    {"rx_psk_baud_rate", required_argument, NULL, OPT_RX_PSK_BAUD_RATE},
-    {"rx_psk_rrc_beta", required_argument, NULL, OPT_RX_PSK_RRC_BETA},
-    {"rx_psk_rrc_delay", required_argument, NULL, OPT_RX_PSK_RRC_DELAY},
-    {"rx_psk_costas_bandwidth", required_argument, NULL, OPT_RX_PSK_COSTAS_BANDWIDTH},
-    {"rx_psk_symsync_filter_bank_size", required_argument, NULL, OPT_RX_PSK_SYMSYNC_FILTER_BANK_SIZE},
-    {"rx_psk_pm_center_freq", required_argument, NULL, OPT_RX_PSK_PM_CENTER_FREQ},
-    {"rx_psk_pm_sample_rate", required_argument, NULL, OPT_RX_PSK_PM_SAMPLE_RATE},
-    {"rx_psk_pm_baud_rate", required_argument, NULL, OPT_RX_PSK_PM_BAUD_RATE},
-    {"rx_psk_pm_rrc_beta", required_argument, NULL, OPT_RX_PSK_PM_RRC_BETA},
-    {"rx_psk_pm_rrc_delay", required_argument, NULL, OPT_RX_PSK_PM_RRC_DELAY},
-    {"rx_psk_pm_costas_bandwidth", required_argument, NULL, OPT_RX_PSK_PM_COSTAS_BANDWIDTH},
-    {"rx_psk_pm_symsync_filter_bank_size", required_argument, NULL, OPT_RX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE},
-    {"rx_psk_pm_subcarrier_frequency", required_argument, NULL, OPT_RX_PSK_PM_SUBCARRIER_FREQUENCY},
-    {"rx_psk_pm_modulation_index", required_argument, NULL, OPT_RX_PSK_PM_MODULATION_INDEX},
-    {"rx_psk_pm_carrier_pll_bandwidth", required_argument, NULL, OPT_RX_PSK_PM_CARRIER_PLL_BANDWIDTH},
-    {"rx_freq_offset_file", required_argument, NULL, OPT_RX_FREQ_OFFSET_FILE},
-    {"rx_debug_freq_offset_file", required_argument, NULL, OPT_RX_DEBUG_FREQ_OFFSET_FILE},
-    {"rx_debug_constellation_file", required_argument, NULL, OPT_RX_DEBUG_CONSTELLATION_FILE},
-    {"rx_debug_baseband_file", required_argument, NULL, OPT_RX_DEBUG_BASEBAND_FILE},
-    {"tx_modem", required_argument, NULL, OPT_TX_MODEM},
-    {"tx_framing", required_argument, NULL, OPT_TX_FRAMING},
-    {"tx_gfsk_center_freq", required_argument, NULL, OPT_TX_GFSK_CENTER_FREQ},
-    {"tx_gfsk_sample_rate", required_argument, NULL, OPT_TX_GFSK_SAMPLE_RATE},
-    {"tx_gfsk_baud_rate", required_argument, NULL, OPT_TX_GFSK_BAUD_RATE},
-    {"tx_gfsk_deviation", required_argument, NULL, OPT_TX_GFSK_DEVIATION},
-    {"tx_gfsk_bandwidth", required_argument, NULL, OPT_TX_GFSK_BANDWIDTH},
-    {"tx_gfsk_bt", required_argument, NULL, OPT_TX_GFSK_BT},
-    {"tx_gfsk_use_dc_block", required_argument, NULL, OPT_TX_GFSK_USE_DC_BLOCK},
-    {"tx_psk_center_freq", required_argument, NULL, OPT_TX_PSK_CENTER_FREQ},
-    {"tx_psk_sample_rate", required_argument, NULL, OPT_TX_PSK_SAMPLE_RATE},
-    {"tx_psk_baud_rate", required_argument, NULL, OPT_TX_PSK_BAUD_RATE},
-    {"tx_psk_rrc_beta", required_argument, NULL, OPT_TX_PSK_RRC_BETA},
-    {"tx_psk_rrc_delay", required_argument, NULL, OPT_TX_PSK_RRC_DELAY},
-    {"tx_psk_costas_bandwidth", required_argument, NULL, OPT_TX_PSK_COSTAS_BANDWIDTH},
-    {"tx_psk_symsync_filter_bank_size", required_argument, NULL, OPT_TX_PSK_SYMSYNC_FILTER_BANK_SIZE},
-    {"tx_psk_pm_center_freq", required_argument, NULL, OPT_TX_PSK_PM_CENTER_FREQ},
-    {"tx_psk_pm_sample_rate", required_argument, NULL, OPT_TX_PSK_PM_SAMPLE_RATE},
-    {"tx_psk_pm_baud_rate", required_argument, NULL, OPT_TX_PSK_PM_BAUD_RATE},
-    {"tx_psk_pm_rrc_beta", required_argument, NULL, OPT_TX_PSK_PM_RRC_BETA},
-    {"tx_psk_pm_rrc_delay", required_argument, NULL, OPT_TX_PSK_PM_RRC_DELAY},
-    {"tx_psk_pm_costas_bandwidth", required_argument, NULL, OPT_TX_PSK_PM_COSTAS_BANDWIDTH},
-    {"tx_psk_pm_symsync_filter_bank_size", required_argument, NULL, OPT_TX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE},
-    {"tx_psk_pm_subcarrier_frequency", required_argument, NULL, OPT_TX_PSK_PM_SUBCARRIER_FREQUENCY},
-    {"tx_psk_pm_modulation_index", required_argument, NULL, OPT_TX_PSK_PM_MODULATION_INDEX},
-    {"tx_psk_pm_carrier_pll_bandwidth", required_argument, NULL, OPT_TX_PSK_PM_CARRIER_PLL_BANDWIDTH},
-    {"tx_freq_offset_file", required_argument, NULL, OPT_TX_FREQ_OFFSET_FILE},
-    {"tx_debug_freq_offset_file", required_argument, NULL, OPT_TX_DEBUG_FREQ_OFFSET_FILE},
-    {"tx_debug_constellation_file", required_argument, NULL, OPT_TX_DEBUG_CONSTELLATION_FILE},
+    {"modem", required_argument, NULL, OPT_MODEM},
+    {"framing", required_argument, NULL, OPT_FRAMING},
+    {"gfsk_center_freq", required_argument, NULL, OPT_GFSK_CENTER_FREQ},
+    {"gfsk_sample_rate", required_argument, NULL, OPT_GFSK_SAMPLE_RATE},
+    {"gfsk_baud_rate", required_argument, NULL, OPT_GFSK_BAUD_RATE},
+    {"gfsk_deviation", required_argument, NULL, OPT_GFSK_DEVIATION},
+    {"gfsk_bandwidth", required_argument, NULL, OPT_GFSK_BANDWIDTH},
+    {"gfsk_bt", required_argument, NULL, OPT_GFSK_BT},
+    {"gfsk_use_dc_block", required_argument, NULL, OPT_GFSK_USE_DC_BLOCK},
+    {"psk_center_freq", required_argument, NULL, OPT_PSK_CENTER_FREQ},
+    {"psk_sample_rate", required_argument, NULL, OPT_PSK_SAMPLE_RATE},
+    {"psk_baud_rate", required_argument, NULL, OPT_PSK_BAUD_RATE},
+    {"psk_rrc_beta", required_argument, NULL, OPT_PSK_RRC_BETA},
+    {"psk_rrc_delay", required_argument, NULL, OPT_PSK_RRC_DELAY},
+    {"psk_costas_bandwidth", required_argument, NULL, OPT_PSK_COSTAS_BANDWIDTH},
+    {"psk_symsync_filter_bank_size", required_argument, NULL, OPT_PSK_SYMSYNC_FILTER_BANK_SIZE},
+    {"psk_pm_center_freq", required_argument, NULL, OPT_PSK_PM_CENTER_FREQ},
+    {"psk_pm_sample_rate", required_argument, NULL, OPT_PSK_PM_SAMPLE_RATE},
+    {"psk_pm_baud_rate", required_argument, NULL, OPT_PSK_PM_BAUD_RATE},
+    {"psk_pm_rrc_beta", required_argument, NULL, OPT_PSK_PM_RRC_BETA},
+    {"psk_pm_rrc_delay", required_argument, NULL, OPT_PSK_PM_RRC_DELAY},
+    {"psk_pm_costas_bandwidth", required_argument, NULL, OPT_PSK_PM_COSTAS_BANDWIDTH},
+    {"psk_pm_symsync_filter_bank_size", required_argument, NULL, OPT_PSK_PM_SYMSYNC_FILTER_BANK_SIZE},
+    {"psk_pm_subcarrier_frequency", required_argument, NULL, OPT_PSK_PM_SUBCARRIER_FREQUENCY},
+    {"psk_pm_modulation_index", required_argument, NULL, OPT_PSK_PM_MODULATION_INDEX},
+    {"psk_pm_carrier_pll_bandwidth", required_argument, NULL, OPT_PSK_PM_CARRIER_PLL_BANDWIDTH},
+    {"freq_offset_file", required_argument, NULL, OPT_FREQ_OFFSET_FILE},
+    {"debug_freq_offset_file", required_argument, NULL, OPT_DEBUG_FREQ_OFFSET_FILE},
+    {"debug_constellation_file", required_argument, NULL, OPT_DEBUG_CONSTELLATION_FILE},
+    {"debug_baseband_file", required_argument, NULL, OPT_DEBUG_BASEBAND_FILE},
     {NULL, 0, NULL, 0}
   };
 
   // populate structures opportunistically
   // then discard if different type was selected
-  GfskModemSettings tx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
-  GfskModemSettings rx_gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
-  PskModemSettings tx_psk_settings = PSK_MODEM_SETTINGS__INIT;
-  PskModemSettings rx_psk_settings = PSK_MODEM_SETTINGS__INIT;
-  PskPmModemSettings tx_psk_pm_settings = PSK_PM_MODEM_SETTINGS__INIT;
-  PskPmModemSettings rx_psk_pm_settings = PSK_PM_MODEM_SETTINGS__INIT;
+  GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
+  PskModemSettings psk_settings = PSK_MODEM_SETTINGS__INIT;
+  PskPmModemSettings psk_pm_settings = PSK_PM_MODEM_SETTINGS__INIT;
 
   optind = 1;
   opterr = 1;
@@ -785,46 +634,37 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_QUEUE_SIZE:
         result->queue_size = (uint16_t) atoi(optarg);
         break;
-      case OPT_RX_SDR_TYPE:
-        result->rx_sdr_type = app_config_convert_sdr_type(optarg);
+      case OPT_DIRECTION:
+        result->direction = app_config_convert_direction(optarg);
         break;
-      case OPT_RX_SDR_SERVER_ADDRESS: {
-        char *rx_sdr_server_address = strdup(optarg);
-        if (rx_sdr_server_address == NULL) {
+      case OPT_SDR_TYPE:
+        result->sdr_type = app_config_convert_sdr_type(optarg);
+        break;
+      case OPT_SDR_SERVER_ADDRESS: {
+        char *sdr_server_address = strdup(optarg);
+        if (sdr_server_address == NULL) {
           return -ENOMEM;
         }
-        if (result->rx_sdr_server_address != NULL) {
-          free(result->rx_sdr_server_address);
+        if (result->sdr_server_address != NULL) {
+          free(result->sdr_server_address);
         }
-        result->rx_sdr_server_address = rx_sdr_server_address;
+        result->sdr_server_address = sdr_server_address;
         break;
       }
-      case OPT_RX_SDR_SERVER_PORT:
-        result->rx_sdr_server_port = atoi(optarg);
+      case OPT_SDR_SERVER_PORT:
+        result->sdr_server_port = atoi(optarg);
         break;
-      case OPT_TX_SDR_TYPE:
-        result->tx_sdr_type = app_config_convert_sdr_type(optarg);
+      case OPT_PLUTOSDR_GAIN:
+        result->plutosdr_gain = atof(optarg);
         break;
-      case OPT_TX_PLUTOSDR_GAIN:
-        result->tx_plutosdr_gain = atof(optarg);
+      case OPT_PLUTOSDR_TIMEOUT_MILLIS:
+        result->plutosdr_timeout_millis = (unsigned int) atoi(optarg);
         break;
-      case OPT_RX_PLUTOSDR_GAIN:
-        result->rx_plutosdr_gain = atof(optarg);
+      case OPT_FILE:
+        result->file = strdup(optarg);
         break;
-      case OPT_TX_PLUTOSDR_TIMEOUT_MILLIS:
-        result->tx_plutosdr_timeout_millis = (unsigned int) atoi(optarg);
-        break;
-      case OPT_TX_FILE:
-        result->tx_file = strdup(optarg);
-        break;
-      case OPT_TX_FILE_FORMAT:
-        result->tx_file_format = app_config_convert_file_format(optarg);
-        break;
-      case OPT_RX_FILE:
-        result->rx_file = strdup(optarg);
-        break;
-      case OPT_RX_FILE_FORMAT:
-        result->rx_file_format = app_config_convert_file_format(optarg);
+      case OPT_FILE_FORMAT:
+        result->file_format = app_config_convert_file_format(optarg);
         break;
       case OPT_INPUT:
         result->input_file = strdup(optarg);
@@ -832,182 +672,95 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_OUTPUT:
         result->output_file = strdup(optarg);
         break;
-      case OPT_RX_MODEM:
-        result->rx_modem = app_config_convert_modem_type(optarg);
+      case OPT_MODEM:
+        result->modem = app_config_convert_modem_type(optarg);
         break;
-      case OPT_RX_FRAMING:
-        result->rx_framing = app_config_convert_framing_type(optarg);
+      case OPT_FRAMING:
+        result->framing = app_config_convert_framing_type(optarg);
         break;
-      case OPT_RX_GFSK_CENTER_FREQ:
-        rx_gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
+      case OPT_GFSK_CENTER_FREQ:
+        gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_GFSK_SAMPLE_RATE:
-        rx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
+      case OPT_GFSK_SAMPLE_RATE:
+        gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_GFSK_BAUD_RATE:
-        rx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
+      case OPT_GFSK_BAUD_RATE:
+        gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_GFSK_DEVIATION:
-        rx_gfsk_settings.deviation = strtoll(optarg, NULL, 10);
+      case OPT_GFSK_DEVIATION:
+        gfsk_settings.deviation = strtoll(optarg, NULL, 10);
         break;
-      case OPT_RX_GFSK_BANDWIDTH:
-        rx_gfsk_settings.bandwidth = (uint32_t) atoi(optarg);
+      case OPT_GFSK_BANDWIDTH:
+        gfsk_settings.bandwidth = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_GFSK_BT:
-        rx_gfsk_settings.bt = (float) atof(optarg);
+      case OPT_GFSK_BT:
+        gfsk_settings.bt = (float) atof(optarg);
         break;
-      case OPT_RX_GFSK_USE_DC_BLOCK:
-        rx_gfsk_settings.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
+      case OPT_GFSK_USE_DC_BLOCK:
+        gfsk_settings.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
         break;
-      case OPT_RX_PSK_CENTER_FREQ:
-        rx_psk_settings.center_freq = strtoull(optarg, NULL, 10);
+      case OPT_PSK_CENTER_FREQ:
+        psk_settings.center_freq = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_PSK_SAMPLE_RATE:
-        rx_psk_settings.sample_rate = strtoull(optarg, NULL, 10);
+      case OPT_PSK_SAMPLE_RATE:
+        psk_settings.sample_rate = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_PSK_BAUD_RATE:
-        rx_psk_settings.baud_rate = (uint32_t) atoi(optarg);
+      case OPT_PSK_BAUD_RATE:
+        psk_settings.baud_rate = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_RRC_BETA:
-        rx_psk_settings.rrc_beta = (float) atof(optarg);
+      case OPT_PSK_RRC_BETA:
+        psk_settings.rrc_beta = (float) atof(optarg);
         break;
-      case OPT_RX_PSK_RRC_DELAY:
-        rx_psk_settings.rrc_delay = (uint32_t) atoi(optarg);
+      case OPT_PSK_RRC_DELAY:
+        psk_settings.rrc_delay = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_COSTAS_BANDWIDTH:
-        rx_psk_settings.costas_bandwidth = (float) atof(optarg);
+      case OPT_PSK_COSTAS_BANDWIDTH:
+        psk_settings.costas_bandwidth = (float) atof(optarg);
         break;
-      case OPT_RX_PSK_SYMSYNC_FILTER_BANK_SIZE:
-        rx_psk_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
+      case OPT_PSK_SYMSYNC_FILTER_BANK_SIZE:
+        psk_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_PM_CENTER_FREQ:
-        rx_psk_pm_settings.center_freq = strtoull(optarg, NULL, 10);
+      case OPT_PSK_PM_CENTER_FREQ:
+        psk_pm_settings.center_freq = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_PSK_PM_SAMPLE_RATE:
-        rx_psk_pm_settings.sample_rate = strtoull(optarg, NULL, 10);
+      case OPT_PSK_PM_SAMPLE_RATE:
+        psk_pm_settings.sample_rate = strtoull(optarg, NULL, 10);
         break;
-      case OPT_RX_PSK_PM_BAUD_RATE:
-        rx_psk_pm_settings.baud_rate = (uint32_t) atoi(optarg);
+      case OPT_PSK_PM_BAUD_RATE:
+        psk_pm_settings.baud_rate = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_PM_RRC_BETA:
-        rx_psk_pm_settings.rrc_beta = (float) atof(optarg);
+      case OPT_PSK_PM_RRC_BETA:
+        psk_pm_settings.rrc_beta = (float) atof(optarg);
         break;
-      case OPT_RX_PSK_PM_RRC_DELAY:
-        rx_psk_pm_settings.rrc_delay = (uint32_t) atoi(optarg);
+      case OPT_PSK_PM_RRC_DELAY:
+        psk_pm_settings.rrc_delay = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_PM_COSTAS_BANDWIDTH:
-        rx_psk_pm_settings.costas_bandwidth = (float) atof(optarg);
+      case OPT_PSK_PM_COSTAS_BANDWIDTH:
+        psk_pm_settings.costas_bandwidth = (float) atof(optarg);
         break;
-      case OPT_RX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE:
-        rx_psk_pm_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
+      case OPT_PSK_PM_SYMSYNC_FILTER_BANK_SIZE:
+        psk_pm_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_PM_SUBCARRIER_FREQUENCY:
-        rx_psk_pm_settings.subcarrier_frequency = (uint32_t) atoi(optarg);
+      case OPT_PSK_PM_SUBCARRIER_FREQUENCY:
+        psk_pm_settings.subcarrier_frequency = (uint32_t) atoi(optarg);
         break;
-      case OPT_RX_PSK_PM_MODULATION_INDEX:
-        rx_psk_pm_settings.modulation_index = (float) atof(optarg);
+      case OPT_PSK_PM_MODULATION_INDEX:
+        psk_pm_settings.modulation_index = (float) atof(optarg);
         break;
-      case OPT_RX_PSK_PM_CARRIER_PLL_BANDWIDTH:
-        rx_psk_pm_settings.carrier_pll_bandwidth = (float) atof(optarg);
+      case OPT_PSK_PM_CARRIER_PLL_BANDWIDTH:
+        psk_pm_settings.carrier_pll_bandwidth = (float) atof(optarg);
         break;
-      case OPT_RX_FREQ_OFFSET_FILE:
-        result->rx_freq_offset_file = strdup(optarg);
+      case OPT_FREQ_OFFSET_FILE:
+        result->freq_offset_file = strdup(optarg);
         break;
-      case OPT_RX_DEBUG_FREQ_OFFSET_FILE:
-        result->rx_debug_freq_offset_file = strdup(optarg);
+      case OPT_DEBUG_FREQ_OFFSET_FILE:
+        result->debug_freq_offset_file = strdup(optarg);
         break;
-      case OPT_RX_DEBUG_CONSTELLATION_FILE:
-        result->rx_debug_constellation_file = strdup(optarg);
+      case OPT_DEBUG_CONSTELLATION_FILE:
+        result->debug_constellation_file = strdup(optarg);
         break;
-      case OPT_RX_DEBUG_BASEBAND_FILE:
-        result->rx_debug_baseband_file = strdup(optarg);
-        break;
-      case OPT_TX_MODEM:
-        result->tx_modem = app_config_convert_modem_type(optarg);
-        break;
-      case OPT_TX_FRAMING:
-        result->tx_framing = app_config_convert_framing_type(optarg);
-        break;
-      case OPT_TX_GFSK_CENTER_FREQ:
-        tx_gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_GFSK_SAMPLE_RATE:
-        tx_gfsk_settings.sample_rate = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_GFSK_BAUD_RATE:
-        tx_gfsk_settings.baud_rate = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_GFSK_DEVIATION:
-        tx_gfsk_settings.deviation = strtoll(optarg, NULL, 10);
-        break;
-      case OPT_TX_GFSK_BANDWIDTH:
-        tx_gfsk_settings.bandwidth = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_GFSK_BT:
-        tx_gfsk_settings.bt = (float) atof(optarg);
-        break;
-      case OPT_TX_GFSK_USE_DC_BLOCK:
-        tx_gfsk_settings.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
-        break;
-      case OPT_TX_PSK_CENTER_FREQ:
-        tx_psk_settings.center_freq = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_PSK_SAMPLE_RATE:
-        tx_psk_settings.sample_rate = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_PSK_BAUD_RATE:
-        tx_psk_settings.baud_rate = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_RRC_BETA:
-        tx_psk_settings.rrc_beta = (float) atof(optarg);
-        break;
-      case OPT_TX_PSK_RRC_DELAY:
-        tx_psk_settings.rrc_delay = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_COSTAS_BANDWIDTH:
-        tx_psk_settings.costas_bandwidth = (float) atof(optarg);
-        break;
-      case OPT_TX_PSK_SYMSYNC_FILTER_BANK_SIZE:
-        tx_psk_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_PM_CENTER_FREQ:
-        tx_psk_pm_settings.center_freq = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_PSK_PM_SAMPLE_RATE:
-        tx_psk_pm_settings.sample_rate = strtoull(optarg, NULL, 10);
-        break;
-      case OPT_TX_PSK_PM_BAUD_RATE:
-        tx_psk_pm_settings.baud_rate = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_PM_RRC_BETA:
-        tx_psk_pm_settings.rrc_beta = (float) atof(optarg);
-        break;
-      case OPT_TX_PSK_PM_RRC_DELAY:
-        tx_psk_pm_settings.rrc_delay = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_PM_COSTAS_BANDWIDTH:
-        tx_psk_pm_settings.costas_bandwidth = (float) atof(optarg);
-        break;
-      case OPT_TX_PSK_PM_SYMSYNC_FILTER_BANK_SIZE:
-        tx_psk_pm_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_PM_SUBCARRIER_FREQUENCY:
-        tx_psk_pm_settings.subcarrier_frequency = (uint32_t) atoi(optarg);
-        break;
-      case OPT_TX_PSK_PM_MODULATION_INDEX:
-        tx_psk_pm_settings.modulation_index = (float) atof(optarg);
-        break;
-      case OPT_TX_PSK_PM_CARRIER_PLL_BANDWIDTH:
-        tx_psk_pm_settings.carrier_pll_bandwidth = (float) atof(optarg);
-        break;
-      case OPT_TX_FREQ_OFFSET_FILE:
-        result->tx_freq_offset_file = strdup(optarg);
-        break;
-      case OPT_TX_DEBUG_FREQ_OFFSET_FILE:
-        result->tx_debug_freq_offset_file = strdup(optarg);
-        break;
-      case OPT_TX_DEBUG_CONSTELLATION_FILE:
-        result->tx_debug_constellation_file = strdup(optarg);
+      case OPT_DEBUG_BASEBAND_FILE:
+        result->debug_baseband_file = strdup(optarg);
         break;
       case OPT_CONFIG:
       default:
@@ -1016,76 +769,39 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     }
   }
 
-  if (result->tx_modem == MODEM_TYPE_GFSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    int code = app_config_merge_gfsk_modem_settings(&tx_gfsk_settings, &result->tx_req.gfsk);
+  if (result->modem == MODEM_TYPE_GFSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
+    int code = app_config_merge_gfsk_modem_settings(&gfsk_settings, &result->req.gfsk);
     if (code != 0) {
       return code;
     }
-  } else if (result->tx_modem == MODEM_TYPE_BPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
-    int code = app_config_merge_psk_modem_settings(&tx_psk_settings, &result->tx_req.bpsk);
+  } else if (result->modem == MODEM_TYPE_BPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
+    int code = app_config_merge_psk_modem_settings(&psk_settings, &result->req.bpsk);
     if (code != 0) {
       return code;
     }
-  } else if (result->tx_modem == MODEM_TYPE_DPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
-    int code = app_config_merge_psk_modem_settings(&tx_psk_settings, &result->tx_req.dpsk);
+  } else if (result->modem == MODEM_TYPE_DPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
+    int code = app_config_merge_psk_modem_settings(&psk_settings, &result->req.dpsk);
     if (code != 0) {
       return code;
     }
-  } else if (result->tx_modem == MODEM_TYPE_SDPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
-    int code = app_config_merge_psk_modem_settings(&tx_psk_settings, &result->tx_req.sdpsk);
+  } else if (result->modem == MODEM_TYPE_SDPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
+    int code = app_config_merge_psk_modem_settings(&psk_settings, &result->req.sdpsk);
     if (code != 0) {
       return code;
     }
-  } else if (result->tx_modem == MODEM_TYPE_OQPSK) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    int code = app_config_merge_psk_modem_settings(&tx_psk_settings, &result->tx_req.oqpsk);
+  } else if (result->modem == MODEM_TYPE_OQPSK) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
+    int code = app_config_merge_psk_modem_settings(&psk_settings, &result->req.oqpsk);
     if (code != 0) {
       return code;
     }
-  } else if (result->tx_modem == MODEM_TYPE_PSK_PM) {
-    result->tx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
-    int code = app_config_merge_psk_pm_modem_settings(&tx_psk_pm_settings, &result->tx_req.psk_pm);
-    if (code != 0) {
-      return code;
-    }
-  }
-  if (result->rx_modem == MODEM_TYPE_GFSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-    int code = app_config_merge_gfsk_modem_settings(&rx_gfsk_settings, &result->rx_req.gfsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_BPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_BPSK;
-    int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.bpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_DPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_DPSK;
-    int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.dpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_SDPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_SDPSK;
-    int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.sdpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_OQPSK) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    int code = app_config_merge_psk_modem_settings(&rx_psk_settings, &result->rx_req.oqpsk);
-    if (code != 0) {
-      return code;
-    }
-  } else if (result->rx_modem == MODEM_TYPE_PSK_PM) {
-    result->rx_req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
-    int code = app_config_merge_psk_pm_modem_settings(&rx_psk_pm_settings, &result->rx_req.psk_pm);
+  } else if (result->modem == MODEM_TYPE_PSK_PM) {
+    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
+    int code = app_config_merge_psk_pm_modem_settings(&psk_pm_settings, &result->req.psk_pm);
     if (code != 0) {
       return code;
     }
@@ -1135,164 +851,132 @@ static int app_config_validate_and_log(app_config *result) {
     result->queue_size = 64;
   }
   fprintf(stdout, "queue_size: %d\n", result->queue_size);
-  if (result->rx_sdr_type < 0) {
-    fprintf(stderr, "<3>invalid rx_sdr_type\n");
+
+  bool is_cli_mode = (result->bind_address == NULL);
+  if (is_cli_mode) {
+    if (result->direction < 0) {
+      fprintf(stderr, "<3>invalid direction\n");
+      return -1;
+    }
+    if (result->direction == 0) {
+      fprintf(stderr, "<3>direction is required in cli mode. use --direction rx|tx\n");
+      return -1;
+    }
+    fprintf(stdout, "direction: %s\n", result->direction == DIRECTION_RX ? "rx" : "tx");
+  }
+
+  if (result->sdr_type < 0) {
+    fprintf(stderr, "<3>invalid sdr_type\n");
     return -1;
   }
-  if (result->rx_sdr_type == SDR_TYPE_NONE && result->tx_sdr_type == SDR_TYPE_NONE) {
-    fprintf(stderr, "<3>both rx_sdr_type and tx_sdr_type are \"none\"\n");
-    return -1;
+  if (result->sdr_type == 0) {
+    result->sdr_type = (result->direction == DIRECTION_TX) ? SDR_TYPE_NONE : SDR_TYPE_SDR_SERVER;
   }
-  if (result->rx_sdr_type == 0) {
-    result->rx_sdr_type = SDR_TYPE_SDR_SERVER;
-  }
-  if (result->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
-    if (result->rx_sdr_server_address == NULL) {
-      result->rx_sdr_server_address = strdup("127.0.0.1");
+  if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
+    if (is_cli_mode && result->direction == DIRECTION_TX) {
+      fprintf(stderr, "<3>sdr-server cannot tx. invalid sdr_type parameter\n");
+      return -1;
     }
-    if (result->rx_sdr_server_port == 0) {
-      result->rx_sdr_server_port = 8090;
+    if (result->sdr_server_address == NULL) {
+      result->sdr_server_address = strdup("127.0.0.1");
     }
-    fprintf(stdout, "rx: sdr_server\n");
-    fprintf(stdout, "sdr_server connection: %s:%d\n", result->rx_sdr_server_address, result->rx_sdr_server_port);
+    if (result->sdr_server_port == 0) {
+      result->sdr_server_port = 8090;
+    }
+    fprintf(stdout, "sdr: sdr_server\n");
+    fprintf(stdout, "sdr_server connection: %s:%d\n", result->sdr_server_address, result->sdr_server_port);
   }
-  if (result->rx_sdr_type == SDR_TYPE_PLUTOSDR) {
-    fprintf(stdout, "rx: plutosdr\n");
-    fprintf(stdout, "rx_plutosdr_gain: %f\n", result->rx_plutosdr_gain);
+  if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
+    fprintf(stdout, "sdr: plutosdr\n");
+    fprintf(stdout, "plutosdr_gain: %f\n", result->plutosdr_gain);
+    if (result->plutosdr_timeout_millis == 0) {
+      result->plutosdr_timeout_millis = 10000;
+    }
+    fprintf(stdout, "plutosdr_timeout_millis: %d\n", result->plutosdr_timeout_millis);
   }
-  if (result->rx_sdr_type == SDR_TYPE_FILE) {
-    fprintf(stdout, "rx: file\n");
+  if (result->sdr_type == SDR_TYPE_FILE) {
+    fprintf(stdout, "sdr: file\n");
     if (result->bind_address != NULL) {
-      fprintf(stderr, "<3>rx_sdr_type=file is not supported in the server mode\n");
+      fprintf(stderr, "<3>sdr_type=file is not supported in the server mode\n");
       return -1;
     }
-    if (result->rx_file == NULL) {
-      fprintf(stderr, "<3>rx_file parameter is missing\n");
+    if (result->file == NULL) {
+      fprintf(stderr, "<3>file parameter is missing\n");
       return -1;
     }
-    fprintf(stdout, "rx_file: %s\n", result->rx_file);
-    if (result->rx_file_format == FILE_FORMAT_GUESS) {
-      result->rx_file_format = app_config_guess_file_format(result->rx_file);
+    fprintf(stdout, "file: %s\n", result->file);
+    if (result->file_format == FILE_FORMAT_GUESS) {
+      result->file_format = app_config_guess_file_format(result->file);
     }
-    if (result->rx_file_format < 0) {
-      fprintf(stderr, "<3>invalid or unable to guess rx_file_format\n");
+    if (result->file_format < 0) {
+      fprintf(stderr, "<3>invalid or unable to guess file_format\n");
       return -1;
     }
-    fprintf(stdout, "rx_file_format: %s\n", result->rx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
+    fprintf(stdout, "file_format: %s\n", result->file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
   }
-  if (result->bind_address == NULL && result->rx_sdr_type != SDR_TYPE_NONE && result->output_file == NULL) {
-    fprintf(stderr, "<3>rx sdr is enabled, but the output file is missing\n");
-    return -1;
+  if (result->sdr_type == SDR_TYPE_NONE) {
+    fprintf(stdout, "sdr: none\n");
   }
-  if (result->bind_address == NULL && result->rx_sdr_type != SDR_TYPE_NONE && result->rx_modem == MODEM_TYPE_NONE) {
-    fprintf(stderr, "<3>rx sdr is enabled, but the rx_modem configuration is missing\n");
+
+  if (is_cli_mode && result->direction == DIRECTION_RX) {
+    if (result->sdr_type != SDR_TYPE_NONE && result->output_file == NULL) {
+      fprintf(stderr, "<3>rx is enabled, but the output file is missing\n");
+      return -1;
+    }
+  }
+  if (is_cli_mode && result->direction == DIRECTION_TX) {
+    if (result->sdr_type != SDR_TYPE_NONE && result->input_file == NULL) {
+      fprintf(stderr, "<3>tx is enabled, but the input file is missing\n");
+      return -1;
+    }
+  }
+  if (is_cli_mode && result->sdr_type != SDR_TYPE_NONE && result->modem == MODEM_TYPE_NONE) {
+    fprintf(stderr, "<3>sdr is enabled, but the modem configuration is missing\n");
     return -1;
   }
 
-  if (result->tx_sdr_type < 0) {
-    fprintf(stderr, "<3>invalid tx_sdr_type\n");
+  if (result->modem < 0) {
+    fprintf(stderr, "<3>invalid modem\n");
     return -1;
   }
-  if (result->tx_sdr_type == 0) {
-    result->tx_sdr_type = SDR_TYPE_NONE;
-  }
-  if (result->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
-    fprintf(stdout, "tx: plutosdr\n");
-    fprintf(stdout, "tx_plutosdr_gain: %f\n", result->tx_plutosdr_gain);
-    if (result->tx_plutosdr_timeout_millis == 0) {
-      result->tx_plutosdr_timeout_millis = 10000;
-    }
-    fprintf(stdout, "tx_plutosdr_timeout_millis: %d\n", result->tx_plutosdr_timeout_millis);
-  }
-  if (result->tx_sdr_type == SDR_TYPE_FILE) {
-    fprintf(stdout, "tx: file\n");
-    if (result->bind_address != NULL) {
-      fprintf(stderr, "<3>tx_sdr_type=file is not supported in the server mode\n");
-      return -1;
-    }
-    if (result->tx_file == NULL) {
-      fprintf(stderr, "<3>tx_file parameter is missing\n");
-      return -1;
-    }
-    fprintf(stdout, "tx_file: %s\n", result->tx_file);
-    if (result->tx_file_format == FILE_FORMAT_GUESS) {
-      result->tx_file_format = app_config_guess_file_format(result->tx_file);
-    }
-    if (result->tx_file_format < 0) {
-      fprintf(stderr, "<3>invalid or unable to guess tx_file_format\n");
-      return -1;
-    }
-    fprintf(stdout, "tx_file_format: %s\n", result->tx_file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
-  }
-  if (result->tx_sdr_type == SDR_TYPE_NONE) {
-    fprintf(stdout, "tx: none\n");
-  }
-  if (result->tx_sdr_type == SDR_TYPE_SDR_SERVER) {
-    fprintf(stderr, "<3>sdr-server cannot tx. invalid tx_sdr_type parameter\n");
-    return -1;
-  }
-  if (result->bind_address == NULL && result->tx_sdr_type != SDR_TYPE_NONE && result->input_file == NULL) {
-    fprintf(stderr, "<3>tx sdr is enabled, but the input file is missing\n");
-    return -1;
-  }
-  if (result->bind_address == NULL && result->tx_sdr_type != SDR_TYPE_NONE && result->tx_modem == MODEM_TYPE_NONE) {
-    fprintf(stderr, "<3>tx sdr is enabled, but the tx_modem configuration is missing\n");
-    return -1;
-  }
-
-  if (result->rx_modem < 0) {
-    fprintf(stderr, "<3>invalid rx_modem\n");
-    return -1;
-  }
-  PskModemSettings *bpsk_settings = NULL;
-  switch (result->rx_req.modem_settings_case) {
+  PskModemSettings *psk_settings = NULL;
+  switch (result->req.modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-      bpsk_settings = result->rx_req.bpsk;
+      psk_settings = result->req.bpsk;
       break;
     case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-      bpsk_settings = result->rx_req.dpsk;
+      psk_settings = result->req.dpsk;
       break;
     case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      bpsk_settings = result->rx_req.sdpsk;
+      psk_settings = result->req.sdpsk;
       break;
     case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
-      bpsk_settings = result->rx_req.oqpsk;
+      psk_settings = result->req.oqpsk;
       break;
     default:
       // do nothing
       break;
   }
-  if (bpsk_settings != NULL) {
-    if (bpsk_settings->symsync_filter_bank_size == 0) {
-      bpsk_settings->symsync_filter_bank_size = 32;
+  if (psk_settings != NULL) {
+    if (psk_settings->symsync_filter_bank_size == 0) {
+      psk_settings->symsync_filter_bank_size = 32;
     }
-    if (bpsk_settings->rrc_delay == 0) {
-      bpsk_settings->rrc_delay = 5;
+    if (psk_settings->rrc_delay == 0) {
+      psk_settings->rrc_delay = 5;
     }
-    if (bpsk_settings->rrc_beta == 0.0f) {
-      bpsk_settings->rrc_beta = 0.35f;
+    if (psk_settings->rrc_beta == 0.0f) {
+      psk_settings->rrc_beta = 0.35f;
     }
-    if (bpsk_settings->costas_bandwidth == 0.0f) {
-      bpsk_settings->costas_bandwidth = 0.01f;
+    if (psk_settings->costas_bandwidth == 0.0f) {
+      psk_settings->costas_bandwidth = 0.01f;
     }
   }
-  if (result->rx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
-    app_config_apply_psk_pm_defaults(result->rx_req.psk_pm);
-  }
-  if (result->tx_req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
-    app_config_apply_psk_pm_defaults(result->tx_req.psk_pm);
+  if (result->req.modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
+    app_config_apply_psk_pm_defaults(result->req.psk_pm);
   }
 
-  if (result->rx_framing < 0) {
-    fprintf(stderr, "<3>invalid rx_framing\n");
-    return -1;
-  }
-  if (result->tx_modem < 0) {
-    fprintf(stderr, "<3>invalid tx_modem\n");
-    return -1;
-  }
-  if (result->tx_framing < 0) {
-    fprintf(stderr, "<3>invalid tx_framing\n");
+  if (result->framing < 0) {
+    fprintf(stderr, "<3>invalid framing\n");
     return -1;
   }
   return 0;
@@ -1304,9 +988,7 @@ int app_config_create(int argc, char **argv, app_config **config) {
     return -ENOMEM;
   }
   *result = (app_config){0};
-  // init both anyway to simplify the reading from cli
-  modem_request__init(&result->rx_req);
-  modem_request__init(&result->tx_req);
+  modem_request__init(&result->req);
 
   const struct option long_options[] = {
     {"config", required_argument, NULL, 'c'},
@@ -1350,7 +1032,7 @@ int app_config_create(int argc, char **argv, app_config **config) {
     return code;
   }
 
-  if (result->tx_sdr_type == SDR_TYPE_PLUTOSDR || result->rx_sdr_type == SDR_TYPE_PLUTOSDR) {
+  if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     code = iio_lib_create(&result->iio);
     if (code != 0) {
       app_config_destroy(result);
@@ -1369,38 +1051,26 @@ void app_config_destroy(app_config *config) {
   if (config->bind_address != NULL) {
     free(config->bind_address);
   }
-  if (config->rx_sdr_server_address != NULL) {
-    free(config->rx_sdr_server_address);
+  if (config->sdr_server_address != NULL) {
+    free(config->sdr_server_address);
   }
-  if (config->rx_freq_offset_file != NULL) {
-    free(config->rx_freq_offset_file);
+  if (config->freq_offset_file != NULL) {
+    free(config->freq_offset_file);
   }
-  if (config->tx_freq_offset_file != NULL) {
-    free(config->tx_freq_offset_file);
+  if (config->debug_freq_offset_file != NULL) {
+    free(config->debug_freq_offset_file);
   }
-  if (config->rx_debug_freq_offset_file != NULL) {
-    free(config->rx_debug_freq_offset_file);
+  if (config->debug_constellation_file != NULL) {
+    free(config->debug_constellation_file);
   }
-  if (config->tx_debug_freq_offset_file != NULL) {
-    free(config->tx_debug_freq_offset_file);
-  }
-  if (config->rx_debug_constellation_file != NULL) {
-    free(config->rx_debug_constellation_file);
-  }
-  if (config->tx_debug_constellation_file != NULL) {
-    free(config->tx_debug_constellation_file);
-  }
-  if (config->rx_debug_baseband_file != NULL) {
-    free(config->rx_debug_baseband_file);
+  if (config->debug_baseband_file != NULL) {
+    free(config->debug_baseband_file);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
   }
-  if (config->rx_file != NULL) {
-    free(config->rx_file);
-  }
-  if (config->tx_file != NULL) {
-    free(config->tx_file);
+  if (config->file != NULL) {
+    free(config->file);
   }
   if (config->input_file != NULL) {
     free(config->input_file);
@@ -1408,11 +1078,8 @@ void app_config_destroy(app_config *config) {
   if (config->output_file != NULL) {
     free(config->output_file);
   }
-  if (config->rx_req.gfsk != NULL) {
-    free(config->rx_req.gfsk);
-  }
-  if (config->tx_req.gfsk != NULL) {
-    free(config->tx_req.gfsk);
+  if (config->req.gfsk != NULL) {
+    free(config->req.gfsk);
   }
   free(config);
 }

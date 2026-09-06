@@ -25,6 +25,12 @@
 #define FILE_FORMAT_CU8 1
 #define FILE_FORMAT_CF32 2
 
+// direction is only meaningful in cli mode (bind_address == NULL): it selects whether the
+// single configured sdr/modem pipeline demodulates (rx) or modulates (tx). server mode ignores
+// it and dispatches based on the client's RxRequest/TxRequest instead.
+#define DIRECTION_RX 1
+#define DIRECTION_TX 2
+
 typedef struct {
   // socket settings
   char *bind_address;
@@ -34,38 +40,29 @@ typedef struct {
   uint32_t buffer_size;
   uint16_t queue_size;
 
-  int rx_sdr_type;
-  char *rx_sdr_server_address;
-  int rx_sdr_server_port;
+  int direction;
 
-  char *rx_file;
-  int rx_file_format;
-  char *tx_file;
-  int tx_file_format;
+  int sdr_type;
+  char *sdr_server_address;
+  int sdr_server_port;
 
-  int tx_sdr_type;
-  double tx_plutosdr_gain;
-  double rx_plutosdr_gain;
-  unsigned int tx_plutosdr_timeout_millis;
+  char *file;
+  int file_format;
+
+  double plutosdr_gain;
+  unsigned int plutosdr_timeout_millis;
   iio_lib *iio;
 
   char *input_file;
   char *output_file;
 
-  int rx_modem;
-  int rx_framing;
-  struct ModemRequest rx_req;
-  char *rx_freq_offset_file;
-  char *rx_debug_freq_offset_file;
-  char *rx_debug_constellation_file;
-  char *rx_debug_baseband_file;
-
-  int tx_modem;
-  int tx_framing;
-  struct ModemRequest tx_req;
-  char *tx_freq_offset_file;
-  char *tx_debug_freq_offset_file;
-  char *tx_debug_constellation_file;
+  int modem;
+  int framing;
+  struct ModemRequest req;
+  char *freq_offset_file;
+  char *debug_freq_offset_file;
+  char *debug_constellation_file;
+  char *debug_baseband_file;
 
 } app_config;
 
