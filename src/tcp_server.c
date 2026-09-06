@@ -274,7 +274,7 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
     fprintf(stderr, "<3>[%d] tx is being used\n", id);
     return -RESPONSE_DETAILS_TX_IS_BEING_USED;
   }
-  if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
+  if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
     if (tx_config == NULL) {
       fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
@@ -283,14 +283,14 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
     tx_config->sample_rate = modem_request_get_sample_rate(req);
     tx_config->center_freq = modem_request_get_center_freq(req);
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
-    tx_config->manual_gain = server->app_config->tx_plutosdr_gain;
-    int code = plutosdr_create(id, false, NULL, tx_config, server->app_config->tx_plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, output);
+    tx_config->manual_gain = server->app_config->plutosdr_gain;
+    int code = plutosdr_create(id, false, NULL, tx_config, server->app_config->plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, output);
     if (code != 0) {
       fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
   } else {
-    fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->app_config->tx_sdr_type);
+    fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->app_config->sdr_type);
     return -RESPONSE_DETAILS_INTERNAL_ERROR;
   }
   server->tx_initialized = true;
@@ -303,13 +303,13 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
   if (code != 0) {
     return -RESPONSE_DETAILS_INTERNAL_ERROR;
   }
-  if (server->app_config->rx_sdr_type == SDR_TYPE_SDR_SERVER) {
+  if (server->app_config->sdr_type == SDR_TYPE_SDR_SERVER) {
     //re-use sdr connections
     //this will allow demodulating different modes using the same data
     struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
     if (closest == NULL) {
       sdr_device *rx_device = NULL;
-      code = sdr_server_client_create(tcp_worker->id, rx, server->app_config->rx_sdr_server_address, server->app_config->rx_sdr_server_port, server->app_config->read_timeout_seconds, server->app_config->buffer_size, &rx_device);
+      code = sdr_server_client_create(tcp_worker->id, rx, server->app_config->sdr_server_address, server->app_config->sdr_server_port, server->app_config->read_timeout_seconds, server->app_config->buffer_size, &rx_device);
       if (code != 0) {
         free(rx);
         return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -326,7 +326,7 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
       tcp_worker->sdr = closest->sdr;
       free(rx);
     }
-  } else if (server->app_config->rx_sdr_type == SDR_TYPE_PLUTOSDR) {
+  } else if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     if (server->rx_initialized) {
       free(rx);
       fprintf(stderr, "<3>[%d] rx is being used\n", tcp_worker->id);
@@ -341,9 +341,9 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
     rx_config->sample_rate = rx->rx_sample_rate;
     rx_config->center_freq = rx->rx_center_freq;
     rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
-    rx_config->manual_gain = server->app_config->rx_plutosdr_gain;
+    rx_config->manual_gain = server->app_config->plutosdr_gain;
     sdr_device *rx_device = NULL;
-    code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->app_config->tx_plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, &rx_device);
+    code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->app_config->plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, &rx_device);
     if (code != 0) {
       free(rx);
       fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);
@@ -404,12 +404,6 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  if (server->app_config->tx_sdr_type == SDR_TYPE_NONE) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
   if (validate_request(tcp_worker->tx_req, tcp_worker->id, server->app_config) < 0) {
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     tcp_worker_destroy(tcp_worker);
@@ -423,7 +417,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     tcp_worker_destroy(tcp_worker);
     return;
   }
-  if (server->app_config->tx_sdr_type == SDR_TYPE_PLUTOSDR) {
+  if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     pthread_mutex_lock(&server->mutex);
     code = tcp_server_init_tx_device(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
     pthread_mutex_unlock(&server->mutex);
