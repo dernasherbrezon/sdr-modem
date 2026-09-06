@@ -6,10 +6,9 @@
 #include "sdr/iio_lib.h"
 #include "api.pb-c.h"
 
-#define SDR_TYPE_NONE 1
-#define SDR_TYPE_PLUTOSDR 2
-#define SDR_TYPE_FILE 3
-#define SDR_TYPE_SDR_SERVER 4
+#define SDR_TYPE_PLUTOSDR 1
+#define SDR_TYPE_FILE 2
+#define SDR_TYPE_SDR_SERVER 3
 
 #define MODEM_TYPE_NONE 0
 #define MODEM_TYPE_GFSK 1

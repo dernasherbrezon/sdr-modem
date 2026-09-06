@@ -32,8 +32,6 @@ static int app_config_convert_sdr_type(const char *type) {
     return SDR_TYPE_PLUTOSDR;
   } else if (strcmp(type, "file") == 0) {
     return SDR_TYPE_FILE;
-  } else if (strcmp(type, "none") == 0) {
-    return SDR_TYPE_NONE;
   }
   return -1;
 }
@@ -865,13 +863,6 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stdout, "direction: %s\n", result->direction == DIRECTION_RX ? "rx" : "tx");
   }
 
-  if (result->sdr_type < 0) {
-    fprintf(stderr, "<3>invalid sdr_type\n");
-    return -1;
-  }
-  if (result->sdr_type == 0) {
-    result->sdr_type = (result->direction == DIRECTION_TX) ? SDR_TYPE_NONE : SDR_TYPE_SDR_SERVER;
-  }
   if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
     if (is_cli_mode && result->direction == DIRECTION_TX) {
       fprintf(stderr, "<3>sdr-server cannot tx. invalid sdr_type parameter\n");
@@ -885,18 +876,16 @@ static int app_config_validate_and_log(app_config *result) {
     }
     fprintf(stdout, "sdr: sdr_server\n");
     fprintf(stdout, "sdr_server connection: %s:%d\n", result->sdr_server_address, result->sdr_server_port);
-  }
-  if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
+  } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     fprintf(stdout, "sdr: plutosdr\n");
     fprintf(stdout, "plutosdr_gain: %f\n", result->plutosdr_gain);
     if (result->plutosdr_timeout_millis == 0) {
       result->plutosdr_timeout_millis = 10000;
     }
     fprintf(stdout, "plutosdr_timeout_millis: %d\n", result->plutosdr_timeout_millis);
-  }
-  if (result->sdr_type == SDR_TYPE_FILE) {
+  } else if (result->sdr_type == SDR_TYPE_FILE) {
     fprintf(stdout, "sdr: file\n");
-    if (result->bind_address != NULL) {
+    if (!is_cli_mode) {
       fprintf(stderr, "<3>sdr_type=file is not supported in the server mode\n");
       return -1;
     }
@@ -913,24 +902,20 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     fprintf(stdout, "file_format: %s\n", result->file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
-  }
-  if (result->sdr_type == SDR_TYPE_NONE) {
-    fprintf(stdout, "sdr: none\n");
+  } else {
+    fprintf(stderr, "<3>invalid sdr_type: %d\n", result->sdr_type);
+    return -1;
   }
 
-  if (is_cli_mode && result->direction == DIRECTION_RX) {
-    if (result->sdr_type != SDR_TYPE_NONE && result->output_file == NULL) {
-      fprintf(stderr, "<3>rx is enabled, but the output file is missing\n");
-      return -1;
-    }
+  if (is_cli_mode && result->direction == DIRECTION_RX && result->output_file == NULL) {
+    fprintf(stderr, "<3>rx is enabled, but the output file is missing\n");
+    return -1;
   }
-  if (is_cli_mode && result->direction == DIRECTION_TX) {
-    if (result->sdr_type != SDR_TYPE_NONE && result->input_file == NULL) {
-      fprintf(stderr, "<3>tx is enabled, but the input file is missing\n");
-      return -1;
-    }
+  if (is_cli_mode && result->direction == DIRECTION_TX && result->input_file == NULL) {
+    fprintf(stderr, "<3>tx is enabled, but the input file is missing\n");
+    return -1;
   }
-  if (is_cli_mode && result->sdr_type != SDR_TYPE_NONE && result->modem == MODEM_TYPE_NONE) {
+  if (is_cli_mode && result->modem == MODEM_TYPE_NONE) {
     fprintf(stderr, "<3>sdr is enabled, but the modem configuration is missing\n");
     return -1;
   }
