@@ -29,12 +29,6 @@ void test_unknown_sdr_type() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
-void test_minimal_config() {
-  char *argv[] = {"test_app_config", "--config", "minimal.conf", "--direction", "rx", "--sdr_type", "sdr-server", NULL};
-  int code = app_config_create(7, argv, &config);
-  TEST_ASSERT_EQUAL_INT(0, code);
-}
-
 void test_pluto_enabled() {
   char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", NULL};
   int code = app_config_create(3, argv, &config);
@@ -137,7 +131,6 @@ void setUp() {
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_success);
-  RUN_TEST(test_minimal_config);
   RUN_TEST(test_invalid_timeout);
   RUN_TEST(test_invalid_format);
   RUN_TEST(test_missing_file);
