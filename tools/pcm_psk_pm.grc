@@ -1,0 +1,1406 @@
+options:
+  parameters:
+    author: dernasherbrezon
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: Debug flowgraph for investigating a suspected PCM/PSK/PM signal (PCM
+      data phase-shift-keyed onto a sine subcarrier, which in turn phase-modulates
+      a residual RF carrier - the classic deep-space/telemetry format). Stage 1 tunes
+      an xlating filter over the carrier, keeping BOTH the residual carrier and the
+      subcarrier sidebands in the passband. A PLL locks onto the residual carrier;
+      its output's in-phase component is the recovered carrier tone and its quadrature
+      component carries the subcarrier phase modulation. Stage 2 xlates that subcarrier
+      down to baseband, and the rest of the chain (matched filter, Costas loop, symbol
+      sync, second Costas loop, differential decode) demodulates it exactly like a
+      suppressed-carrier BPSK signal.
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: pcm_psk_pm
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: PCM/PSK/PM investigation
+    window_size: (1900,1350)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: center_freq
+  id: variable_qtgui_range
+  parameters:
+    comment: 'TUNE THIS: shifts the residual carrier to baseband before the low-pass
+      filter. The passband (cutoff_freq) must stay wide enough to also keep both subcarrier
+      sidebands, not just the carrier line itself.'
+    gui_hint: 1,0,1,1
+    label: Center frequency (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: -samp_rate / 2
+    step: '100'
+    stop: samp_rate / 2
+    value: '210000'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 476.0]
+    rotation: 0
+    state: enabled
+- name: clock_loop_bw
+  id: variable_qtgui_range
+  parameters:
+    comment: Symbol timing (clock recovery) loop bandwidth. Lower = smoother but slower
+      timing tracking.
+    gui_hint: 12,0,1,1
+    label: Clock recovery loop bandwidth
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0.001'
+    step: '0.001'
+    stop: '0.2'
+    value: '0.005'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2384, 428.0]
+    rotation: 0
+    state: enabled
+- name: costas_loop_bw
+  id: variable_qtgui_range
+  parameters:
+    comment: Costas loop bandwidth (rad/sample) tracking residual phase/frequency
+      error on the subcarrier (order 2, since the subcarrier itself is suppressed-carrier
+      BPSK). Watch the Costas loop 1 constellation to judge lock.
+    gui_hint: 9,0,1,1
+    label: Costas loop bandwidth
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0.001'
+    step: '0.001'
+    stop: '0.5'
+    value: '0.005'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1912, 388.0]
+    rotation: 0
+    state: disabled
+- name: costas_loop_bw_2
+  id: variable_qtgui_range
+  parameters:
+    comment: Bandwidth of the second Costas loop, applied after symbol timing recovery
+      (one sample/symbol). Cleans up residual phase/frequency error the first loop
+      didn't fully track before differential decoding.
+    gui_hint: 13,0,1,1
+    label: Costas loop 2 bandwidth
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0.001'
+    step: '0.001'
+    stop: '0.5'
+    value: '0.005'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2536, 428.0]
+    rotation: 0
+    state: enabled
+- name: cutoff_freq
+  id: variable_qtgui_range
+  parameters:
+    comment: Low-pass cutoff (Hz) applied after xlating, before the PLL. Must be wider
+      than subcarrier_freq plus its sidebands or you will filter out the data before
+      it ever reaches the PLL.
+    gui_hint: 1,1,1,1
+    label: RF cutoff frequency (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '1000'
+    step: '1000'
+    stop: samp_rate / 2
+    value: '5000'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [440, 476.0]
+    rotation: 0
+    state: enabled
+- name: decim
+  id: variable_qtgui_range
+  parameters:
+    comment: Final decimation, applied by the matched-filter/decimator after subcarrier
+      xlating (mirrors dpsk.grc - the xlating filters themselves never decimate).
+    gui_hint: 1,3,1,1
+    label: Decimation
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: int
+    start: '1'
+    step: '1'
+    stop: '200'
+    value: '50'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 476.0]
+    rotation: 0
+    state: enabled
+- name: decim2
+  id: variable_qtgui_range
+  parameters:
+    comment: Final decimation, applied by the matched-filter/decimator after subcarrier
+      xlating (mirrors dpsk.grc - the xlating filters themselves never decimate).
+    gui_hint: 3,3,1,1
+    label: Decimation
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: int
+    start: '1'
+    step: '1'
+    stop: '200'
+    value: '20'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1760, 468.0]
+    rotation: 0
+    state: enabled
+- name: pll_loop_bw
+  id: variable_qtgui_range
+  parameters:
+    comment: PLL loop bandwidth (Hz) tracking the residual carrier. Lower = slower
+      but cleaner lock; needs to be narrow enough to ignore the subcarrier's phase
+      swings (that's what makes them show up in the Q monitor instead of being tracked
+      out).
+    gui_hint: 4,0,1,1
+    label: PLL loop bandwidth (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0.1'
+    step: '0.1'
+    stop: '200'
+    value: '5'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [944, 460.0]
+    rotation: 0
+    state: enabled
+- name: rolloff
+  id: variable_qtgui_range
+  parameters:
+    comment: RRC roll-off / excess bandwidth (alpha) for the optional matched filter
+      stage. Only meaningful once Symbol rate is confirmed correct.
+    gui_hint: 10,0,1,1
+    label: RRC roll-off (alpha)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0.1'
+    step: '0.01'
+    stop: '1.0'
+    value: '0.5'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1912, 508.0]
+    rotation: 0
+    state: disabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: Sample rate of the input file. Must match the capture.
+    value: 1e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [136, 8.0]
+    rotation: 0
+    state: enabled
+- name: subcarrier_cutoff_freq
+  id: variable_qtgui_range
+  parameters:
+    comment: Low-pass cutoff (Hz) isolating the subcarrier after downconversion. Should
+      be a bit wider than symbol_rate * (1 + rolloff)/2 - too narrow clips the BPSK
+      sidebands, too wide lets in the other sideband/harmonics.
+    gui_hint: 3,1,1,1
+    label: Subcarrier cutoff frequency (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '100'
+    step: '50'
+    stop: subcarrier_freq / 2
+    value: '100'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1440, 468.0]
+    rotation: 0
+    state: enabled
+- name: subcarrier_freq
+  id: variable_qtgui_range
+  parameters:
+    comment: 'TUNE THIS: expected subcarrier frequency (Hz), read off the Stage 1
+      spectrum as the offset of the sideband peaks either side of the locked carrier
+      line. Common values are in the low kHz (e.g. 1-65 kHz depending on the standard).'
+    gui_hint: 3,0,1,1
+    label: Subcarrier frequency (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '100'
+    step: '100'
+    stop: samp_rate / 2
+    value: '2048'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1264, 468.0]
+    rotation: 0
+    state: enabled
+- name: subcarrier_transition_width
+  id: variable_qtgui_range
+  parameters:
+    comment: Low-pass transition width (Hz) for the subcarrier xlating filter taps.
+    gui_hint: 3,2,1,1
+    label: Subcarrier transition width (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '50'
+    step: '50'
+    stop: '5000'
+    value: '100'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1600, 468.0]
+    rotation: 0
+    state: enabled
+- name: symbol_rate
+  id: variable_qtgui_range
+  parameters:
+    comment: 'TUNE THIS: expected PCM bit/baud rate on the subcarrier. Feeds the symbol-sync
+      samples-per-symbol calculation. Should be well below subcarrier_freq (the subcarrier
+      is the "carrier" the PCM data phase-modulates).'
+    gui_hint: 11,0,1,1
+    label: Symbol rate (baud)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '50'
+    step: '10'
+    stop: '20000'
+    value: '64'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2248, 428.0]
+    rotation: 0
+    state: enabled
+- name: transition_width
+  id: variable_qtgui_range
+  parameters:
+    comment: Low-pass transition width (Hz) for the RF xlating filter taps.
+    gui_hint: 1,2,1,1
+    label: RF transition width (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '500'
+    step: '500'
+    stop: '10000'
+    value: '2000'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [584, 476.0]
+    rotation: 0
+    state: enabled
+- name: variable_low_pass_filter_taps_0
+  id: variable_low_pass_filter_taps
+  parameters:
+    beta: '6.76'
+    comment: RF low-pass taps - must pass the carrier AND both subcarrier sidebands.
+    cutoff_freq: cutoff_freq
+    gain: '1.0'
+    samp_rate: samp_rate
+    value: ''
+    width: transition_width
+    win: window.WIN_HAMMING
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 12.0]
+    rotation: 0
+    state: enabled
+- name: variable_low_pass_filter_taps_1
+  id: variable_low_pass_filter_taps
+  parameters:
+    beta: '6.76'
+    comment: Subcarrier low-pass taps, applied after downconverting the subcarrier
+      to baseband.
+    cutoff_freq: subcarrier_cutoff_freq
+    gain: '1.0'
+    samp_rate: samp_rate / decim
+    value: ''
+    width: subcarrier_transition_width
+    win: window.WIN_HAMMING
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1352, 36.0]
+    rotation: 0
+    state: enabled
+- name: variable_rrc_filter_taps_0
+  id: variable_rrc_filter_taps
+  parameters:
+    alpha: rolloff
+    comment: RRC matched-filter taps for the subcarrier's BPSK symbols. Only valid
+      once Symbol rate matches the actual baud rate.
+    gain: '1.0'
+    ntaps: int(11 * samp_rate / decim / symbol_rate)
+    samp_rate: samp_rate
+    sym_rate: symbol_rate
+    value: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [416, 28.0]
+    rotation: 0
+    state: disabled
+- name: analog_agc_xx_0
+  id: analog_agc_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Normalizes amplitude before the PLL so its phase detector behaves consistently.
+    gain: '1.0'
+    max_gain: '65536'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rate: 2e-2 / 80
+    reference: '1.0'
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [720, 144.0]
+    rotation: 0
+    state: enabled
+- name: analog_agc_xx_1
+  id: analog_agc_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Normalizes amplitude before the Costas loop so its error detector behaves
+      consistently.
+    gain: '1.0'
+    max_gain: '65536'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rate: 2e-2 / 80
+    reference: '1.0'
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1784, 176.0]
+    rotation: 0
+    state: enabled
+- name: analog_pll_carriertracking_cc_0
+  id: analog_pll_carriertracking_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 'Locks onto the residual carrier. Internally outputs input * conj(recovered
+      carrier tone): once locked, the real (I) part is the recovered carrier and the
+      imaginary (Q) part carries the subcarrier''s phase modulation (that''s the data)
+      - see the PLL I/Q monitor scope.'
+    max_freq: np.pi
+    maxoutbuf: '0'
+    min_freq: -np.pi
+    minoutbuf: '0'
+    w: 2 * np.pi * pll_loop_bw * decim / samp_rate
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [952, 140.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_float_0
+  id: blocks_complex_to_float
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1136, 148.0]
+    rotation: 0
+    state: enabled
+- name: blocks_delay_0
+  id: blocks_delay
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    delay: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_ports: '1'
+    showports: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1640, 148.0]
+    rotation: 0
+    state: disabled
+- name: blocks_file_source_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: Point this at your .cf32 capture (complex float32 I/Q).
+    file: /Users/dernasherbrezon/Downloads/slim_2024-01-19_15_39_58_437.200MHz_1.00Msps_ci16_le.chan0.sigmf-data
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 128.0]
+    rotation: 0
+    state: disabled
+- name: blocks_file_source_0_0
+  id: blocks_file_source
+  parameters:
+    affinity: ''
+    alias: ''
+    begin_tag: pmt.PMT_NIL
+    comment: ''
+    file: /Users/dernasherbrezon/Downloads/slim_2024-01-19_15_39_58_437.200MHz_1.00Msps_ci16_le.chan0.sigmf-data
+    length: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    offset: '0'
+    repeat: 'True'
+    type: short
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 256.0]
+    rotation: 0
+    state: enabled
+- name: blocks_interleaved_short_to_complex_0
+  id: blocks_interleaved_short_to_complex
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: 2**15
+    swap: 'False'
+    vector_input: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [216, 280.0]
+    rotation: 0
+    state: enabled
+- name: blocks_multiply_xx_0
+  id: blocks_multiply_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1768, 28.0]
+    rotation: 0
+    state: disabled
+- name: blocks_null_sink_0
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: Decoded PCM bits. Replace with a file sink to capture them.
+    num_inputs: '1'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [3112, 156.0]
+    rotation: 0
+    state: enabled
+- name: blocks_null_sink_1
+  id: blocks_null_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    bus_structure_sink: '[[0,],]'
+    comment: ''
+    num_inputs: '1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1280, 108.0]
+    rotation: 0
+    state: enabled
+- name: blocks_throttle2_0
+  id: blocks_throttle2
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    limit: auto
+    maximum: '0.1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [240, 152.0]
+    rotation: 0
+    state: bypassed
+- name: digital_constellation_decoder_cb_0
+  id: digital_constellation_decoder_cb
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Slices the differentially-decoded symbol back to a bit using a BPSK constellation.
+    constellation: digital.constellation_bpsk().base()
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2912, 156.0]
+    rotation: 0
+    state: enabled
+- name: digital_costas_loop_cc_0
+  id: digital_costas_loop_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Second-order Costas loop tracks residual phase/frequency error on the
+      subcarrier's BPSK modulation.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    order: '2'
+    use_snr: 'False'
+    w: costas_loop_bw
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1976, 140.0]
+    rotation: 0
+    state: disabled
+- name: digital_costas_loop_cc_1
+  id: digital_costas_loop_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Second Costas loop, applied after symbol timing recovery once there is
+      one sample per symbol. Cleans up residual phase/frequency error the first loop
+      didn't fully track before differential decoding.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    order: '2'
+    use_snr: 'False'
+    w: costas_loop_bw_2
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2520, 108.0]
+    rotation: 0
+    state: enabled
+- name: digital_diff_phasor_cc_0
+  id: digital_diff_phasor_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Differential demodulation - multiplies each symbol by the conjugate of
+      the previous one, removing any residual/ambiguous absolute phase left by the
+      Costas loops. Only needed if the PCM data is differentially encoded (e.g. NRZ-M)
+      - if bits come out garbled, try removing this and slicing directly.
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2720, 148.0]
+    rotation: 0
+    state: enabled
+- name: digital_symbol_sync_xx_0
+  id: digital_symbol_sync_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Clock recovery - resamples the Costas-corrected subcarrier stream down
+      to one complex sample per symbol.
+    constellation: digital.constellation_bpsk().base()
+    damping: '1.0'
+    loop_bw: clock_loop_bw
+    max_dev: '1.5'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nfilters: '32'
+    osps: '1'
+    pfb_mf_taps: '[]'
+    resamp_type: digital.IR_PFB_NO_MF
+    sps: samp_rate / decim / symbol_rate / decim2
+    ted_gain: '1.0'
+    ted_type: digital.TED_GARDNER
+    type: cc
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2224, 140.0]
+    rotation: 0
+    state: enabled
+- name: fir_filter_xxx_0
+  id: fir_filter_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Optional RRC matched filter and decimator - complements (does not replace)
+      the low-pass in the subcarrier xlating filter above. To turn off matching (keep
+      only the decimation), right-click and Bypass here - but then leave the RRC roll-off
+      slider alone (moving it while bypassed hits a GRC codegen bug).
+    decim: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samp_delay: '0'
+    taps: variable_rrc_filter_taps_0
+    type: ccf
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1608, 240.0]
+    rotation: 0
+    state: disabled
+- name: freq_xlating_fir_filter_xxx_0
+  id: freq_xlating_fir_filter_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    center_freq: center_freq
+    comment: 'Stage 1: shifts center_freq to baseband and low-pass filters. Does not
+      decimate (like dpsk.grc, decimation happens later at the matched-filter stage)
+      - keep the carrier and both subcarrier sidebands in the passband.'
+    decim: decim
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samp_rate: samp_rate
+    taps: variable_low_pass_filter_taps_0
+    type: ccc
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [408, 156.0]
+    rotation: 0
+    state: enabled
+- name: freq_xlating_fir_filter_xxx_1
+  id: freq_xlating_fir_filter_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    center_freq: subcarrier_freq
+    comment: 'Stage 2: shifts the subcarrier to baseband and low-pass filters it,
+      converting the real Q stream from the PLL into a complex BPSK-like signal. Does
+      not decimate - decimation happens at the matched-filter stage below.'
+    decim: decim2
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samp_rate: samp_rate / decim
+    taps: variable_low_pass_filter_taps_1
+    type: fcf
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1360, 188.0]
+    rotation: 0
+    state: enabled
+- name: import_0
+  id: import
+  parameters:
+    alias: ''
+    comment: Needed for np.pi in the PLL loop bandwidth/range expressions below.
+    imports: import numpy as np
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [304, 8.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_const_sink_x_0
+  id: qtgui_const_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: Debug view of the Costas loop output. When locked, points should cluster
+      into 2 tight groups on a line through the origin instead of spreading around
+      a circle.
+    grid: 'True'
+    gui_hint: 9,1,2,1
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    legend: 'True'
+    marker1: '0'
+    marker10: '0'
+    marker2: '0'
+    marker3: '0'
+    marker4: '0'
+    marker5: '0'
+    marker6: '0'
+    marker7: '0'
+    marker8: '0'
+    marker9: '0'
+    name: '"Costas loop 1 constellation (subcarrier)"'
+    nconnections: '1'
+    size: '1024'
+    style1: '0'
+    style10: '0'
+    style2: '0'
+    style3: '0'
+    style4: '0'
+    style5: '0'
+    style6: '0'
+    style7: '0'
+    style8: '0'
+    style9: '0'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    xmax: '2'
+    xmin: '-2'
+    ymax: '2'
+    ymin: '-2'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2152, 364.0]
+    rotation: 0
+    state: disabled
+- name: qtgui_const_sink_x_1
+  id: qtgui_const_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: Debug view of the second Costas loop's output, one sample per symbol.
+    grid: 'True'
+    gui_hint: 11,1,3,1
+    label1: ''
+    label10: ''
+    label2: ''
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    legend: 'True'
+    marker1: '0'
+    marker10: '0'
+    marker2: '0'
+    marker3: '0'
+    marker4: '0'
+    marker5: '0'
+    marker6: '0'
+    marker7: '0'
+    marker8: '0'
+    marker9: '0'
+    name: '"Costas loop 2 constellation"'
+    nconnections: '1'
+    size: '512'
+    style1: '0'
+    style10: '0'
+    style2: '0'
+    style3: '0'
+    style4: '0'
+    style5: '0'
+    style6: '0'
+    style7: '0'
+    style8: '0'
+    style9: '0'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    xmax: '2'
+    xmin: '-2'
+    ymax: '2'
+    ymin: '-2'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2728, 340.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_0
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.05'
+    axislabels: 'True'
+    bw: samp_rate / decim
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: Look for a strong carrier line plus a pair of sideband peaks +/- subcarrier_freq
+      away - use their spacing to set subcarrier_freq. Use this to tune center_freq/cutoff_freq/transition_width.
+    ctrlpanel: 'False'
+    fc: '0'
+    fftsize: '4096'
+    freqhalf: 'True'
+    grid: 'True'
+    gui_hint: 0,0,1,4
+    label: Relative Gain
+    label1: ''
+    label10: ''''''
+    label2: ''''''
+    label3: ''''''
+    label4: ''''''
+    label5: ''''''
+    label6: ''''''
+    label7: ''''''
+    label8: ''''''
+    label9: ''''''
+    legend: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '"Stage 1: after RF xlating (carrier + subcarrier sidebands)"'
+    nconnections: '1'
+    norm_window: 'False'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: complex
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    wintype: window.WIN_BLACKMAN_hARRIS
+    ymax: '10'
+    ymin: '-140'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [448, 384.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_1
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.1'
+    axislabels: 'True'
+    bw: samp_rate / decim / decim2
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: BPSK sidebands of the subcarrier, now centered at 0 Hz. Use this to tune
+      subcarrier_freq/subcarrier_cutoff_freq/subcarrier_transition_width.
+    ctrlpanel: 'False'
+    fc: '0'
+    fftsize: '4096'
+    freqhalf: 'True'
+    grid: 'True'
+    gui_hint: 2,0,1,4
+    label: Relative Gain
+    label1: ''
+    label10: ''''''
+    label2: ''''''
+    label3: ''''''
+    label4: ''''''
+    label5: ''''''
+    label6: ''''''
+    label7: ''''''
+    label8: ''''''
+    label9: ''''''
+    legend: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '"Stage 2: after subcarrier xlating"'
+    nconnections: '1'
+    norm_window: 'False'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: complex
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    wintype: window.WIN_BLACKMAN_hARRIS
+    ymax: '10'
+    ymin: '-140'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1456, 368.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_1_0
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.1'
+    axislabels: 'True'
+    bw: samp_rate / decim / decim2
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: BPSK sidebands of the subcarrier, now centered at 0 Hz. Use this to tune
+      subcarrier_freq/subcarrier_cutoff_freq/subcarrier_transition_width.
+    ctrlpanel: 'False'
+    fc: '0'
+    fftsize: '8192'
+    freqhalf: 'True'
+    grid: 'True'
+    gui_hint: 9,1,2,1
+    label: Relative Gain
+    label1: ''
+    label10: ''''''
+    label2: ''''''
+    label3: ''''''
+    label4: ''''''
+    label5: ''''''
+    label6: ''''''
+    label7: ''''''
+    label8: ''''''
+    label9: ''''''
+    legend: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '"Test baud rate"'
+    nconnections: '1'
+    norm_window: 'False'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: complex
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    wintype: window.WIN_BLACKMAN_hARRIS
+    ymax: '10'
+    ymin: '-140'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1888, 32.0]
+    rotation: 0
+    state: disabled
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: When the PLL is locked, I should settle to a slowly-varying near-constant
+      level (the residual carrier) while Q oscillates with the subcarrier's phase
+      modulation. If both channels look like noisy circles/no structure, the PLL isn't
+      locked - widen pll_freq_range or re-check center_freq.
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'True'
+    gui_hint: 4,1,2,1
+    label1: I (recovered carrier)
+    label10: ''
+    label2: Q (subcarrier modulation)
+    label3: ''
+    label4: ''
+    label5: ''
+    label6: ''
+    label7: ''
+    label8: ''
+    label9: ''
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '"PLL I/Q monitor"'
+    nconnections: '2'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '2'
+    ymin: '-2'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1232, 308.0]
+    rotation: 0
+    state: disabled
+
+connections:
+- [analog_agc_xx_0, '0', analog_pll_carriertracking_cc_0, '0']
+- [analog_agc_xx_1, '0', digital_costas_loop_cc_0, '0']
+- [analog_agc_xx_1, '0', digital_symbol_sync_xx_0, '0']
+- [analog_pll_carriertracking_cc_0, '0', blocks_complex_to_float_0, '0']
+- [blocks_complex_to_float_0, '0', blocks_null_sink_1, '0']
+- [blocks_complex_to_float_0, '0', qtgui_time_sink_x_0, '0']
+- [blocks_complex_to_float_0, '1', freq_xlating_fir_filter_xxx_1, '0']
+- [blocks_complex_to_float_0, '1', qtgui_time_sink_x_0, '1']
+- [blocks_delay_0, '0', blocks_multiply_xx_0, '1']
+- [blocks_file_source_0, '0', blocks_throttle2_0, '0']
+- [blocks_file_source_0_0, '0', blocks_interleaved_short_to_complex_0, '0']
+- [blocks_interleaved_short_to_complex_0, '0', blocks_throttle2_0, '0']
+- [blocks_multiply_xx_0, '0', qtgui_freq_sink_x_1_0, '0']
+- [blocks_throttle2_0, '0', freq_xlating_fir_filter_xxx_0, '0']
+- [digital_constellation_decoder_cb_0, '0', blocks_null_sink_0, '0']
+- [digital_costas_loop_cc_0, '0', digital_symbol_sync_xx_0, '0']
+- [digital_costas_loop_cc_0, '0', qtgui_const_sink_x_0, '0']
+- [digital_costas_loop_cc_1, '0', digital_diff_phasor_cc_0, '0']
+- [digital_costas_loop_cc_1, '0', qtgui_const_sink_x_1, '0']
+- [digital_diff_phasor_cc_0, '0', digital_constellation_decoder_cb_0, '0']
+- [digital_symbol_sync_xx_0, '0', digital_costas_loop_cc_1, '0']
+- [fir_filter_xxx_0, '0', analog_agc_xx_1, '0']
+- [freq_xlating_fir_filter_xxx_0, '0', analog_agc_xx_0, '0']
+- [freq_xlating_fir_filter_xxx_0, '0', qtgui_freq_sink_x_0, '0']
+- [freq_xlating_fir_filter_xxx_1, '0', analog_agc_xx_1, '0']
+- [freq_xlating_fir_filter_xxx_1, '0', blocks_delay_0, '0']
+- [freq_xlating_fir_filter_xxx_1, '0', blocks_multiply_xx_0, '0']
+- [freq_xlating_fir_filter_xxx_1, '0', fir_filter_xxx_0, '0']
+- [freq_xlating_fir_filter_xxx_1, '0', qtgui_freq_sink_x_1, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.12.0
