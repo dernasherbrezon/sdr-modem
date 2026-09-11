@@ -52,7 +52,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /Users/dernasherbrezon/Downloads/satellites_backup/funcube-3/constellation.cf32
+    file: ''
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
