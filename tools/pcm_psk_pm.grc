@@ -56,7 +56,7 @@ blocks:
     start: -samp_rate / 2
     step: '100'
     stop: samp_rate / 2
-    value: '210000'
+    value: '1500'
     widget: counter_slider
   states:
     bus_sink: false
@@ -70,7 +70,7 @@ blocks:
   parameters:
     comment: Symbol timing (clock recovery) loop bandwidth. Lower = smoother but slower
       timing tracking.
-    gui_hint: 12,0,1,1
+    gui_hint: 6,1,1,1
     label: Clock recovery loop bandwidth
     min_len: '200'
     orient: QtCore.Qt.Horizontal
@@ -84,7 +84,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2384, 428.0]
+    coordinate: [2712, 428.0]
     rotation: 0
     state: enabled
 - name: costas_loop_bw
@@ -116,7 +116,7 @@ blocks:
     comment: Bandwidth of the second Costas loop, applied after symbol timing recovery
       (one sample/symbol). Cleans up residual phase/frequency error the first loop
       didn't fully track before differential decoding.
-    gui_hint: 13,0,1,1
+    gui_hint: 6,2,1,1
     label: Costas loop 2 bandwidth
     min_len: '200'
     orient: QtCore.Qt.Horizontal
@@ -130,7 +130,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2536, 428.0]
+    coordinate: [2904, 428.0]
     rotation: 0
     state: enabled
 - name: cutoff_freq
@@ -147,7 +147,7 @@ blocks:
     start: '1000'
     step: '1000'
     stop: samp_rate / 2
-    value: '5000'
+    value: '15000'
     widget: counter_slider
   states:
     bus_sink: false
@@ -169,7 +169,7 @@ blocks:
     start: '1'
     step: '1'
     stop: '200'
-    value: '50'
+    value: '5'
     widget: counter_slider
   states:
     bus_sink: false
@@ -191,7 +191,7 @@ blocks:
     start: '1'
     step: '1'
     stop: '200'
-    value: '20'
+    value: '5'
     widget: counter_slider
   states:
     bus_sink: false
@@ -250,7 +250,7 @@ blocks:
   id: variable
   parameters:
     comment: Sample rate of the input file. Must match the capture.
-    value: 1e6
+    value: '300000'
   states:
     bus_sink: false
     bus_source: false
@@ -272,7 +272,7 @@ blocks:
     start: '100'
     step: '50'
     stop: subcarrier_freq / 2
-    value: '100'
+    value: '2500'
     widget: counter_slider
   states:
     bus_sink: false
@@ -295,7 +295,7 @@ blocks:
     start: '100'
     step: '100'
     stop: samp_rate / 2
-    value: '2048'
+    value: '5000'
     widget: counter_slider
   states:
     bus_sink: false
@@ -316,7 +316,7 @@ blocks:
     start: '50'
     step: '50'
     stop: '5000'
-    value: '100'
+    value: '3500'
     widget: counter_slider
   states:
     bus_sink: false
@@ -331,7 +331,7 @@ blocks:
     comment: 'TUNE THIS: expected PCM bit/baud rate on the subcarrier. Feeds the symbol-sync
       samples-per-symbol calculation. Should be well below subcarrier_freq (the subcarrier
       is the "carrier" the PCM data phase-modulates).'
-    gui_hint: 11,0,1,1
+    gui_hint: 6,0,1,1
     label: Symbol rate (baud)
     min_len: '200'
     orient: QtCore.Qt.Horizontal
@@ -339,13 +339,13 @@ blocks:
     start: '50'
     step: '10'
     stop: '20000'
-    value: '64'
+    value: '5000'
     widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2248, 428.0]
+    coordinate: [2528, 436.0]
     rotation: 0
     state: enabled
 - name: transition_width
@@ -529,12 +529,12 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: Point this at your .cf32 capture (complex float32 I/Q).
-    file: /Users/dernasherbrezon/Downloads/slim_2024-01-19_15_39_58_437.200MHz_1.00Msps_ci16_le.chan0.sigmf-data
+    file: ''
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
-    repeat: 'False'
+    repeat: 'True'
     type: complex
     vlen: '1'
   states:
@@ -543,7 +543,7 @@ blocks:
     bus_structure: null
     coordinate: [16, 128.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_file_source_0_0
   id: blocks_file_source
   parameters:
@@ -551,7 +551,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /Users/dernasherbrezon/Downloads/slim_2024-01-19_15_39_58_437.200MHz_1.00Msps_ci16_le.chan0.sigmf-data
+    file: ''
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -565,7 +565,7 @@ blocks:
     bus_structure: null
     coordinate: [16, 256.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_interleaved_short_to_complex_0
   id: blocks_interleaved_short_to_complex
   parameters:
@@ -583,7 +583,7 @@ blocks:
     bus_structure: null
     coordinate: [216, 280.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_multiply_xx_0
   id: blocks_multiply_xx
   parameters:
@@ -834,7 +834,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [304, 8.0]
+    coordinate: [560, 24.0]
     rotation: 0
     state: enabled
 - name: qtgui_const_sink_x_0
@@ -960,7 +960,7 @@ blocks:
     color9: '"dark green"'
     comment: Debug view of the second Costas loop's output, one sample per symbol.
     grid: 'True'
-    gui_hint: 11,1,3,1
+    gui_hint: 5,0,1,2
     label1: ''
     label10: ''
     label2: ''
@@ -1223,7 +1223,7 @@ blocks:
     fftsize: '8192'
     freqhalf: 'True'
     grid: 'True'
-    gui_hint: 9,1,2,1
+    gui_hint: 5,2,1,2
     label: Relative Gain
     label1: ''
     label10: ''''''

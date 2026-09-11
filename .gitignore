@@ -41,6 +41,7 @@
 *.su
 *.idb
 *.pdb
+*.py
 
 # Kernel Module Compile Results
 *.fsk_mod*
@@ -56,3 +57,4 @@ dkms.conf
 /Debug/
 /cmake-build-debug/
 .idea
+/tools/pcm_psk_pm.py
