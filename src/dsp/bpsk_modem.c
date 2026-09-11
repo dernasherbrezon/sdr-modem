@@ -258,9 +258,9 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     float complex mixed;
     nco_crcf_mix_down(demod->costas, demod->symsync_output[i], &mixed);
 
-    // if (demod->debug_constellation != NULL) {
-    //   demod->debug_constellation[i] = mixed;
-    // }
+    if (demod->debug_constellation != NULL) {
+      demod->debug_constellation[i] = mixed;
+    }
 
     float phase_error;
     if (demod->type == SYMMETRIC_DIFFERENTIAL) {
@@ -303,9 +303,9 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     }
   }
 
-  // if (demod->debug_constellation_file != NULL && demod->debug_constellation != NULL) {
-  //   fwrite(demod->debug_constellation, sizeof(float complex), num_symbols, demod->debug_constellation_file);
-  // }
+  if (demod->debug_constellation_file != NULL && demod->debug_constellation != NULL) {
+    fwrite(demod->debug_constellation, sizeof(float complex), num_symbols, demod->debug_constellation_file);
+  }
 
   *output = demod->bit_output;
   *output_len = num_symbols;
