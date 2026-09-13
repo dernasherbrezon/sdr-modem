@@ -41,6 +41,8 @@ static int app_config_convert_file_format(const char *format) {
     return FILE_FORMAT_CU8;
   } else if (strcmp(format, "cf32") == 0) {
     return FILE_FORMAT_CF32;
+  } else if (strcmp(format, "cs16") == 0) {
+    return FILE_FORMAT_CS16;
   }
   return -1;
 }
@@ -58,6 +60,9 @@ static int app_config_guess_file_format(const char *filename) {
   }
   if (len > 4 && strncmp(filename + len - 4, ".cu8", 4) == 0) {
     return FILE_FORMAT_CU8;
+  }
+  if (len > 5 && strncmp(filename + len - 5, ".cs16", 5) == 0) {
+    return FILE_FORMAT_CS16;
   }
   return -1;
 }
@@ -901,7 +906,7 @@ static int app_config_validate_and_log(app_config *result) {
       fprintf(stderr, "<3>invalid or unable to guess file_format\n");
       return -1;
     }
-    fprintf(stdout, "file_format: %s\n", result->file_format == FILE_FORMAT_CU8 ? "cu8" : "cf32");
+    fprintf(stdout, "file_format: %s\n", result->file_format == FILE_FORMAT_CU8 ? "cu8" : (result->file_format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
   } else {
     fprintf(stderr, "<3>invalid sdr_type: %d\n", result->sdr_type);
     return -1;

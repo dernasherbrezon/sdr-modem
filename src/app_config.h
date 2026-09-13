@@ -23,6 +23,7 @@
 #define FILE_FORMAT_GUESS 0
 #define FILE_FORMAT_CU8 1
 #define FILE_FORMAT_CF32 2
+#define FILE_FORMAT_CS16 3
 
 // direction is only meaningful in cli mode (bind_address == NULL): it selects whether the
 // single configured sdr/modem pipeline demodulates (rx) or modulates (tx). server mode ignores

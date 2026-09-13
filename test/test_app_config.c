@@ -106,6 +106,13 @@ void test_guess_rx_file_format_cu8() {
   TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
 }
 
+void test_guess_rx_file_format_cs16() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cs16", "--output", "/some-path", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CS16, config->file_format);
+}
+
 void test_guess_rx_file_format_unknown() {
   char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.raw", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
@@ -143,6 +150,7 @@ int main(void) {
   RUN_TEST(test_guess_rx_file_format_cf32);
   RUN_TEST(test_guess_rx_file_format_cf32_gz);
   RUN_TEST(test_guess_rx_file_format_cu8);
+  RUN_TEST(test_guess_rx_file_format_cs16);
   RUN_TEST(test_guess_rx_file_format_unknown);
   RUN_TEST(test_guess_tx_file_format_cu8);
   return UNITY_END();

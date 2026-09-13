@@ -27,7 +27,7 @@ struct file_device_t {
   float complex *temp;
   size_t temp_len;
 
-  //raw on-disk bytes for formats that don't use float complex directly (e.g. cu8)
+  //raw on-disk bytes for formats that don't use float complex directly (e.g. cu8, cs16)
   uint8_t *raw_temp;
 };
 
@@ -37,7 +37,7 @@ static bool has_gz_suffix(const char *filename) {
 }
 
 static bool is_valid_file_format(int format) {
-  return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32;
+  return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32 || format == FILE_FORMAT_CS16;
 }
 
 static void cu8_to_cf32(const uint8_t *raw, float complex *out, size_t nsamples) {
@@ -65,6 +65,31 @@ static void cf32_to_cu8(const float complex *in, uint8_t *raw, size_t nsamples) 
   }
 }
 
+static void cs16_to_cf32(const int16_t *raw, float complex *out, size_t nsamples) {
+  for (size_t i = 0; i < nsamples; i++) {
+    float re = (float) raw[2 * i] / 32768.0f;
+    float im = (float) raw[2 * i + 1] / 32768.0f;
+    out[i] = re + im * I;
+  }
+}
+
+static int16_t clamp_s16(float value) {
+  if (value < -32768.0f) {
+    return -32768;
+  }
+  if (value > 32767.0f) {
+    return 32767;
+  }
+  return (int16_t) value;
+}
+
+static void cf32_to_cs16(const float complex *in, int16_t *raw, size_t nsamples) {
+  for (size_t i = 0; i < nsamples; i++) {
+    raw[2 * i] = clamp_s16(roundf(crealf(in[i]) * 32768.0f));
+    raw[2 * i + 1] = clamp_s16(roundf(cimagf(in[i]) * 32768.0f));
+  }
+}
+
 void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
@@ -88,8 +113,9 @@ int file_source_create(uint32_t id, const char *rx_filename, int rx_format, cons
     file_source_destroy(device);
     return -ENOMEM;
   }
-  if (rx_format == FILE_FORMAT_CU8 || tx_format == FILE_FORMAT_CU8) {
-    device->raw_temp = malloc(sizeof(uint8_t) * 2 * device->temp_len);
+  if (rx_format == FILE_FORMAT_CU8 || tx_format == FILE_FORMAT_CU8 || rx_format == FILE_FORMAT_CS16 || tx_format == FILE_FORMAT_CS16) {
+    //sized for the widest raw sample format (cs16: 2 * int16_t per complex sample)
+    device->raw_temp = malloc(2 * sizeof(int16_t) * device->temp_len);
     if (device->raw_temp == NULL) {
       file_source_destroy(device);
       return -ENOMEM;
@@ -153,8 +179,18 @@ int file_source_create(uint32_t id, const char *rx_filename, int rx_format, cons
 
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin) {
   file_device *device = (file_device *) plugin;
-  size_t bytes_per_sample = (device->rx_format == FILE_FORMAT_CU8) ? (2 * sizeof(uint8_t)) : sizeof(float complex);
-  void *read_buf = (device->rx_format == FILE_FORMAT_CU8) ? (void *) device->raw_temp : (void *) device->temp;
+  size_t bytes_per_sample;
+  void *read_buf;
+  if (device->rx_format == FILE_FORMAT_CU8) {
+    bytes_per_sample = 2 * sizeof(uint8_t);
+    read_buf = (void *) device->raw_temp;
+  } else if (device->rx_format == FILE_FORMAT_CS16) {
+    bytes_per_sample = 2 * sizeof(int16_t);
+    read_buf = (void *) device->raw_temp;
+  } else {
+    bytes_per_sample = sizeof(float complex);
+    read_buf = (void *) device->temp;
+  }
   size_t actually_read;
   if (device->rx_gz != NULL) {
     int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->temp_len));
@@ -179,6 +215,8 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
   }
   if (device->rx_format == FILE_FORMAT_CU8) {
     cu8_to_cf32(device->raw_temp, device->temp, actually_read);
+  } else if (device->rx_format == FILE_FORMAT_CS16) {
+    cs16_to_cf32((const int16_t *) device->raw_temp, device->temp, actually_read);
   }
   *output = device->temp;
   *output_len = actually_read;
@@ -197,6 +235,10 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
     cf32_to_cu8(input, device->raw_temp, input_len);
     write_buf = device->raw_temp;
     bytes_per_sample = 2 * sizeof(uint8_t);
+  } else if (device->tx_format == FILE_FORMAT_CS16) {
+    cf32_to_cs16(input, (int16_t *) device->raw_temp, input_len);
+    write_buf = device->raw_temp;
+    bytes_per_sample = 2 * sizeof(int16_t);
   } else {
     write_buf = input;
     bytes_per_sample = sizeof(float complex);
