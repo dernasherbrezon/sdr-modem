@@ -1,5 +1,6 @@
 #include "modem.h"
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <math.h>
 #include "gfsk_modem.h"
@@ -285,6 +286,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
       modem_destroy(result);
       return -1;
     }
+    fprintf(stdout, "baseband sample rate: %"PRIu64"\n", decimated_sample_rate);
   }
 
   *modem = result;
