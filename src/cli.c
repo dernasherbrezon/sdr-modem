@@ -75,7 +75,8 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
   const char *debug_baseband_file = (config->direction == DIRECTION_RX) ? config->debug_baseband_file : NULL;
-  return modem_create(config, &config->req, config->freq_offset_file, config->debug_freq_offset_file, config->debug_constellation_file, debug_baseband_file, &result->modem);
+  const char *debug_subcarrier_file = (config->direction == DIRECTION_RX) ? config->debug_subcarrier_file : NULL;
+  return modem_create(config, &config->req, config->freq_offset_file, config->debug_freq_offset_file, config->debug_constellation_file, debug_baseband_file, debug_subcarrier_file, &result->modem);
 }
 
 int cli_create(app_config *config, cli **output) {

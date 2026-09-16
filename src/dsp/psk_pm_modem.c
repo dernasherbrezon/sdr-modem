@@ -41,9 +41,13 @@ struct psk_pm_modem_t {
 
   float complex *modulation_output; // tx: final phase-modulated I/Q
   size_t max_modulation_buffer_length;
+
+  // rx only: dumps baseband_output, i.e. the signal fed into subcarrier_modem, right before it
+  // runs its own bpsk demodulation
+  FILE *debug_subcarrier_file;
 };
 
-int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, psk_pm_modem **modem) {
+int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, const char *debug_subcarrier_file, psk_pm_modem **modem) {
   if (settings->subcarrier_frequency == 0) {
     fprintf(stderr, "<3>psk/pm modem: subcarrier_frequency must not be 0\n");
     return -EINVAL;
@@ -112,6 +116,15 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
     return -ENOMEM;
   }
 
+  if (debug_subcarrier_file != NULL) {
+    result->debug_subcarrier_file = fopen(debug_subcarrier_file, "wb");
+    if (result->debug_subcarrier_file == NULL) {
+      fprintf(stderr, "<3>unable to open debug subcarrier file: %s\n", debug_subcarrier_file);
+      psk_pm_modem_destroy(result);
+      return -1;
+    }
+  }
+
   *modem = result;
   return 0;
 }
@@ -146,6 +159,10 @@ void psk_pm_modem_demodulate(const float complex *input, size_t input_len, int8_
     nco_crcf_mix_down(demod->subcarrier_nco, discriminator, &baseband);
     nco_crcf_step(demod->subcarrier_nco);
     demod->baseband_output[i] = baseband;
+  }
+
+  if (demod->debug_subcarrier_file != NULL) {
+    fwrite(demod->baseband_output, sizeof(float complex), input_len, demod->debug_subcarrier_file);
   }
 
   bpsk_modem_demodulate(demod->baseband_output, input_len, output, output_len, demod->subcarrier_modem);
@@ -198,6 +215,9 @@ void psk_pm_modem_destroy(void *modem_v) {
   }
   if (modem->modulation_output != NULL) {
     free(modem->modulation_output);
+  }
+  if (modem->debug_subcarrier_file != NULL) {
+    fclose(modem->debug_subcarrier_file);
   }
   free(modem);
 }

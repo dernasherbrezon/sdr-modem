@@ -63,6 +63,7 @@ typedef struct {
   char *debug_freq_offset_file;
   char *debug_constellation_file;
   char *debug_baseband_file;
+  char *debug_subcarrier_file;
 
 } app_config;
 

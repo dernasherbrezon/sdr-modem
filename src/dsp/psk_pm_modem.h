@@ -30,7 +30,10 @@ typedef struct {
 // debug_constellation_file may be NULL, in which case no debug constellation dump is written. otherwise, it
 // receives the recovered subcarrier symbols right after symbol timing recovery (demodulate) or the
 // subcarrier symbols right before pulse shaping (modulate) -- see bpsk_modem.h.
-int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, psk_pm_modem **modem);
+// debug_subcarrier_file may be NULL, in which case no debug subcarrier dump is written. otherwise, it
+// receives (demodulate only) the complex baseband subcarrier signal right before it is fed to the
+// internal bpsk_modem for demodulation, i.e. the input to the subcarrier BPSK demodulator.
+int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, const char *debug_subcarrier_file, psk_pm_modem **modem);
 
 // output is soft-decision bits, one signed byte per bit: sign gives the hard decision (>=0 -> 1,
 // < 0 -> 0) and magnitude gives confidence, scaled to the full int8_t range

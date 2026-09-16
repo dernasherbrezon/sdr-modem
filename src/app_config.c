@@ -500,6 +500,14 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     }
   }
 
+  setting = config_lookup(libconfig, "debug_subcarrier_file");
+  if (setting != NULL) {
+    result->debug_subcarrier_file = strdup(config_setting_get_string(setting));
+    if (result->debug_subcarrier_file == NULL) {
+      return -ENOMEM;
+    }
+  }
+
   return 0;
 }
 
@@ -550,7 +558,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_FREQ_OFFSET_FILE,
     OPT_DEBUG_FREQ_OFFSET_FILE,
     OPT_DEBUG_CONSTELLATION_FILE,
-    OPT_DEBUG_BASEBAND_FILE
+    OPT_DEBUG_BASEBAND_FILE,
+    OPT_DEBUG_SUBCARRIER_FILE
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
@@ -599,6 +608,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"debug_freq_offset_file", required_argument, NULL, OPT_DEBUG_FREQ_OFFSET_FILE},
     {"debug_constellation_file", required_argument, NULL, OPT_DEBUG_CONSTELLATION_FILE},
     {"debug_baseband_file", required_argument, NULL, OPT_DEBUG_BASEBAND_FILE},
+    {"debug_subcarrier_file", required_argument, NULL, OPT_DEBUG_SUBCARRIER_FILE},
     {NULL, 0, NULL, 0}
   };
 
@@ -764,6 +774,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_DEBUG_BASEBAND_FILE:
         result->debug_baseband_file = strdup(optarg);
+        break;
+      case OPT_DEBUG_SUBCARRIER_FILE:
+        result->debug_subcarrier_file = strdup(optarg);
         break;
       case OPT_CONFIG:
       default:
@@ -1055,6 +1068,9 @@ void app_config_destroy(app_config *config) {
   }
   if (config->debug_baseband_file != NULL) {
     free(config->debug_baseband_file);
+  }
+  if (config->debug_subcarrier_file != NULL) {
+    free(config->debug_subcarrier_file);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);

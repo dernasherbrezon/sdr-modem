@@ -53,7 +53,9 @@ uint32_t modem_request_get_baud_rate(const struct ModemRequest *req);
 // debug_constellation_file may be NULL, in which case no debug constellation dump is written.
 // only honored by bpsk/dpsk/sdpsk/oqpsk/psk_pm modems.
 // debug_baseband_file may be NULL, in which case no debug baseband dump is written. rx only.
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, sdr_modem **modem);
+// debug_subcarrier_file may be NULL, in which case no debug subcarrier dump is written. only
+// honored by the psk_pm modem, rx only -- see psk_pm_modem.h.
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, const char *debug_subcarrier_file, sdr_modem **modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 
