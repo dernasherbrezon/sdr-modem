@@ -30,7 +30,7 @@ typedef struct {
 
   // cutoff frequency, in Hz, of an optional low-pass filter placed ahead of rx_agc and the symbol
   // synchronizer, meant to reduce interference reaching them. 0 disables the filter.
-  uint32_t subcarrier_bandwidth;
+  uint32_t bandwidth;
 } bpsk_modem_settings;
 
 // max_input_buffer_length is the max number of input I/Q samples passed to dpsk_modem_demodulate() in a

@@ -167,6 +167,9 @@ static int app_config_merge_psk_modem_settings(PskModemSettings *from, PskModemS
   if (from->symsync_filter_bank_size != 0) {
     settings->symsync_filter_bank_size = from->symsync_filter_bank_size;
   }
+  if (from->bandwidth != 0) {
+    settings->bandwidth = from->bandwidth;
+  }
 
   return 0;
 }
@@ -259,6 +262,10 @@ static int app_config_load_psk_from_file(config_t *libconfig, PskModemSettings *
   setting = config_lookup(libconfig, "psk_symsync_filter_bank_size");
   if (setting != NULL) {
     settings->symsync_filter_bank_size = (uint32_t) config_setting_get_int(setting);
+  }
+  setting = config_lookup(libconfig, "psk_bandwidth");
+  if (setting != NULL) {
+    settings->bandwidth = (uint32_t) config_setting_get_int(setting);
   }
 
   return 0;
@@ -552,6 +559,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_PSK_RRC_DELAY,
     OPT_PSK_COSTAS_BANDWIDTH,
     OPT_PSK_SYMSYNC_FILTER_BANK_SIZE,
+    OPT_PSK_BANDWIDTH,
     OPT_PSK_PM_CENTER_FREQ,
     OPT_PSK_PM_SAMPLE_RATE,
     OPT_PSK_PM_BAUD_RATE,
@@ -602,6 +610,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"psk_rrc_delay", required_argument, NULL, OPT_PSK_RRC_DELAY},
     {"psk_costas_bandwidth", required_argument, NULL, OPT_PSK_COSTAS_BANDWIDTH},
     {"psk_symsync_filter_bank_size", required_argument, NULL, OPT_PSK_SYMSYNC_FILTER_BANK_SIZE},
+    {"psk_bandwidth", required_argument, NULL, OPT_PSK_BANDWIDTH},
     {"psk_pm_center_freq", required_argument, NULL, OPT_PSK_PM_CENTER_FREQ},
     {"psk_pm_sample_rate", required_argument, NULL, OPT_PSK_PM_SAMPLE_RATE},
     {"psk_pm_baud_rate", required_argument, NULL, OPT_PSK_PM_BAUD_RATE},
@@ -741,6 +750,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_PSK_SYMSYNC_FILTER_BANK_SIZE:
         psk_settings.symsync_filter_bank_size = (uint32_t) atoi(optarg);
+        break;
+      case OPT_PSK_BANDWIDTH:
+        psk_settings.bandwidth = (uint32_t) atoi(optarg);
         break;
       case OPT_PSK_PM_CENTER_FREQ:
         psk_pm_settings.center_freq = strtoull(optarg, NULL, 10);

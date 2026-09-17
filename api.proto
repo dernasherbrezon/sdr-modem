@@ -18,6 +18,10 @@ message psk_modem_settings {
     uint32 rrc_delay = 6;
     float costas_bandwidth = 7;
     uint32 symsync_filter_bank_size = 8;
+
+    // cutoff frequency, in Hz, of an optional low-pass filter placed ahead of rx_agc and the
+    // symbol synchronizer, meant to reduce interference reaching them. 0 disables the filter.
+    uint32 bandwidth = 9;
 }
 
 //TODO fix order of fields to represent demodulating chain

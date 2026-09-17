@@ -81,7 +81,7 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   subcarrier_settings.rrc_delay = settings->rrc_delay;
   subcarrier_settings.costas_bandwidth = settings->costas_bandwidth;
   subcarrier_settings.symsync_filter_bank_size = settings->symsync_filter_bank_size;
-  subcarrier_settings.subcarrier_bandwidth = settings->subcarrier_bandwidth;
+  subcarrier_settings.bandwidth = settings->subcarrier_bandwidth;
   subcarrier_settings.type = NORMAL;
   int code = bpsk_modem_create(&subcarrier_settings, max_input_buffer_length, debug_constellation_file, &result->subcarrier_modem);
   if (code != 0) {

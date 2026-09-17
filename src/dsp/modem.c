@@ -139,6 +139,7 @@ static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate,
   settings.rrc_delay = req->rrc_delay;
   settings.costas_bandwidth = req->costas_bandwidth;
   settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
+  settings.bandwidth = req->bandwidth;
   settings.type = type;
   return bpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
 }

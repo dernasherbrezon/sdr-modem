@@ -25,7 +25,7 @@
 // since msresamp_crcf's actual output count for a given input block can vary slightly
 #define BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN 16
 
-// optional low-pass filter ahead of rx_agc (see bpsk_modem_settings.subcarrier_bandwidth), to
+// optional low-pass filter ahead of rx_agc (see bpsk_modem_settings.bandwidth), to
 // reduce interference reaching rx_agc and the symbol synchronizer. the filter itself runs at the
 // internal working rate (sps * baud_rate). FIR (Kaiser-windowed sinc) rather than IIR so the
 // filter stays linear-phase -- constant group delay across the passband, so it doesn't itself
@@ -50,7 +50,7 @@ struct bpsk_modem_t {
   float complex *resampler_tx_output;
   size_t resampler_tx_output_len;
 
-  // optional low-pass filter ahead of rx_agc; NULL when settings->subcarrier_bandwidth is 0
+  // optional low-pass filter ahead of rx_agc; NULL when settings->bandwidth is 0
   firfilt_crcf lowpass_filter;
   float complex *lowpass_output;
   size_t lowpass_output_len;
@@ -203,10 +203,10 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -ENOMEM;
   }
 
-  if (settings->subcarrier_bandwidth != 0) {
-    float lowpass_fc = (float) settings->subcarrier_bandwidth / (float) internal_sample_rate;
+  if (settings->bandwidth != 0) {
+    float lowpass_fc = (float) settings->bandwidth / (float) internal_sample_rate;
     if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
-      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->subcarrier_bandwidth, (unsigned long long) internal_sample_rate);
+      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->bandwidth, (unsigned long long) internal_sample_rate);
       bpsk_modem_destroy(result);
       return -EINVAL;
     }

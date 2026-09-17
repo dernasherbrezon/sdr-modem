@@ -439,7 +439,7 @@ const ProtobufCMessageDescriptor gfsk_modem_settings__descriptor =
   (ProtobufCMessageInit) gfsk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor psk_modem_settings__field_descriptors[7] =
+static const ProtobufCFieldDescriptor psk_modem_settings__field_descriptors[8] =
 {
   {
     "center_freq",
@@ -525,8 +525,21 @@ static const ProtobufCFieldDescriptor psk_modem_settings__field_descriptors[7] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "bandwidth",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskModemSettings, bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned psk_modem_settings__field_indices_by_name[] = {
+  7,   /* field[7] = bandwidth */
   2,   /* field[2] = baud_rate */
   0,   /* field[0] = center_freq */
   5,   /* field[5] = costas_bandwidth */
@@ -539,7 +552,7 @@ static const ProtobufCIntRange psk_modem_settings__number_ranges[2 + 1] =
 {
   { 1, 0 },
   { 4, 2 },
-  { 0, 7 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor psk_modem_settings__descriptor =
 {
@@ -549,7 +562,7 @@ const ProtobufCMessageDescriptor psk_modem_settings__descriptor =
   "PskModemSettings",
   "",
   sizeof(PskModemSettings),
-  7,
+  8,
   psk_modem_settings__field_descriptors,
   psk_modem_settings__field_indices_by_name,
   2,  psk_modem_settings__number_ranges,
