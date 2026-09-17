@@ -38,10 +38,10 @@ struct  GfskModemSettings
 {
   ProtobufCMessage base;
   uint64_t center_freq;
+  uint32_t bandwidth;
   uint64_t sample_rate;
   uint32_t baud_rate;
   int64_t deviation;
-  uint32_t bandwidth;
   float bt;
   protobuf_c_boolean use_dc_block;
 };
@@ -54,43 +54,33 @@ struct  PskModemSettings
 {
   ProtobufCMessage base;
   uint64_t center_freq;
+  uint32_t bandwidth;
   uint64_t sample_rate;
   uint32_t baud_rate;
   float rrc_beta;
   uint32_t rrc_delay;
   float costas_bandwidth;
   uint32_t symsync_filter_bank_size;
-  /*
-   * cutoff frequency, in Hz, of an optional low-pass filter placed ahead of rx_agc and the
-   * symbol synchronizer, meant to reduce interference reaching them. 0 disables the filter.
-   */
-  uint32_t bandwidth;
 };
 #define PSK_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&psk_modem_settings__descriptor) \
 , 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
-/*
- *TODO fix order of fields to represent demodulating chain
- * PCM/PSK/PM: bits BPSK-modulate a subcarrier, and that subcarrier waveform phase-modulates the
- * RF carrier. Shares the psk_modem_settings fields (they configure the inner subcarrier BPSK
- * modem) plus the fields specific to the outer phase modulation.
- */
 struct  PskPmModemSettings
 {
   ProtobufCMessage base;
   uint64_t center_freq;
-  uint64_t sample_rate;
   uint32_t baud_rate;
+  uint64_t sample_rate;
+  uint32_t subcarrier_frequency;
+  float carrier_pll_bandwidth;
+  uint32_t subcarrier_bandwidth;
   float rrc_beta;
   uint32_t rrc_delay;
   float costas_bandwidth;
   uint32_t symsync_filter_bank_size;
-  uint32_t subcarrier_frequency;
   float modulation_index;
-  float carrier_pll_bandwidth;
-  uint32_t subcarrier_bandwidth;
 };
 #define PSK_PM_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&psk_pm_modem_settings__descriptor) \

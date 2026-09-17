@@ -71,7 +71,7 @@ struct bpsk_modem_t {
   // the symbol synchronizer, one correction per recovered symbol
   nco_crcf costas;
 
-  bpsk_modem_type type;
+  psk_modem_type type;
   modemcf mod;
 
   // SYMMETRIC_DIFFERENTIAL only: liquid-dsp has no built-in modem for it, so bits are
@@ -170,17 +170,17 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   }
   nco_crcf_pll_set_bandwidth(result->costas, settings->costas_bandwidth);
 
-  if (settings->type == NORMAL) {
+  if (settings->type == BPSK) {
     result->mod = modemcf_create(LIQUID_MODEM_BPSK);
-  } else if (settings->type == DIFFERENTIAL) {
+  } else if (settings->type == DPSK) {
     result->mod = modemcf_create(LIQUID_MODEM_DPSK2);
-  } else if (settings->type == SYMMETRIC_DIFFERENTIAL) {
+  } else if (settings->type == SDPSK) {
     result->mod = NULL;
   } else {
     bpsk_modem_destroy(result);
     return -EINVAL;
   }
-  if (result->mod == NULL && settings->type != SYMMETRIC_DIFFERENTIAL) {
+  if (result->mod == NULL && settings->type != SDPSK) {
     bpsk_modem_destroy(result);
     return -EINVAL;
   }
@@ -321,7 +321,7 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     }
 
     float phase_error;
-    if (demod->type == SYMMETRIC_DIFFERENTIAL) {
+    if (demod->type == SDPSK) {
       // SYMMETRIC_DIFFERENTIAL rotates by +-90 degrees every symbol, so the constellation
       // lands on all 4 axis points (0/90/180/270) rather than just 2. A plain BPSK (M=2)
       // detector would get a data-dependent sign flip on the 90/270 points, so raise to the
@@ -338,7 +338,7 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     nco_crcf_pll_step(demod->costas, phase_error);
     nco_crcf_step(demod->costas);
 
-    if (demod->type == SYMMETRIC_DIFFERENTIAL) {
+    if (demod->type == SDPSK) {
       // no modemcf involved for this type (see field comment above), so the soft metric is
       // derived directly from the differential detector: cimagf(diff) is ~+-1 for a confident
       // decision and shrinks toward 0 near the decision boundary, same shape as a soft bit
@@ -383,7 +383,7 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
     for (int bit = 0; bit < 8; bit++) {
       unsigned int sym = (input[i] >> (7 - bit)) & 1U;
       float complex symbol;
-      if (mod->type == SYMMETRIC_DIFFERENTIAL) {
+      if (mod->type == SDPSK) {
         // bit 1 -> +90 degrees, bit 0 -> -90 degrees relative to the previous symbol
         float complex rotation = sym ? (0.0f + 1.0f * I) : (0.0f - 1.0f * I);
         symbol = mod->tx_prev_symbol * rotation;

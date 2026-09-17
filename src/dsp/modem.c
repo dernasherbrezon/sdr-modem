@@ -131,7 +131,7 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
-static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, bpsk_modem_type type, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
+static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, psk_modem_type type, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
   bpsk_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
   settings.baud_rate = req->baud_rate;
@@ -203,7 +203,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
     result->destroy = gfsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
-    code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, NORMAL, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -213,7 +213,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_DPSK) {
-    code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DIFFERENTIAL, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -223,7 +223,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_SDPSK) {
-    code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SYMMETRIC_DIFFERENTIAL, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SDPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
