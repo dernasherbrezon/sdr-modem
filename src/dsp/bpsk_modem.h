@@ -17,13 +17,20 @@ typedef enum {
 typedef struct {
   uint64_t sample_rate;      // sample rate of the input/output I/Q stream, in Hz
   uint32_t baud_rate;        // symbol rate, in Hz. round(sample_rate / baud_rate) must be >= 2.
-                              // if sample_rate is not an exact multiple of baud_rate, an arbitrary-rate
-                              // resampler is inserted to bridge sample_rate and the nearest working rate
+                              // the internal working rate is sps * baud_rate, where sps is
+                              // sample_rate / baud_rate capped at a small constant (see
+                              // BPSK_MODEM_TARGET_SPS in bpsk_modem.c); whenever that differs from
+                              // sample_rate -- including an oversampled exact multiple -- an
+                              // arbitrary-rate resampler bridges the two
   float rrc_beta;            // root-raised-cosine excess bandwidth (rolloff), 0 < rrc_beta <= 1
   unsigned int rrc_delay;    // root-raised-cosine filter delay, in symbols (m). typically 5-11
   float costas_bandwidth;    // normalized loop bandwidth of the costas (carrier recovery) loop, > 0. typically 0.001-0.05
   unsigned int symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
   bpsk_modem_type type;
+
+  // cutoff frequency, in Hz, of an optional low-pass filter placed ahead of rx_agc and the symbol
+  // synchronizer, meant to reduce interference reaching them. 0 disables the filter.
+  uint32_t subcarrier_bandwidth;
 } bpsk_modem_settings;
 
 // max_input_buffer_length is the max number of input I/Q samples passed to dpsk_modem_demodulate() in a

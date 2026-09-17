@@ -23,6 +23,11 @@ typedef struct {
   float carrier_pll_bandwidth;   // normalized loop bandwidth of the outer RF carrier tracking PLL, > 0. must be much
                                   // smaller than subcarrier_frequency/sample_rate so the loop tracks only slow carrier
                                   // drift and not the subcarrier modulation itself. typically 1e-5 to 1e-3
+
+  // cutoff frequency, in Hz, of an optional low-pass filter placed ahead of the internal
+  // subcarrier BPSK demodulator's AGC/symbol synchronizer (see bpsk_modem_settings.subcarrier_bandwidth).
+  // 0 disables the filter.
+  uint32_t subcarrier_bandwidth;
 } psk_pm_modem_settings;
 
 // max_input_buffer_length is the max number of input I/Q samples passed to psk_pm_modem_demodulate() in a

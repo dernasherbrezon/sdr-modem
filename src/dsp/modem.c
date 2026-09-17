@@ -164,6 +164,7 @@ static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, ui
   settings.subcarrier_frequency = req->subcarrier_frequency;
   settings.modulation_index = req->modulation_index;
   settings.carrier_pll_bandwidth = req->carrier_pll_bandwidth;
+  settings.subcarrier_bandwidth = req->subcarrier_bandwidth;
   return psk_pm_modem_create(&settings, max_input_buffer_length, debug_constellation_file, debug_subcarrier_file, modem);
 }
 

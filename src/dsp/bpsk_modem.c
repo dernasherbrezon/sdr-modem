@@ -10,12 +10,28 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// stopband attenuation for the arbitrary-rate resamplers used when sample_rate is not
-// an exact multiple of baud_rate. 60dB is liquid-dsp's typical default for msresamp_crcf.
+// TODO remove all these comments or make consistent
+// stopband attenuation for the arbitrary-rate resamplers used to bridge sample_rate and the
+// internal working rate. 60dB is liquid-dsp's typical default for msresamp_crcf.
 #define BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB 60.0f
+// upper bound on samples-per-symbol for the internal working rate that symsync/firinterp run at.
+// symsync's RRC filter length (and cost) scales with sps, and rx_agc runs on the pre-symsync
+// signal, so an oversampled input (e.g. a wide SDR sample_rate over a narrow baud_rate) is
+// decimated down to BPSK_MODEM_TARGET_SPS * baud_rate rather than left at its native, needlessly
+// high sps -- the resampler's anti-alias filtering then also keeps rx_agc from normalizing
+// against out-of-band noise that symsync's matched filter would otherwise have to reject alone
+#define BPSK_MODEM_TARGET_SPS 15
 // extra headroom (in samples) added on top of the theoretical ceil(len * rate) output size,
 // since msresamp_crcf's actual output count for a given input block can vary slightly
 #define BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN 16
+
+// optional low-pass filter ahead of rx_agc (see bpsk_modem_settings.subcarrier_bandwidth), to
+// reduce interference reaching rx_agc and the symbol synchronizer. the filter itself runs at the
+// internal working rate (sps * baud_rate). FIR (Kaiser-windowed sinc) rather than IIR so the
+// filter stays linear-phase -- constant group delay across the passband, so it doesn't itself
+// distort the phase the costas loop tracks
+#define BPSK_MODEM_LOWPASS_NUM_TAPS 129
+#define BPSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB 60.0f
 
 struct bpsk_modem_t {
   uint64_t sample_rate;
@@ -33,6 +49,11 @@ struct bpsk_modem_t {
   msresamp_crcf resampler_tx;
   float complex *resampler_tx_output;
   size_t resampler_tx_output_len;
+
+  // optional low-pass filter ahead of rx_agc; NULL when settings->subcarrier_bandwidth is 0
+  firfilt_crcf lowpass_filter;
+  float complex *lowpass_output;
+  size_t lowpass_output_len;
 
   // automatic gain control: normalizes input signal amplitude ahead of the symbol
   // synchronizer, since symsync's timing error detector assumes a roughly constant envelope
@@ -81,12 +102,21 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     fprintf(stderr, "<3>bpsk modem: baud_rate must not be 0\n");
     return -EINVAL;
   }
-  bool needs_resampling = (settings->sample_rate % settings->baud_rate) != 0;
+  double natural_sps = (double) settings->sample_rate / (double) settings->baud_rate;
+  bool exact_multiple = (settings->sample_rate % settings->baud_rate) == 0;
+  bool needs_resampling;
   unsigned int sps;
-  if (needs_resampling) {
-    sps = (unsigned int) llround((double) settings->sample_rate / (double) settings->baud_rate);
+  if (natural_sps > (double) BPSK_MODEM_TARGET_SPS) {
+    // oversampled: decimate down to the target rather than running symsync/firinterp
+    // (and their RRC filter taps, whose length scales with sps) at the native, needlessly high sps
+    needs_resampling = true;
+    sps = BPSK_MODEM_TARGET_SPS;
+  } else if (!exact_multiple) {
+    needs_resampling = true;
+    sps = (unsigned int) llround(natural_sps);
   } else {
-    sps = (unsigned int) (settings->sample_rate / settings->baud_rate);
+    needs_resampling = false;
+    sps = (unsigned int) natural_sps;
   }
   if (sps < 2) {
     fprintf(stderr, "<3>bpsk modem: samples per symbol (%u) must be at least 2\n", sps);
@@ -173,6 +203,26 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -ENOMEM;
   }
 
+  if (settings->subcarrier_bandwidth != 0) {
+    float lowpass_fc = (float) settings->subcarrier_bandwidth / (float) internal_sample_rate;
+    if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
+      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->subcarrier_bandwidth, (unsigned long long) internal_sample_rate);
+      bpsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_filter = firfilt_crcf_create_kaiser(BPSK_MODEM_LOWPASS_NUM_TAPS, lowpass_fc, BPSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB, 0.0f);
+    if (result->lowpass_filter == NULL) {
+      bpsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_output_len = symsync_input_capacity;
+    result->lowpass_output = malloc(sizeof(float complex) * result->lowpass_output_len);
+    if (result->lowpass_output == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
+  }
+
   result->agc_output_len = symsync_input_capacity;
   result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
   if (result->agc_output == NULL) {
@@ -249,7 +299,15 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     symsync_input_len = resampled_len;
   }
 
-  agc_crcf_execute_block(demod->rx_agc, (float complex *) symsync_input, symsync_input_len, demod->agc_output);
+  // TODO rename temp variable so next blocks just change the reference to it
+
+  const float complex *agc_input = symsync_input;
+  if (demod->lowpass_filter != NULL) {
+    firfilt_crcf_execute_block(demod->lowpass_filter, (float complex *) symsync_input, symsync_input_len, demod->lowpass_output);
+    agc_input = demod->lowpass_output;
+  }
+
+  agc_crcf_execute_block(demod->rx_agc, (float complex *) agc_input, symsync_input_len, demod->agc_output);
 
   unsigned int num_symbols = 0;
   symsync_crcf_execute(demod->symbol_sync, demod->agc_output, symsync_input_len, demod->symsync_output, &num_symbols);
@@ -356,6 +414,12 @@ void bpsk_modem_destroy(void *modem_v) {
   bpsk_modem *modem = modem_v;
   if (modem == NULL) {
     return;
+  }
+  if (modem->lowpass_filter != NULL) {
+    firfilt_crcf_destroy(modem->lowpass_filter);
+  }
+  if (modem->lowpass_output != NULL) {
+    free(modem->lowpass_output);
   }
   if (modem->rx_agc != NULL) {
     agc_crcf_destroy(modem->rx_agc);

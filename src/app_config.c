@@ -212,6 +212,9 @@ static int app_config_merge_psk_pm_modem_settings(PskPmModemSettings *from, PskP
   if (from->carrier_pll_bandwidth != 0) {
     settings->carrier_pll_bandwidth = from->carrier_pll_bandwidth;
   }
+  if (from->subcarrier_bandwidth != 0) {
+    settings->subcarrier_bandwidth = from->subcarrier_bandwidth;
+  }
 
   return 0;
 }
@@ -358,6 +361,10 @@ static int app_config_load_psk_pm_from_file(config_t *libconfig, PskPmModemSetti
   setting = config_lookup(libconfig, "psk_pm_carrier_pll_bandwidth");
   if (setting != NULL) {
     settings->carrier_pll_bandwidth = config_setting_get_float(setting);
+  }
+  setting = config_lookup(libconfig, "psk_pm_subcarrier_bandwidth");
+  if (setting != NULL) {
+    settings->subcarrier_bandwidth = (uint32_t) config_setting_get_int(setting);
   }
 
   return 0;
@@ -555,6 +562,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_PSK_PM_SUBCARRIER_FREQUENCY,
     OPT_PSK_PM_MODULATION_INDEX,
     OPT_PSK_PM_CARRIER_PLL_BANDWIDTH,
+    OPT_PSK_PM_SUBCARRIER_BANDWIDTH,
     OPT_FREQ_OFFSET_FILE,
     OPT_DEBUG_FREQ_OFFSET_FILE,
     OPT_DEBUG_CONSTELLATION_FILE,
@@ -604,6 +612,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"psk_pm_subcarrier_frequency", required_argument, NULL, OPT_PSK_PM_SUBCARRIER_FREQUENCY},
     {"psk_pm_modulation_index", required_argument, NULL, OPT_PSK_PM_MODULATION_INDEX},
     {"psk_pm_carrier_pll_bandwidth", required_argument, NULL, OPT_PSK_PM_CARRIER_PLL_BANDWIDTH},
+    {"psk_pm_subcarrier_bandwidth", required_argument, NULL, OPT_PSK_PM_SUBCARRIER_BANDWIDTH},
     {"freq_offset_file", required_argument, NULL, OPT_FREQ_OFFSET_FILE},
     {"debug_freq_offset_file", required_argument, NULL, OPT_DEBUG_FREQ_OFFSET_FILE},
     {"debug_constellation_file", required_argument, NULL, OPT_DEBUG_CONSTELLATION_FILE},
@@ -762,6 +771,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_PSK_PM_CARRIER_PLL_BANDWIDTH:
         psk_pm_settings.carrier_pll_bandwidth = (float) atof(optarg);
+        break;
+      case OPT_PSK_PM_SUBCARRIER_BANDWIDTH:
+        psk_pm_settings.subcarrier_bandwidth = (uint32_t) atoi(optarg);
         break;
       case OPT_FREQ_OFFSET_FILE:
         result->freq_offset_file = strdup(optarg);

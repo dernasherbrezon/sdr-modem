@@ -556,7 +556,7 @@ const ProtobufCMessageDescriptor psk_modem_settings__descriptor =
   (ProtobufCMessageInit) psk_modem_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor psk_pm_modem_settings__field_descriptors[10] =
+static const ProtobufCFieldDescriptor psk_pm_modem_settings__field_descriptors[11] =
 {
   {
     "center_freq",
@@ -678,6 +678,18 @@ static const ProtobufCFieldDescriptor psk_pm_modem_settings__field_descriptors[1
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "subcarrier_bandwidth",
+    11,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PskPmModemSettings, subcarrier_bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned psk_pm_modem_settings__field_indices_by_name[] = {
   2,   /* field[2] = baud_rate */
@@ -688,13 +700,14 @@ static const unsigned psk_pm_modem_settings__field_indices_by_name[] = {
   3,   /* field[3] = rrc_beta */
   4,   /* field[4] = rrc_delay */
   1,   /* field[1] = sample_rate */
+  10,   /* field[10] = subcarrier_bandwidth */
   7,   /* field[7] = subcarrier_frequency */
   6,   /* field[6] = symsync_filter_bank_size */
 };
 static const ProtobufCIntRange psk_pm_modem_settings__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 10 }
+  { 0, 11 }
 };
 const ProtobufCMessageDescriptor psk_pm_modem_settings__descriptor =
 {
@@ -704,7 +717,7 @@ const ProtobufCMessageDescriptor psk_pm_modem_settings__descriptor =
   "PskPmModemSettings",
   "",
   sizeof(PskPmModemSettings),
-  10,
+  11,
   psk_pm_modem_settings__field_descriptors,
   psk_pm_modem_settings__field_indices_by_name,
   1,  psk_pm_modem_settings__number_ranges,

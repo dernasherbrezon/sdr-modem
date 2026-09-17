@@ -84,10 +84,11 @@ struct  PskPmModemSettings
   uint32_t subcarrier_frequency;
   float modulation_index;
   float carrier_pll_bandwidth;
+  uint32_t subcarrier_bandwidth;
 };
 #define PSK_PM_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&psk_pm_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  NoneFraming
