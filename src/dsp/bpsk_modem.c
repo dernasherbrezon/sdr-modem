@@ -207,11 +207,8 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -ENOMEM;
   }
 
-  result->interp = firinterp_crcf_create_prototype(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, 0.0f);
-  if (result->interp == NULL) {
-    bpsk_modem_destroy(result);
-    return -EINVAL;
-  }
+  //////// TX chain
+
   result->max_modulation_input_bits = (size_t) max_input_buffer_length * 8;
   result->max_modulation_buffer_length = result->max_modulation_input_bits * sps;
   result->modulation_output = malloc(sizeof(float complex) * result->max_modulation_buffer_length);
@@ -219,6 +216,13 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     bpsk_modem_destroy(result);
     return -ENOMEM;
   }
+
+  result->interp = firinterp_crcf_create_prototype(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, 0.0f);
+  if (result->interp == NULL) {
+    bpsk_modem_destroy(result);
+    return -EINVAL;
+  }
+
 
   if (needs_resampling) {
     double resample_rate_tx = (double) settings->sample_rate / (double) internal_sample_rate;
@@ -259,8 +263,8 @@ size_t bpsk_modem_max_modulation_buffer_length(void *modem_v) {
   return modem->resampler_tx != NULL ? modem->resampler_tx_output_len : modem->max_modulation_buffer_length;
 }
 
-void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *demod_v) {
-  bpsk_modem *demod = demod_v;
+void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
+  bpsk_modem *demod = modem;
   if (input_len > demod->max_input_buffer_length) {
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->max_input_buffer_length);
     *output = NULL;
@@ -268,31 +272,28 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
     return;
   }
 
-  const float complex *symsync_input = input;
-  unsigned int symsync_input_len = (unsigned int) input_len;
   if (demod->resampler_rx != NULL) {
     unsigned int resampled_len = 0;
     msresamp_crcf_execute(demod->resampler_rx, (float complex *) input, (unsigned int) input_len, demod->resampler_rx_output, &resampled_len);
-    symsync_input = demod->resampler_rx_output;
-    symsync_input_len = resampled_len;
+    input = demod->resampler_rx_output;
+    input_len = resampled_len;
   }
 
-  // TODO rename temp variable so next blocks just change the reference to it
-
-  const float complex *agc_input = symsync_input;
   if (demod->lowpass_filter != NULL) {
-    firfilt_crcf_execute_block(demod->lowpass_filter, (float complex *) symsync_input, symsync_input_len, demod->lowpass_output);
-    agc_input = demod->lowpass_output;
+    firfilt_crcf_execute_block(demod->lowpass_filter, (float complex *) input, (unsigned int) input_len, demod->lowpass_output);
+    input = demod->lowpass_output;
   }
 
-  agc_crcf_execute_block(demod->rx_agc, (float complex *) agc_input, symsync_input_len, demod->agc_output);
+  agc_crcf_execute_block(demod->rx_agc, (float complex *) input, (unsigned int) input_len, demod->agc_output);
+  input = demod->agc_output;
 
   unsigned int num_symbols = 0;
-  symsync_crcf_execute(demod->symbol_sync, demod->agc_output, symsync_input_len, demod->symsync_output, &num_symbols);
+  symsync_crcf_execute(demod->symbol_sync, (float complex *) input, (unsigned int) input_len, demod->symsync_output, &num_symbols);
+  input = demod->symsync_output;
 
   for (unsigned int i = 0; i < num_symbols; i++) {
     float complex mixed;
-    nco_crcf_mix_down(demod->costas, demod->symsync_output[i], &mixed);
+    nco_crcf_mix_down(demod->costas, input[i], &mixed);
 
     if (demod->debug_constellation != NULL) {
       demod->debug_constellation[i] = mixed;
@@ -386,14 +387,14 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
     }
   }
 
+  *output = mod->modulation_output;
+  *output_len = sample_index;
+
   if (mod->resampler_tx != NULL) {
     unsigned int resampled_len = 0;
-    msresamp_crcf_execute(mod->resampler_tx, mod->modulation_output, (unsigned int) sample_index, mod->resampler_tx_output, &resampled_len);
+    msresamp_crcf_execute(mod->resampler_tx, *output, (unsigned int) *output_len, mod->resampler_tx_output, &resampled_len);
     *output = mod->resampler_tx_output;
     *output_len = resampled_len;
-  } else {
-    *output = mod->modulation_output;
-    *output_len = sample_index;
   }
 }
 
