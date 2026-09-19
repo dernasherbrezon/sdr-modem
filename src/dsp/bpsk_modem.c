@@ -220,9 +220,12 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   }
 
   if (needs_resampling) {
-    double resample_rate_tx = needs_resampling ? (double) settings->sample_rate / (double) internal_sample_rate : 1.0;
+    double resample_rate_tx = (double) settings->sample_rate / (double) internal_sample_rate;
     result->resampler_tx = msresamp_crcf_create((float) resample_rate_tx, BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
-
+    if (result->resampler_tx == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
     result->resampler_tx_output_len = (size_t) ceil((double) result->max_modulation_buffer_length * resample_rate_tx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
     result->resampler_tx_output = malloc(sizeof(float complex) * result->resampler_tx_output_len);
     if (result->resampler_tx_output == NULL) {
