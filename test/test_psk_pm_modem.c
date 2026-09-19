@@ -29,25 +29,25 @@ static psk_pm_modem_settings default_settings(uint64_t sample_rate) {
 void test_invalid_subcarrier_frequency_zero() {
   psk_pm_modem_settings settings = default_settings(48000);
   settings.subcarrier_frequency = 0;
-  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, NULL, &mod));
+  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, &mod));
 }
 
 void test_invalid_subcarrier_frequency_too_high() {
   psk_pm_modem_settings settings = default_settings(48000);
   settings.subcarrier_frequency = 30000;
-  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, NULL, &mod));
+  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, &mod));
 }
 
 void test_invalid_modulation_index() {
   psk_pm_modem_settings settings = default_settings(48000);
   settings.modulation_index = 0.0f;
-  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, NULL, &mod));
+  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, &mod));
 }
 
 void test_invalid_carrier_pll_bandwidth() {
   psk_pm_modem_settings settings = default_settings(48000);
   settings.carrier_pll_bandwidth = 0.0f;
-  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, NULL, &mod));
+  TEST_ASSERT_NOT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, &mod));
 }
 
 void test_round_trip() {
@@ -55,9 +55,9 @@ void test_round_trip() {
   size_t input_len = 64;
   uint32_t max_buffer_length = 16384;
 
-  int code = psk_pm_modem_create(&settings, (uint32_t) input_len, NULL, &mod);
+  int code = psk_pm_modem_create(&settings, (uint32_t) input_len, &mod);
   TEST_ASSERT_EQUAL_INT(0, code);
-  code = psk_pm_modem_create(&settings, max_buffer_length, NULL, &demod);
+  code = psk_pm_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   mod_input = malloc(sizeof(uint8_t) * input_len);

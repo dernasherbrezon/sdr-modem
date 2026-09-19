@@ -178,12 +178,20 @@ static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, ui
   settings.modulation_index = req->modulation_index;
   settings.carrier_pll_bandwidth = req->carrier_pll_bandwidth;
   settings.subcarrier_bandwidth = req->subcarrier_bandwidth;
-  int code = psk_pm_modem_create(&settings, max_input_buffer_length, debug_subcarrier_file, modem);
+  int code = psk_pm_modem_create(&settings, max_input_buffer_length, modem);
   if (code != 0) {
     return code;
   }
   if (debug_constellation_file != NULL) {
     code = psk_pm_modem_set_debug_constellation_file(debug_constellation_file, *modem);
+    if (code != 0) {
+      psk_pm_modem_destroy(*modem);
+      *modem = NULL;
+      return code;
+    }
+  }
+  if (debug_subcarrier_file != NULL) {
+    code = psk_pm_modem_set_debug_subcarrier_file(debug_subcarrier_file, *modem);
     if (code != 0) {
       psk_pm_modem_destroy(*modem);
       *modem = NULL;

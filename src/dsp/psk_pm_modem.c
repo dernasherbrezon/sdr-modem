@@ -68,7 +68,7 @@ static int psk_pm_modem_validate_settings(const psk_pm_modem_settings *settings)
   return 0;
 }
 
-int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_subcarrier_file, psk_pm_modem **modem) {
+int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, psk_pm_modem **modem) {
   int code = psk_pm_modem_validate_settings(settings);
   if (code != 0) {
     return code;
@@ -124,15 +124,6 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   if (result->modulation_output == NULL) {
     psk_pm_modem_destroy(result);
     return -ENOMEM;
-  }
-
-  if (debug_subcarrier_file != NULL) {
-    result->debug_subcarrier_file = fopen(debug_subcarrier_file, "wb");
-    if (result->debug_subcarrier_file == NULL) {
-      fprintf(stderr, "<3>unable to open debug subcarrier file: %s\n", debug_subcarrier_file);
-      psk_pm_modem_destroy(result);
-      return -1;
-    }
   }
 
   *modem = result;
@@ -204,6 +195,23 @@ void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex
 
   *output = mod->modulation_output;
   *output_len = subcarrier_symbols_len;
+}
+
+int psk_pm_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, psk_pm_modem *modem) {
+  // replace whatever was configured before
+  if (modem->debug_subcarrier_file != NULL) {
+    fclose(modem->debug_subcarrier_file);
+    modem->debug_subcarrier_file = NULL;
+  }
+  if (debug_subcarrier_file == NULL) {
+    return 0;
+  }
+  modem->debug_subcarrier_file = fopen(debug_subcarrier_file, "wb");
+  if (modem->debug_subcarrier_file == NULL) {
+    fprintf(stderr, "<3>unable to open debug subcarrier file: %s\n", debug_subcarrier_file);
+    return -1;
+  }
+  return 0;
 }
 
 int psk_pm_modem_set_debug_constellation_file(const char *debug_constellation_file, psk_pm_modem *modem) {
