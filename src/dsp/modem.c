@@ -163,7 +163,19 @@ static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint3
   settings.rrc_beta = req->rrc_beta;
   settings.rrc_delay = req->rrc_delay;
   settings.costas_bandwidth = req->costas_bandwidth;
-  return oqpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
+  int code = oqpsk_modem_create(&settings, max_input_buffer_length, modem);
+  if (code != 0) {
+    return code;
+  }
+  if (debug_constellation_file != NULL) {
+    code = oqpsk_modem_set_debug_constellation_file(debug_constellation_file, *modem);
+    if (code != 0) {
+      oqpsk_modem_destroy(*modem);
+      *modem = NULL;
+      return code;
+    }
+  }
+  return 0;
 }
 
 static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, const char *debug_subcarrier_file, psk_pm_modem **modem) {

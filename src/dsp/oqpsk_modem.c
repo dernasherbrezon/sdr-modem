@@ -247,6 +247,7 @@ struct oqpsk_modem_t {
   float costas_mag_ema;
   bool costas_mag_ema_initialized;
   float complex *corrected_symbols;
+  size_t corrected_symbols_len;
 
   int8_t *bit_output;
   size_t output_len;
@@ -269,7 +270,7 @@ struct oqpsk_modem_t {
   size_t debug_constellation_len;
 };
 
-int oqpsk_modem_create(const oqpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, oqpsk_modem **modem) {
+int oqpsk_modem_create(const oqpsk_modem_settings *settings, uint32_t max_input_buffer_length, oqpsk_modem **modem) {
   if (settings->baud_rate == 0) {
     fprintf(stderr, "<3>oqpsk modem: baud_rate must not be 0\n");
     return -EINVAL;
@@ -369,7 +370,8 @@ int oqpsk_modem_create(const oqpsk_modem_settings *settings, uint32_t max_input_
   nco_crcf_pll_set_bandwidth(result->costas, settings->costas_bandwidth);
   // at most one recovered symbol per samples_per_symbol input samples; rx_capacity is a safe
   // (generous) upper bound on the number of symbols the symbol clock can produce from one call
-  result->corrected_symbols = malloc(sizeof(float complex) * rx_capacity);
+  result->corrected_symbols_len = rx_capacity;
+  result->corrected_symbols = malloc(sizeof(float complex) * result->corrected_symbols_len);
   if (result->corrected_symbols == NULL) {
     oqpsk_modem_destroy(result);
     return -ENOMEM;
@@ -420,22 +422,40 @@ int oqpsk_modem_create(const oqpsk_modem_settings *settings, uint32_t max_input_
     }
   }
 
-  if (debug_constellation_file != NULL) {
-    result->debug_constellation_file = fopen(debug_constellation_file, "wb");
-    if (result->debug_constellation_file == NULL) {
-      fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
-      oqpsk_modem_destroy(result);
-      return -1;
-    }
-    result->debug_constellation_len = rx_capacity;
-    result->debug_constellation = malloc(sizeof(float complex) * result->debug_constellation_len);
-    if (result->debug_constellation == NULL) {
-      oqpsk_modem_destroy(result);
-      return -ENOMEM;
-    }
+  *modem = result;
+  return 0;
+}
+
+int oqpsk_modem_set_debug_constellation_file(const char *debug_constellation_file, oqpsk_modem *modem) {
+  // replace whatever was configured before
+  if (modem->debug_constellation_file != NULL) {
+    fclose(modem->debug_constellation_file);
+    modem->debug_constellation_file = NULL;
+  }
+  if (modem->debug_constellation != NULL) {
+    free(modem->debug_constellation);
+    modem->debug_constellation = NULL;
+  }
+  modem->debug_constellation_len = 0;
+  if (debug_constellation_file == NULL) {
+    return 0;
   }
 
-  *modem = result;
+  // same capacity as the rest of the RX chain (see rx_capacity in oqpsk_modem_create)
+  size_t len = modem->corrected_symbols_len;
+  float complex *buffer = malloc(sizeof(float complex) * len);
+  if (buffer == NULL) {
+    return -ENOMEM;
+  }
+  FILE *file = fopen(debug_constellation_file, "wb");
+  if (file == NULL) {
+    fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
+    free(buffer);
+    return -1;
+  }
+  modem->debug_constellation = buffer;
+  modem->debug_constellation_len = len;
+  modem->debug_constellation_file = file;
   return 0;
 }
 
