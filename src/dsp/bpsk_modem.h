@@ -20,7 +20,14 @@ typedef struct {
   uint32_t bandwidth;
   float rrc_beta;            // root-raised-cosine excess bandwidth (rolloff), 0 < rrc_beta <= 1
   unsigned int rrc_delay;    // root-raised-cosine filter delay, in symbols (m). typically 5-11
-  float costas_bandwidth;    // normalized loop bandwidth of the costas (carrier recovery) loop, > 0. typically 0.001-0.05
+  // dimensionless gain of the costas (carrier recovery) loop, > 0. typically 0.001-0.05.
+  // the loop runs once per symbol, so it is normalized to baud_rate.
+  // the loop is 2nd order with fixed damping 0.5 and natural frequency sqrt(costas_bandwidth) rad/symbol,
+  // so the noise bandwidth is B_L ~= baud_rate * sqrt(costas_bandwidth) / 2, or
+  // costas_bandwidth = (2 * B_L / baud_rate)^2. Doubling it widens the loop only by ~1.41x.
+  // wider: faster lock and tracks larger/faster residual carrier offset (doppler), but noisier.
+  // narrower: cleaner constellation, but slow or no lock on short bursts and large offsets.
+  float costas_bandwidth;
   unsigned int symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
   psk_modem_type type;
 } bpsk_modem_settings;

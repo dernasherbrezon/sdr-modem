@@ -861,7 +861,7 @@ static void app_config_apply_psk_pm_defaults(PskPmModemSettings *settings) {
     settings->rrc_beta = 0.35f;
   }
   if (settings->costas_bandwidth == 0.0f) {
-    settings->costas_bandwidth = 0.01f;
+    settings->costas_bandwidth = 0.005f;
   }
   if (settings->carrier_pll_bandwidth == 0.0f) {
     settings->carrier_pll_bandwidth = 0.0001f;
