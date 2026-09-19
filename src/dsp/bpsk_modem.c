@@ -53,7 +53,7 @@ struct bpsk_modem_t {
   modemcf mod;
 
   int8_t *bit_output;
-  size_t output_len;
+  size_t bit_output_len;
 
   // TX chain ////////////////////////////////
   size_t max_modulation_input_bits;
@@ -127,6 +127,39 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
       bpsk_modem_destroy(result);
       return -ENOMEM;
     }
+    max_input_buffer_length = result->resampler_rx_output_len;
+  }
+
+  if (settings->bandwidth != 0) {
+    float lowpass_fc = (float) settings->bandwidth / (float) internal_sample_rate;
+    if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
+      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->bandwidth, (unsigned long long) internal_sample_rate);
+      bpsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_filter = firfilt_crcf_create_kaiser(BPSK_MODEM_LOWPASS_NUM_TAPS, lowpass_fc, BPSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB, 0.0f);
+    if (result->lowpass_filter == NULL) {
+      bpsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_output_len = max_input_buffer_length;
+    result->lowpass_output = malloc(sizeof(float complex) * result->lowpass_output_len);
+    if (result->lowpass_output == NULL) {
+      bpsk_modem_destroy(result);
+      return -ENOMEM;
+    }
+  }
+
+  result->agc_output_len = max_input_buffer_length;
+  result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
+  if (result->agc_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
+  }
+  result->rx_agc = agc_crcf_create();
+  if (result->rx_agc == NULL) {
+    bpsk_modem_destroy(result);
+    return -EINVAL;
   }
 
   result->symbol_sync = symsync_crcf_create_rnyquist(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, settings->symsync_filter_bank_size);
@@ -135,6 +168,12 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -EINVAL;
   }
   symsync_crcf_set_output_rate(result->symbol_sync, 1);
+  result->symsync_output_len = max_input_buffer_length;
+  result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
+  if (result->symsync_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
+  }
 
   result->costas = nco_crcf_create(LIQUID_NCO);
   if (result->costas == NULL) {
@@ -160,52 +199,11 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->tx_prev_symbol = 1.0f + 0.0f * I;
   result->rx_prev_symbol = 1.0f + 0.0f * I;
 
-  // one output symbol for every sps samples fed to the symbol synchronizer, at most. when
-  // resampling, that input is the resampled buffer (resampler_rx_output_len), not the raw one
-  size_t symsync_input_capacity = needs_resampling ? result->resampler_rx_output_len : max_input_buffer_length;
-  result->output_len = symsync_input_capacity;
-  result->symsync_output_len = symsync_input_capacity;
-  result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
-  if (result->symsync_output == NULL) {
-    bpsk_modem_destroy(result);
-    return -ENOMEM;
-  }
-  result->bit_output = malloc(sizeof(int8_t) * result->output_len);
+  result->bit_output_len = max_input_buffer_length;
+  result->bit_output = malloc(sizeof(int8_t) * result->bit_output_len);
   if (result->bit_output == NULL) {
     bpsk_modem_destroy(result);
     return -ENOMEM;
-  }
-
-  if (settings->bandwidth != 0) {
-    float lowpass_fc = (float) settings->bandwidth / (float) internal_sample_rate;
-    if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
-      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->bandwidth, (unsigned long long) internal_sample_rate);
-      bpsk_modem_destroy(result);
-      return -EINVAL;
-    }
-    result->lowpass_filter = firfilt_crcf_create_kaiser(BPSK_MODEM_LOWPASS_NUM_TAPS, lowpass_fc, BPSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB, 0.0f);
-    if (result->lowpass_filter == NULL) {
-      bpsk_modem_destroy(result);
-      return -EINVAL;
-    }
-    result->lowpass_output_len = symsync_input_capacity;
-    result->lowpass_output = malloc(sizeof(float complex) * result->lowpass_output_len);
-    if (result->lowpass_output == NULL) {
-      bpsk_modem_destroy(result);
-      return -ENOMEM;
-    }
-  }
-
-  result->agc_output_len = symsync_input_capacity;
-  result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
-  if (result->agc_output == NULL) {
-    bpsk_modem_destroy(result);
-    return -ENOMEM;
-  }
-  result->rx_agc = agc_crcf_create();
-  if (result->rx_agc == NULL) {
-    bpsk_modem_destroy(result);
-    return -EINVAL;
   }
 
   result->interp = firinterp_crcf_create_prototype(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, 0.0f);
@@ -418,11 +416,11 @@ void bpsk_modem_destroy(void *modem_v) {
   if (modem->resampler_rx != NULL) {
     msresamp_crcf_destroy(modem->resampler_rx);
   }
-  if (modem->resampler_tx != NULL) {
-    msresamp_crcf_destroy(modem->resampler_tx);
-  }
   if (modem->resampler_rx_output != NULL) {
     free(modem->resampler_rx_output);
+  }
+  if (modem->resampler_tx != NULL) {
+    msresamp_crcf_destroy(modem->resampler_tx);
   }
   if (modem->resampler_tx_output != NULL) {
     free(modem->resampler_tx_output);
