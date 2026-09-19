@@ -9,6 +9,10 @@
 #include "../src/dsp/bpsk_modem.h"
 #include "utils.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 #define BAUD_RATE 4800
 // lowpass cutoff (one-sided). RRC with beta=0.35 occupies +-baud*(1+beta)/2 = +-3240Hz, so this
 // leaves some margin and still is below nyquist for every sample rate used below
