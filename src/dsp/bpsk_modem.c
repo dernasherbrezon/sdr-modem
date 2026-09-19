@@ -114,6 +114,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->max_input_buffer_length = max_input_buffer_length;
   result->type = settings->type;
 
+  uint32_t rx_max_input_buffer_length = max_input_buffer_length;
   if (needs_resampling) {
     double resample_rate_rx = (double) internal_sample_rate / (double) settings->sample_rate;
     result->resampler_rx = msresamp_crcf_create((float) resample_rate_rx, BPSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
@@ -121,13 +122,13 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
       bpsk_modem_destroy(result);
       return -EINVAL;
     }
-    result->resampler_rx_output_len = (size_t) ceil((double) max_input_buffer_length * resample_rate_rx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
+    result->resampler_rx_output_len = (size_t) ceil((double) rx_max_input_buffer_length * resample_rate_rx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
     result->resampler_rx_output = malloc(sizeof(float complex) * result->resampler_rx_output_len);
     if (result->resampler_rx_output == NULL) {
       bpsk_modem_destroy(result);
       return -ENOMEM;
     }
-    max_input_buffer_length = result->resampler_rx_output_len;
+    rx_max_input_buffer_length = result->resampler_rx_output_len;
   }
 
   if (settings->bandwidth != 0) {
@@ -142,7 +143,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
       bpsk_modem_destroy(result);
       return -EINVAL;
     }
-    result->lowpass_output_len = max_input_buffer_length;
+    result->lowpass_output_len = rx_max_input_buffer_length;
     result->lowpass_output = malloc(sizeof(float complex) * result->lowpass_output_len);
     if (result->lowpass_output == NULL) {
       bpsk_modem_destroy(result);
@@ -150,7 +151,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     }
   }
 
-  result->agc_output_len = max_input_buffer_length;
+  result->agc_output_len = rx_max_input_buffer_length;
   result->agc_output = malloc(sizeof(float complex) * result->agc_output_len);
   if (result->agc_output == NULL) {
     bpsk_modem_destroy(result);
@@ -168,7 +169,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     return -EINVAL;
   }
   symsync_crcf_set_output_rate(result->symbol_sync, 1);
-  result->symsync_output_len = max_input_buffer_length;
+  result->symsync_output_len = rx_max_input_buffer_length;
   result->symsync_output = malloc(sizeof(float complex) * result->symsync_output_len);
   if (result->symsync_output == NULL) {
     bpsk_modem_destroy(result);
@@ -199,7 +200,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   result->tx_prev_symbol = 1.0f + 0.0f * I;
   result->rx_prev_symbol = 1.0f + 0.0f * I;
 
-  result->bit_output_len = max_input_buffer_length;
+  result->bit_output_len = rx_max_input_buffer_length;
   result->bit_output = malloc(sizeof(int8_t) * result->bit_output_len);
   if (result->bit_output == NULL) {
     bpsk_modem_destroy(result);
@@ -304,13 +305,22 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
       // detector would get a data-dependent sign flip on the 90/270 points, so raise to the
       // 4th power instead: 4*data_phase is always a multiple of 360 degrees, so this cancels
       // the data modulation the same way squaring does for 2-point BPSK.
+      // use the angle of the 4th power (in [-45, 45] degrees) instead of its imaginary part:
+      // imag(z^4) has a gain of 4*|z|^4, which overdrives the loop during startup transients
+      // (e.g. the lowpass filter and AGC settling). the loop can then get pulled onto a false
+      // lock at a frequency offset of +-90 degrees/symbol, where the recovered symbols are
+      // real-valued (bits are ~random) or +-180 degrees/symbol (bits are inverted). both are
+      // valid zero-error points of a 4th-power detector.
       float complex squared = mixed * mixed;
       float complex fourth = squared * squared;
-      phase_error = cimagf(fourth);
+      phase_error = cargf(fourth) / 4.0f;
     } else {
       // costas (M=2) phase error detector: on a two-point (BPSK/DPSK2) constellation this is
-      // data-independent, so it tracks the residual carrier without needing hard decisions first
-      phase_error = crealf(mixed) * cimagf(mixed);
+      // data-independent, so it tracks the residual carrier without needing hard decisions first.
+      // use the angle of the square (in [-90, 90] degrees) instead of real*imag: real*imag has a
+      // gain of |z|^2/2, so the loop gain follows the signal amplitude (lowpass filter, AGC and
+      // symbol sync transients) and the loop sometimes fails to lock
+      phase_error = cargf(mixed * mixed) / 2.0f;
     }
     nco_crcf_pll_step(demod->costas, phase_error);
     nco_crcf_step(demod->costas);
