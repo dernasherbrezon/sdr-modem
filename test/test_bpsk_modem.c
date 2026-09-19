@@ -103,11 +103,11 @@ static double best_mismatch_ratio(const int8_t *output, size_t output_len, bool 
 static void round_trip(uint64_t sample_rate, uint32_t bandwidth, psk_modem_type type, double carrier_offset_hz) {
   bpsk_modem_settings settings = default_settings(sample_rate, bandwidth, type);
 
-  int code = bpsk_modem_create(&settings, INPUT_LEN, NULL, &mod);
+  int code = bpsk_modem_create(&settings, INPUT_LEN, &mod);
   TEST_ASSERT_EQUAL_INT(0, code);
   // demodulator has to accept everything the modulator can produce
   uint32_t max_samples = (uint32_t) bpsk_modem_max_modulation_buffer_length(mod);
-  code = bpsk_modem_create(&settings, max_samples, NULL, &demod);
+  code = bpsk_modem_create(&settings, max_samples, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(INPUT_LEN);
@@ -195,14 +195,14 @@ static void assert_create_fails(uint64_t sample_rate, uint32_t baud_rate, uint32
   bpsk_modem_settings settings = default_settings(sample_rate, bandwidth, BPSK);
   settings.baud_rate = baud_rate;
   bpsk_modem *created = NULL;
-  TEST_ASSERT_EQUAL_INT(-EINVAL, bpsk_modem_create(&settings, INPUT_LEN, NULL, &created));
+  TEST_ASSERT_EQUAL_INT(-EINVAL, bpsk_modem_create(&settings, INPUT_LEN, &created));
   TEST_ASSERT_NULL(created);
 }
 
 static void assert_create_succeeds(uint64_t sample_rate, uint32_t bandwidth) {
   bpsk_modem_settings settings = default_settings(sample_rate, bandwidth, BPSK);
   bpsk_modem *created = NULL;
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, NULL, &created));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, &created));
   TEST_ASSERT_NOT_NULL(created);
   bpsk_modem_destroy(created);
 }
@@ -257,9 +257,9 @@ void test_create_lowpass_very_narrow() {
 // it. the modem must keep running and produce one decision per symbol, but the data is lost
 static void narrow_lowpass_loses_data(psk_modem_type type, uint32_t bandwidth) {
   bpsk_modem_settings settings = default_settings(48000, bandwidth, type);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, NULL, &mod));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, &mod));
   uint32_t max_samples = (uint32_t) bpsk_modem_max_modulation_buffer_length(mod);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, max_samples, NULL, &demod));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, max_samples, &demod));
   setup_random_input(INPUT_LEN);
 
   float complex *modulated = NULL;
@@ -295,8 +295,8 @@ void test_lowpass_narrowest() { narrow_lowpass_loses_data(BPSK, 1); }
 // (no resampler) and when it is not (resampler in front of the rx chain and behind the tx chain)
 static void create_pair(uint64_t sample_rate, uint32_t bandwidth) {
   bpsk_modem_settings settings = default_settings(sample_rate, bandwidth, BPSK);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, NULL, &mod));
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, NULL, &demod));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_create(&settings, INPUT_LEN, &demod));
 }
 
 static void demodulate_invalid_buffers(uint64_t sample_rate, uint32_t bandwidth) {
@@ -397,6 +397,83 @@ static void modulate_invalid_buffers(uint64_t sample_rate, uint32_t bandwidth) {
 void test_modulate_invalid_buffers() { modulate_invalid_buffers(48000, 0); }
 void test_modulate_invalid_buffers_resampled() { modulate_invalid_buffers(44100, 0); }
 
+// debug constellation file /////////////////////////////////////////////////////////////////////////
+
+#define DEBUG_FILE "test_bpsk_modem_constellation.bin"
+
+static long file_size(const char *path) {
+  FILE *f = fopen(path, "rb");
+  if (f == NULL) {
+    return -1;
+  }
+  fseek(f, 0, SEEK_END);
+  long result = ftell(f);
+  fclose(f);
+  return result;
+}
+
+// tx dumps one constellation point per transmitted bit
+void test_debug_constellation_modulate() {
+  create_pair(48000, 0);
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, DEBUG_FILE));
+  setup_random_input(INPUT_LEN);
+  float complex *output = NULL;
+  size_t output_len = 0;
+  bpsk_modem_modulate(mod_input, INPUT_LEN, &output, &output_len, mod);
+  bpsk_modem_destroy(mod);
+  mod = NULL;
+  long size = file_size(DEBUG_FILE);
+  remove(DEBUG_FILE);
+  TEST_ASSERT_EQUAL_INT64((long) (INPUT_LEN * 8 * sizeof(float complex)), size);
+}
+
+// rx dumps one constellation point per recovered symbol
+void test_debug_constellation_demodulate() {
+  create_pair(48000, 0);
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(demod, DEBUG_FILE));
+  float complex *input = calloc(INPUT_LEN, sizeof(float complex));
+  TEST_ASSERT_NOT_NULL(input);
+  int8_t *output = NULL;
+  size_t output_len = 0;
+  bpsk_modem_demodulate(input, INPUT_LEN, &output, &output_len, demod);
+  free(input);
+  TEST_ASSERT_GREATER_THAN_size_t(0, output_len);
+  bpsk_modem_destroy(demod);
+  demod = NULL;
+  long size = file_size(DEBUG_FILE);
+  remove(DEBUG_FILE);
+  TEST_ASSERT_EQUAL_INT64((long) (output_len * sizeof(float complex)), size);
+}
+
+void test_debug_constellation_disabled_with_null() {
+  create_pair(48000, 0);
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, DEBUG_FILE));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, NULL));
+  setup_random_input(INPUT_LEN);
+  float complex *output = NULL;
+  size_t output_len = 0;
+  bpsk_modem_modulate(mod_input, INPUT_LEN, &output, &output_len, mod);
+  TEST_ASSERT_NOT_NULL(output);
+  bpsk_modem_destroy(mod);
+  mod = NULL;
+  long size = file_size(DEBUG_FILE);
+  remove(DEBUG_FILE);
+  // the file was created, but nothing was written
+  TEST_ASSERT_EQUAL_INT64(0, size);
+}
+
+void test_debug_constellation_invalid_path() {
+  create_pair(48000, 0);
+  TEST_ASSERT_NOT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, "/nonexistent-directory/constellation.bin"));
+  // modem is still usable without the dump
+  setup_random_input(INPUT_LEN);
+  float complex *output = NULL;
+  size_t output_len = 0;
+  bpsk_modem_modulate(mod_input, INPUT_LEN, &output, &output_len, mod);
+  TEST_ASSERT_NOT_NULL(output);
+  TEST_ASSERT_GREATER_THAN_size_t(0, output_len);
+}
+
 void tearDown() {
   if (mod != NULL) {
     bpsk_modem_destroy(mod);
@@ -442,5 +519,9 @@ int main(void) {
   RUN_TEST(test_demodulate_invalid_buffers_resampled);
   RUN_TEST(test_modulate_invalid_buffers);
   RUN_TEST(test_modulate_invalid_buffers_resampled);
+  RUN_TEST(test_debug_constellation_modulate);
+  RUN_TEST(test_debug_constellation_demodulate);
+  RUN_TEST(test_debug_constellation_disabled_with_null);
+  RUN_TEST(test_debug_constellation_invalid_path);
   return UNITY_END();
 }

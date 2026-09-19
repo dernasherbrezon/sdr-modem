@@ -83,10 +83,17 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   subcarrier_settings.symsync_filter_bank_size = settings->symsync_filter_bank_size;
   subcarrier_settings.bandwidth = settings->subcarrier_bandwidth;
   subcarrier_settings.type = BPSK;
-  int code = bpsk_modem_create(&subcarrier_settings, max_input_buffer_length, debug_constellation_file, &result->subcarrier_modem);
+  int code = bpsk_modem_create(&subcarrier_settings, max_input_buffer_length, &result->subcarrier_modem);
   if (code != 0) {
     psk_pm_modem_destroy(result);
     return code;
+  }
+  if (debug_constellation_file != NULL) {
+    code = bpsk_modem_set_debug_constellation_file(result->subcarrier_modem, debug_constellation_file);
+    if (code != 0) {
+      psk_pm_modem_destroy(result);
+      return code;
+    }
   }
 
   result->carrier_pll = nco_crcf_create(LIQUID_NCO);

@@ -141,7 +141,19 @@ static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate,
   settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
   settings.bandwidth = req->bandwidth;
   settings.type = type;
-  return bpsk_modem_create(&settings, max_input_buffer_length, debug_constellation_file, modem);
+  int code = bpsk_modem_create(&settings, max_input_buffer_length, modem);
+  if (code != 0) {
+    return code;
+  }
+  if (debug_constellation_file != NULL) {
+    code = bpsk_modem_set_debug_constellation_file(*modem, debug_constellation_file);
+    if (code != 0) {
+      bpsk_modem_destroy(*modem);
+      *modem = NULL;
+      return code;
+    }
+  }
+  return 0;
 }
 
 static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, oqpsk_modem **modem) {

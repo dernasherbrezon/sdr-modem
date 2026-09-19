@@ -25,7 +25,9 @@ typedef struct {
   psk_modem_type type;
 } bpsk_modem_settings;
 
-int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem);
+int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem);
+
+int bpsk_modem_set_debug_constellation_file(bpsk_modem *modem, const char *debug_constellation_file);
 
 void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 

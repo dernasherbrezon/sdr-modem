@@ -78,7 +78,7 @@ struct bpsk_modem_t {
   size_t debug_constellation_len;
 };
 
-int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
+int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem) {
   if (settings->baud_rate == 0) {
     fprintf(stderr, "<3>bpsk modem: baud_rate must not be 0\n");
     return -EINVAL;
@@ -239,22 +239,38 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     }
   }
 
-  if (debug_constellation_file != NULL) {
-    result->debug_constellation_file = fopen(debug_constellation_file, "wb");
-    if (result->debug_constellation_file == NULL) {
-      fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
-      bpsk_modem_destroy(result);
-      return -1;
-    }
-    result->debug_constellation_len = result->symsync_output_len;
-    result->debug_constellation = malloc(sizeof(float complex) * result->debug_constellation_len);
-    if (result->debug_constellation == NULL) {
-      bpsk_modem_destroy(result);
-      return -ENOMEM;
-    }
+  *modem = result;
+  return 0;
+}
+
+int bpsk_modem_set_debug_constellation_file(bpsk_modem *modem, const char *debug_constellation_file) {
+  // replace whatever was configured before
+  if (modem->debug_constellation_file != NULL) {
+    fclose(modem->debug_constellation_file);
+    modem->debug_constellation_file = NULL;
+  }
+  if (modem->debug_constellation != NULL) {
+    free(modem->debug_constellation);
+    modem->debug_constellation = NULL;
+  }
+  modem->debug_constellation_len = 0;
+  if (debug_constellation_file == NULL) {
+    return 0;
   }
 
-  *modem = result;
+  float complex *buffer = malloc(sizeof(float complex) * modem->symsync_output_len);
+  if (buffer == NULL) {
+    return -ENOMEM;
+  }
+  FILE *file = fopen(debug_constellation_file, "wb");
+  if (file == NULL) {
+    fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
+    free(buffer);
+    return -1;
+  }
+  modem->debug_constellation = buffer;
+  modem->debug_constellation_len = modem->symsync_output_len;
+  modem->debug_constellation_file = file;
   return 0;
 }
 
@@ -450,6 +466,9 @@ void bpsk_modem_destroy(void *modem_v) {
   }
   if (modem->debug_constellation_file != NULL) {
     fclose(modem->debug_constellation_file);
+  }
+  if (modem->debug_constellation != NULL) {
+    free(modem->debug_constellation);
   }
   free(modem);
 }
