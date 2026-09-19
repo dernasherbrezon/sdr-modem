@@ -19,9 +19,8 @@ struct psk_pm_modem_t {
   float modulation_index;
   size_t max_input_buffer_length;
 
-  bpsk_modem *subcarrier_modem;
-
-  // rx only: tracks and removes the RF carrier's residual frequency/phase, so that the (de-rotated
+  // RX chain ////////////////////////////////
+  // tracks and removes the RF carrier's residual frequency/phase, so that the (de-rotated
   // signal's) phase is left carrying only the deviation caused by the subcarrier waveform, i.e. a
   // PLL-based phase discriminator. its loop bandwidth must be much narrower than
   // subcarrier_frequency/sample_rate so it tracks only slow carrier drift, not the subcarrier
@@ -35,10 +34,12 @@ struct psk_pm_modem_t {
   // subcarrier_modem's own costas loop and symbol synchronizer, the same way it absorbs those for
   // a directly-transmitted BPSK signal.
   nco_crcf subcarrier_nco;
+  float complex *subcarrier_output; // rx: subcarrier signal downconverted to complex baseband
+  size_t subcarrier_output_len;
 
-  float complex *baseband_output; // rx: subcarrier signal downconverted to complex baseband
-  size_t baseband_output_len;
+  bpsk_modem *subcarrier_modem;
 
+  // TX chain ////////////////////////////////
   float complex *modulation_output; // tx: final phase-modulated I/Q
   size_t max_modulation_buffer_length;
 
@@ -47,7 +48,7 @@ struct psk_pm_modem_t {
   FILE *debug_subcarrier_file;
 };
 
-int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_constellation_file, const char *debug_subcarrier_file, psk_pm_modem **modem) {
+static int psk_pm_modem_validate_settings(const psk_pm_modem_settings *settings) {
   if (settings->subcarrier_frequency == 0) {
     fprintf(stderr, "<3>psk/pm modem: subcarrier_frequency must not be 0\n");
     return -EINVAL;
@@ -63,6 +64,14 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   if (settings->carrier_pll_bandwidth <= 0.0f) {
     fprintf(stderr, "<3>psk/pm modem: carrier_pll_bandwidth must be > 0\n");
     return -EINVAL;
+  }
+  return 0;
+}
+
+int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_input_buffer_length, const char *debug_subcarrier_file, psk_pm_modem **modem) {
+  int code = psk_pm_modem_validate_settings(settings);
+  if (code != 0) {
+    return code;
   }
 
   struct psk_pm_modem_t *result = malloc(sizeof(struct psk_pm_modem_t));
@@ -83,17 +92,10 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   subcarrier_settings.symsync_filter_bank_size = settings->symsync_filter_bank_size;
   subcarrier_settings.bandwidth = settings->subcarrier_bandwidth;
   subcarrier_settings.type = BPSK;
-  int code = bpsk_modem_create(&subcarrier_settings, max_input_buffer_length, &result->subcarrier_modem);
+  code = bpsk_modem_create(&subcarrier_settings, max_input_buffer_length, &result->subcarrier_modem);
   if (code != 0) {
     psk_pm_modem_destroy(result);
     return code;
-  }
-  if (debug_constellation_file != NULL) {
-    code = bpsk_modem_set_debug_constellation_file(result->subcarrier_modem, debug_constellation_file);
-    if (code != 0) {
-      psk_pm_modem_destroy(result);
-      return code;
-    }
   }
 
   result->carrier_pll = nco_crcf_create(LIQUID_NCO);
@@ -110,9 +112,9 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   }
   nco_crcf_set_frequency(result->subcarrier_nco, 2.0f * (float) M_PI * (float) settings->subcarrier_frequency / (float) settings->sample_rate);
 
-  result->baseband_output_len = max_input_buffer_length;
-  result->baseband_output = malloc(sizeof(float complex) * result->baseband_output_len);
-  if (result->baseband_output == NULL) {
+  result->subcarrier_output_len = max_input_buffer_length;
+  result->subcarrier_output = malloc(sizeof(float complex) * result->subcarrier_output_len);
+  if (result->subcarrier_output == NULL) {
     psk_pm_modem_destroy(result);
     return -ENOMEM;
   }
@@ -166,14 +168,14 @@ void psk_pm_modem_demodulate(const float complex *input, size_t input_len, int8_
     float complex baseband;
     nco_crcf_mix_down(demod->subcarrier_nco, discriminator, &baseband);
     nco_crcf_step(demod->subcarrier_nco);
-    demod->baseband_output[i] = baseband;
+    demod->subcarrier_output[i] = baseband;
   }
 
   if (demod->debug_subcarrier_file != NULL) {
-    fwrite(demod->baseband_output, sizeof(float complex), input_len, demod->debug_subcarrier_file);
+    fwrite(demod->subcarrier_output, sizeof(float complex), input_len, demod->debug_subcarrier_file);
   }
 
-  bpsk_modem_demodulate(demod->baseband_output, input_len, output, output_len, demod->subcarrier_modem);
+  bpsk_modem_demodulate(demod->subcarrier_output, input_len, output, output_len, demod->subcarrier_modem);
 }
 
 void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
@@ -204,6 +206,10 @@ void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex
   *output_len = subcarrier_symbols_len;
 }
 
+int psk_pm_modem_set_debug_constellation_file(const char *debug_constellation_file, psk_pm_modem *modem) {
+  return bpsk_modem_set_debug_constellation_file(debug_constellation_file, modem->subcarrier_modem);
+}
+
 void psk_pm_modem_destroy(void *modem_v) {
   psk_pm_modem *modem = modem_v;
   if (modem == NULL) {
@@ -218,8 +224,8 @@ void psk_pm_modem_destroy(void *modem_v) {
   if (modem->subcarrier_nco != NULL) {
     nco_crcf_destroy(modem->subcarrier_nco);
   }
-  if (modem->baseband_output != NULL) {
-    free(modem->baseband_output);
+  if (modem->subcarrier_output != NULL) {
+    free(modem->subcarrier_output);
   }
   if (modem->modulation_output != NULL) {
     free(modem->modulation_output);
