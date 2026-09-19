@@ -146,7 +146,7 @@ static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate,
     return code;
   }
   if (debug_constellation_file != NULL) {
-    code = bpsk_modem_set_debug_constellation_file(*modem, debug_constellation_file);
+    code = bpsk_modem_set_debug_constellation_file(debug_constellation_file, *modem);
     if (code != 0) {
       bpsk_modem_destroy(*modem);
       *modem = NULL;

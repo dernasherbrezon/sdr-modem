@@ -415,7 +415,7 @@ static long file_size(const char *path) {
 // tx dumps one constellation point per transmitted bit
 void test_debug_constellation_modulate() {
   create_pair(48000, 0);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, DEBUG_FILE));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(DEBUG_FILE, mod));
   setup_random_input(INPUT_LEN);
   float complex *output = NULL;
   size_t output_len = 0;
@@ -430,7 +430,7 @@ void test_debug_constellation_modulate() {
 // rx dumps one constellation point per recovered symbol
 void test_debug_constellation_demodulate() {
   create_pair(48000, 0);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(demod, DEBUG_FILE));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(DEBUG_FILE, demod));
   float complex *input = calloc(INPUT_LEN, sizeof(float complex));
   TEST_ASSERT_NOT_NULL(input);
   int8_t *output = NULL;
@@ -447,8 +447,8 @@ void test_debug_constellation_demodulate() {
 
 void test_debug_constellation_disabled_with_null() {
   create_pair(48000, 0);
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, DEBUG_FILE));
-  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, NULL));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(DEBUG_FILE, mod));
+  TEST_ASSERT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(NULL, mod));
   setup_random_input(INPUT_LEN);
   float complex *output = NULL;
   size_t output_len = 0;
@@ -464,7 +464,7 @@ void test_debug_constellation_disabled_with_null() {
 
 void test_debug_constellation_invalid_path() {
   create_pair(48000, 0);
-  TEST_ASSERT_NOT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file(mod, "/nonexistent-directory/constellation.bin"));
+  TEST_ASSERT_NOT_EQUAL_INT(0, bpsk_modem_set_debug_constellation_file("/nonexistent-directory/constellation.bin", mod));
   // modem is still usable without the dump
   setup_random_input(INPUT_LEN);
   float complex *output = NULL;

@@ -243,7 +243,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   return 0;
 }
 
-int bpsk_modem_set_debug_constellation_file(bpsk_modem *modem, const char *debug_constellation_file) {
+int bpsk_modem_set_debug_constellation_file(const char *debug_constellation_file, bpsk_modem *modem) {
   // replace whatever was configured before
   if (modem->debug_constellation_file != NULL) {
     fclose(modem->debug_constellation_file);
