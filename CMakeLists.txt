@@ -25,6 +25,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem2.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
@@ -116,6 +117,10 @@ target_link_libraries(test_frequency_modulator sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_gfsk_modem COMMAND test_gfsk_modem)
 add_executable(test_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_modem.c)
 target_link_libraries(test_gfsk_modem sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_gfsk_modem2 COMMAND test_gfsk_modem2)
+add_executable(test_gfsk_modem2 ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_modem2.c)
+target_link_libraries(test_gfsk_modem2 sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_bpsk_modem COMMAND test_bpsk_modem)
 add_executable(test_bpsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_bpsk_modem.c)
