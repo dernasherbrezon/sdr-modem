@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "../api.pb-c.h"
 #include "../app_config.h"
 #include "freq_offset.h"
 #include "halfband_decim.h"
@@ -38,6 +39,12 @@ struct sdr_modem_t {
   // (i.e. right before the wrapped demodulator runs), or the freq_offset-corrected raw
   // input when no halfband decimation is configured
   FILE *debug_baseband_file;
+
+  // which wrapped modem is in use, needed to dispatch modem-specific debug setters
+  ModemRequest__ModemSettingsCase modem_settings_case;
+
+  // sample rate seen by the wrapped modem, i.e. after halfband decimation
+  uint64_t baseband_sample_rate;
 };
 
 // generic accessors for the fields common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk/psk_pm).
@@ -49,13 +56,21 @@ uint64_t modem_request_get_sample_rate(const struct ModemRequest *req);
 uint32_t modem_request_get_baud_rate(const struct ModemRequest *req);
 
 // freq_offset_file may be NULL, in which case no frequency correction is applied
-// debug_freq_offset_file may be NULL, in which case no debug I/Q dump is written
-// debug_constellation_file may be NULL, in which case no debug constellation dump is written.
-// only honored by bpsk/dpsk/sdpsk/oqpsk/psk_pm modems.
-// debug_baseband_file may be NULL, in which case no debug baseband dump is written. rx only.
-// debug_subcarrier_file may be NULL, in which case no debug subcarrier dump is written. only
-// honored by the psk_pm modem, rx only -- see psk_pm_modem.h.
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, const char *debug_subcarrier_file, sdr_modem **modem);
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem);
+
+// all debug setters below accept NULL as the file name, which closes and disables the dump.
+// they are no-ops returning 0 if modem is NULL. return non-zero if the file cannot be opened.
+// dumps raw I/Q, see debug_freq_offset_file
+int modem_set_debug_freq_offset_file(const char *debug_freq_offset_file, sdr_modem *modem);
+
+// rx only. dumps baseband I/Q, see debug_baseband_file
+int modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *modem);
+
+// only honored by bpsk/dpsk/sdpsk/oqpsk/psk_pm modems, ignored (returns 0) for others
+int modem_set_debug_constellation_file(const char *debug_constellation_file, sdr_modem *modem);
+
+// rx only. only honored by the psk_pm modem, ignored (returns 0) for others -- see psk_pm_modem.h
+int modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem *modem);
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
 

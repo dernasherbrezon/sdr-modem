@@ -131,7 +131,7 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
-static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, psk_modem_type type, uint32_t max_input_buffer_length, const char *debug_constellation_file, bpsk_modem **modem) {
+static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, psk_modem_type type, uint32_t max_input_buffer_length, bpsk_modem **modem) {
   bpsk_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
   settings.baud_rate = req->baud_rate;
@@ -141,44 +141,20 @@ static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate,
   settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
   settings.bandwidth = req->bandwidth;
   settings.type = type;
-  int code = bpsk_modem_create(&settings, max_input_buffer_length, modem);
-  if (code != 0) {
-    return code;
-  }
-  if (debug_constellation_file != NULL) {
-    code = bpsk_modem_set_debug_constellation_file(debug_constellation_file, *modem);
-    if (code != 0) {
-      bpsk_modem_destroy(*modem);
-      *modem = NULL;
-      return code;
-    }
-  }
-  return 0;
+  return bpsk_modem_create(&settings, max_input_buffer_length, modem);
 }
 
-static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, oqpsk_modem **modem) {
+static int modem_create_oqpsk(PskModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, oqpsk_modem **modem) {
   oqpsk_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
   settings.baud_rate = req->baud_rate;
   settings.rrc_beta = req->rrc_beta;
   settings.rrc_delay = req->rrc_delay;
   settings.costas_bandwidth = req->costas_bandwidth;
-  int code = oqpsk_modem_create(&settings, max_input_buffer_length, modem);
-  if (code != 0) {
-    return code;
-  }
-  if (debug_constellation_file != NULL) {
-    code = oqpsk_modem_set_debug_constellation_file(debug_constellation_file, *modem);
-    if (code != 0) {
-      oqpsk_modem_destroy(*modem);
-      *modem = NULL;
-      return code;
-    }
-  }
-  return 0;
+  return oqpsk_modem_create(&settings, max_input_buffer_length, modem);
 }
 
-static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, const char *debug_constellation_file, const char *debug_subcarrier_file, psk_pm_modem **modem) {
+static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, psk_pm_modem **modem) {
   psk_pm_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
   settings.baud_rate = req->baud_rate;
@@ -190,30 +166,10 @@ static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, ui
   settings.modulation_index = req->modulation_index;
   settings.carrier_pll_bandwidth = req->carrier_pll_bandwidth;
   settings.subcarrier_bandwidth = req->subcarrier_bandwidth;
-  int code = psk_pm_modem_create(&settings, max_input_buffer_length, modem);
-  if (code != 0) {
-    return code;
-  }
-  if (debug_constellation_file != NULL) {
-    code = psk_pm_modem_set_debug_constellation_file(debug_constellation_file, *modem);
-    if (code != 0) {
-      psk_pm_modem_destroy(*modem);
-      *modem = NULL;
-      return code;
-    }
-  }
-  if (debug_subcarrier_file != NULL) {
-    code = psk_pm_modem_set_debug_subcarrier_file(debug_subcarrier_file, *modem);
-    if (code != 0) {
-      psk_pm_modem_destroy(*modem);
-      *modem = NULL;
-      return code;
-    }
-  }
-  return 0;
+  return psk_pm_modem_create(&settings, max_input_buffer_length, modem);
 }
 
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, const char *debug_freq_offset_file, const char *debug_constellation_file, const char *debug_baseband_file, const char *debug_subcarrier_file, sdr_modem **modem) {
+int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
     *modem = NULL;
@@ -247,7 +203,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
     result->destroy = gfsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
-    code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -257,7 +213,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_DPSK) {
-    code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -267,7 +223,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_SDPSK) {
-    code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SDPSK, decimated_buffer_length, debug_constellation_file, (bpsk_modem **) &result->modem);
+    code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SDPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -277,7 +233,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
     result->destroy = bpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_OQPSK) {
-    code = modem_create_oqpsk(req->oqpsk, decimated_sample_rate, decimated_buffer_length, debug_constellation_file, (oqpsk_modem **) &result->modem);
+    code = modem_create_oqpsk(req->oqpsk, decimated_sample_rate, decimated_buffer_length, (oqpsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -287,7 +243,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     result->max_modulation_buffer_length = oqpsk_modem_max_modulation_buffer_length;
     result->destroy = oqpsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
-    code = modem_create_psk_pm(req->psk_pm, decimated_sample_rate, decimated_buffer_length, debug_constellation_file, debug_subcarrier_file, (psk_pm_modem **) &result->modem);
+    code = modem_create_psk_pm(req->psk_pm, decimated_sample_rate, decimated_buffer_length, (psk_pm_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
@@ -316,27 +272,74 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     }
   }
 
-  if (debug_freq_offset_file != NULL) {
-    result->debug_freq_offset_file = fopen(debug_freq_offset_file, "wb");
-    if (result->debug_freq_offset_file == NULL) {
-      fprintf(stderr, "<3>unable to open debug freq offset file: %s\n", debug_freq_offset_file);
-      modem_destroy(result);
-      return -1;
-    }
-  }
-
-  if (debug_baseband_file != NULL) {
-    result->debug_baseband_file = fopen(debug_baseband_file, "wb");
-    if (result->debug_baseband_file == NULL) {
-      fprintf(stderr, "<3>unable to open debug baseband file: %s\n", debug_baseband_file);
-      modem_destroy(result);
-      return -1;
-    }
-    fprintf(stdout, "baseband sample rate: %"PRIu64"\n", decimated_sample_rate);
-  }
-
+  result->modem_settings_case = req->modem_settings_case;
+  result->baseband_sample_rate = decimated_sample_rate;
   *modem = result;
   return 0;
+}
+
+static int modem_reopen_debug_file(FILE **file, const char *path, const char *name) {
+  if (*file != NULL) {
+    fclose(*file);
+    *file = NULL;
+  }
+  if (path == NULL) {
+    return 0;
+  }
+  *file = fopen(path, "wb");
+  if (*file == NULL) {
+    fprintf(stderr, "<3>unable to open debug %s file: %s\n", name, path);
+    return -1;
+  }
+  return 0;
+}
+
+int modem_set_debug_freq_offset_file(const char *debug_freq_offset_file, sdr_modem *modem) {
+  if (modem == NULL) {
+    return 0;
+  }
+  return modem_reopen_debug_file(&modem->debug_freq_offset_file, debug_freq_offset_file, "freq offset");
+}
+
+int modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *modem) {
+  if (modem == NULL) {
+    return 0;
+  }
+  int code = modem_reopen_debug_file(&modem->debug_baseband_file, debug_baseband_file, "baseband");
+  if (code == 0 && debug_baseband_file != NULL) {
+    fprintf(stdout, "baseband sample rate: %"PRIu64"\n", modem->baseband_sample_rate);
+  }
+  return code;
+}
+
+int modem_set_debug_constellation_file(const char *debug_constellation_file, sdr_modem *modem) {
+  if (modem == NULL) {
+    return 0;
+  }
+  switch (modem->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      return bpsk_modem_set_debug_constellation_file(debug_constellation_file, modem->modem);
+    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
+      return oqpsk_modem_set_debug_constellation_file(debug_constellation_file, modem->modem);
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return psk_pm_modem_set_debug_constellation_file(debug_constellation_file, modem->modem);
+    default:
+      // not supported by this modem type
+      return 0;
+  }
+}
+
+int modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem *modem) {
+  if (modem == NULL) {
+    return 0;
+  }
+  if (modem->modem_settings_case != MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
+    // not supported by this modem type
+    return 0;
+  }
+  return psk_pm_modem_set_debug_subcarrier_file(debug_subcarrier_file, modem->modem);
 }
 
 void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
