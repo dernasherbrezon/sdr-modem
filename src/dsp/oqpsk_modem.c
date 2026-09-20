@@ -517,11 +517,15 @@ void oqpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t
       // degrees regardless of which point the data lands on, cancelling the data modulation the
       // same way bpsk_modem.c's SYMMETRIC_DIFFERENTIAL detector does for its own 4-point
       // constellation. the symbol is normalized to unit magnitude first so the detector carries
-      // phase information only, not amplitude
+      // phase information only, not amplitude.
+      // OQPSK data sits on the diagonals (45/135/225/315 degrees), where the 4th power is -1 and
+      // sin(4*theta) falls with theta, so the error has to be negated for the loop to be stable
+      // there. without the negation the loop is stable on the axes instead: locked 45 degrees off,
+      // where the sign of each rail is essentially random
       float complex normalized = magnitude > 1e-6f ? mixed / magnitude : mixed;
       float complex squared = normalized * normalized;
       float complex fourth = squared * squared;
-      float phase_error = cimagf(fourth);
+      float phase_error = -cimagf(fourth);
       nco_crcf_pll_step(demod->costas, phase_error);
     }
     nco_crcf_step(demod->costas);

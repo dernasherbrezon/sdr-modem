@@ -175,6 +175,9 @@ file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")
 add_executable(perf_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/perf_gfsk_modem.c)
 target_link_libraries(perf_gfsk_modem sdr_modemLib sdr_modemTestLib)
 
+add_executable(ber_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/ber_modem.c)
+target_link_libraries(ber_modem sdr_modemLib)
+
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_custom_target("coverage")
     add_custom_command(TARGET "coverage" COMMAND gcov ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/dsp/*.c.o ${CMAKE_BINARY_DIR}/CMakeFiles/sdr_modemLib.dir/src/sdr/*.c.o)
