@@ -18,7 +18,8 @@
 //    timing, and its symbol-spaced phase detector is ambiguous for h >= 1
 //  - both chains run at a fixed 8 samples per symbol (cpfskmod needs an even number, and symsync's
 //    loop gain depends on it); a resampler bridges from/to the actual sample rate when it differs
-//  - settings->bandwidth is not used
+//  - settings->bandwidth is the full occupied bandwidth. if not 0, a low-pass filter at half of it
+//    is applied to the input before the discriminator
 typedef struct gfsk_modem2_t gfsk_modem2;
 
 // sample_rate is the rate the demodulator's DSP chain runs at (i.e. after any decimation the

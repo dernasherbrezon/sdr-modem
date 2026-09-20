@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <complex.h>
+#include <liquid/liquid.h>
 #include "interp_fir_filter.h"
 #include "frequency_modulator.h"
 #include "gaussian_taps.h"
@@ -17,8 +19,17 @@
 
 // matched filter: keep at least this many samples per symbol so clock recovery has room to lock
 #define GFSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER 2.0f
+#define GFSK_MODEM_LOWPASS_NUM_TAPS 129
+#define GFSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB 60.0f
 
 struct gfsk_modem_t {
+  // channel filter ahead of the discriminator, present only when settings->bandwidth is set.
+  // the discriminator is non-linear: it turns wideband noise into much more output noise than the
+  // matched filter behind it can remove, so the noise has to be limited to the signal bandwidth first
+  firfilt_crcf lowpass;
+  float complex *lowpass_output;
+  size_t lowpass_output_len;
+
   quadrature_demod *quad_demod;
   // fine gaussian matched filter, decimates the discriminator output down to just above
   // GFSK_MODEM_MIN_SPS_AFTER_MATCHED_FILTER samples per symbol
@@ -58,7 +69,29 @@ int gfsk_modem_create(GfskModemSettings *req, uint64_t sample_rate, uint32_t max
   // init all fields with 0 so that destroy_* method would work
   *result = (struct gfsk_modem_t){0};
 
-  int code = quadrature_demod_create((float) ((double) sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
+  int code = 0;
+  if (req->bandwidth != 0) {
+    // bandwidth is the full occupied bandwidth, so the cutoff is half of it
+    float lowpass_fc = (float) req->bandwidth / 2.0f / (float) sample_rate;
+    if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
+      fprintf(stderr, "<3>gfsk modem: bandwidth %uHz is not valid at sample rate %llu\n", req->bandwidth, (unsigned long long) sample_rate);
+      gfsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass = firfilt_crcf_create_kaiser(GFSK_MODEM_LOWPASS_NUM_TAPS, lowpass_fc, GFSK_MODEM_LOWPASS_STOPBAND_ATTENUATION_DB, 0.0f);
+    if (result->lowpass == NULL) {
+      gfsk_modem_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_output_len = max_input_buffer_length;
+    result->lowpass_output = malloc(sizeof(float complex) * result->lowpass_output_len);
+    if (result->lowpass_output == NULL) {
+      gfsk_modem_destroy(result);
+      return -ENOMEM;
+    }
+  }
+
+  code = quadrature_demod_create((float) ((double) sample_rate / (2 * M_PI * (double) req->deviation)), max_input_buffer_length, &result->quad_demod);
   if (code != 0) {
     gfsk_modem_destroy(result);
     return code;
@@ -176,6 +209,17 @@ size_t gfsk_modem_max_modulation_buffer_length(void *mod) {
 void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   gfsk_modem *demod = (gfsk_modem *) modem;
 
+  if (demod->lowpass != NULL) {
+    if (input_len > demod->lowpass_output_len) {
+      fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->lowpass_output_len);
+      *output = NULL;
+      *output_len = 0;
+      return;
+    }
+    firfilt_crcf_execute_block(demod->lowpass, (float complex *) input, (unsigned int) input_len, demod->lowpass_output);
+    input = demod->lowpass_output;
+  }
+
   float *qd_output = NULL;
   size_t qd_output_len = 0;
   quadrature_demod_process((float complex *) input, input_len, &qd_output, &qd_output_len, demod->quad_demod);
@@ -275,6 +319,12 @@ void gfsk_modem_destroy(void *modem) {
     return;
   }
   gfsk_modem *demod = (gfsk_modem *) modem;
+  if (demod->lowpass != NULL) {
+    firfilt_crcf_destroy(demod->lowpass);
+  }
+  if (demod->lowpass_output != NULL) {
+    free(demod->lowpass_output);
+  }
   if (demod->quad_demod != NULL) {
     quadrature_demod_destroy(demod->quad_demod);
   }

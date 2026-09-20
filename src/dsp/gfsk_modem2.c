@@ -20,6 +20,8 @@
 #define GFSK_MODEM2_SYMSYNC_LOOP_BANDWIDTH 0.01f
 #define GFSK_MODEM2_RESAMPLER_STOPBAND_ATTENUATION_DB 60.0f
 #define GFSK_MODEM2_RESAMPLER_OUTPUT_MARGIN 16
+#define GFSK_MODEM2_LOWPASS_NUM_TAPS 129
+#define GFSK_MODEM2_LOWPASS_STOPBAND_ATTENUATION_DB 60.0f
 // dc blocker time constant, in symbols. same as the window used by gfsk_modem.
 // it runs at the internal sample rate, ahead of symsync: a carrier offset biases the timing error
 // detector, and with the offset at half of the deviation the timing loop fails when the dc is only
@@ -36,6 +38,13 @@ struct gfsk_modem2_t {
   msresamp_crcf resampler_rx;
   float complex *resampler_rx_output;
   size_t resampler_rx_output_len;
+
+  // channel filter ahead of the discriminator, present only when settings->bandwidth is set.
+  // the resampler passes noise up to the internal nyquist (4 * baud_rate), way wider than the
+  // signal, and the discriminator is non-linear: it turns wideband noise into much more output
+  // noise than a matched filter behind it can remove. the filter has to be before the discriminator
+  firfilt_crcf lowpass;
+  float complex *lowpass_output;
 
   // frequency discriminator: +-1 for +-deviation
   freqdem discriminator;
@@ -135,6 +144,26 @@ int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32
     rx_max_input_buffer_length = result->resampler_rx_output_len;
   }
 
+  if (settings->bandwidth != 0) {
+    // bandwidth is the full occupied bandwidth, so the cutoff is half of it
+    float lowpass_fc = (float) settings->bandwidth / 2.0f / (float) internal_sample_rate;
+    if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
+      fprintf(stderr, "<3>gfsk modem2: bandwidth %uHz is not valid at internal sample rate %llu\n", settings->bandwidth, (unsigned long long) internal_sample_rate);
+      gfsk_modem2_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass = firfilt_crcf_create_kaiser(GFSK_MODEM2_LOWPASS_NUM_TAPS, lowpass_fc, GFSK_MODEM2_LOWPASS_STOPBAND_ATTENUATION_DB, 0.0f);
+    if (result->lowpass == NULL) {
+      gfsk_modem2_destroy(result);
+      return -EINVAL;
+    }
+    result->lowpass_output = malloc(sizeof(float complex) * rx_max_input_buffer_length);
+    if (result->lowpass_output == NULL) {
+      gfsk_modem2_destroy(result);
+      return -ENOMEM;
+    }
+  }
+
   // deviation / rx sample rate: the discriminator output is +-1 at +-deviation
   result->discriminator = freqdem_create((float) ((double) settings->deviation / (double) internal_sample_rate));
   if (result->discriminator == NULL) {
@@ -232,6 +261,11 @@ void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t
     input_len = resampled_len;
   }
 
+  if (demod->lowpass != NULL) {
+    firfilt_crcf_execute_block(demod->lowpass, (float complex *) input, (unsigned int) input_len, demod->lowpass_output);
+    input = demod->lowpass_output;
+  }
+
   freqdem_demodulate_block(demod->discriminator, (float complex *) input, (unsigned int) input_len, demod->discriminator_output);
 
   if (demod->dc_blocker != NULL) {
@@ -294,6 +328,12 @@ void gfsk_modem2_destroy(void *modem) {
   }
   if (m->resampler_rx_output != NULL) {
     free(m->resampler_rx_output);
+  }
+  if (m->lowpass != NULL) {
+    firfilt_crcf_destroy(m->lowpass);
+  }
+  if (m->lowpass_output != NULL) {
+    free(m->lowpass_output);
   }
   if (m->discriminator != NULL) {
     freqdem_destroy(m->discriminator);
