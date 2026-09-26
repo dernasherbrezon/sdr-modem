@@ -58,47 +58,46 @@ struct gfsk_correlator_t {
 
 // the sync word as it comes out of the rx filter: every symbol is the tx frequency pulse
 // (LIQUID_CPFSK_GMSK) convolved with the rx filter. symbol i is centered at i * sps + sps / 2
-static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, const float *rx_filter, unsigned int rx_filter_len, const uint8_t *sync_word, size_t sync_word_bits, struct gfsk_correlator_t *correlator) {
+static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, const uint8_t *syncword, size_t syncword_bits, struct gfsk_correlator_t *correlator) {
   unsigned int sps = correlator->sps;
-  unsigned int tx_pulse_len = 2 * sps * filter_delay + 1;
+  size_t tx_pulse_len = 2 * sps * filter_delay + 1;
   float *tx_pulse = malloc(sizeof(float) * tx_pulse_len);
   if (tx_pulse == NULL) {
     return -ENOMEM;
   }
   liquid_firdes_gmsktx(sps, filter_delay, bt, 0.0f, tx_pulse);
   float tx_pulse_sum = 0.0f;
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
+  for (size_t i = 0; i < tx_pulse_len; i++) {
     tx_pulse_sum += tx_pulse[i];
   }
   // a run of the same symbol is +-1 at the discriminator output
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
+  for (size_t i = 0; i < tx_pulse_len; i++) {
     tx_pulse[i] *= (float) sps / tx_pulse_sum;
   }
 
-  unsigned int pulse_len = tx_pulse_len + rx_filter_len - 1;
+  size_t pulse_len = tx_pulse_len + rx_filter_len - 1;
   float *pulse = calloc(pulse_len, sizeof(float));
   if (pulse == NULL) {
     free(tx_pulse);
     return -ENOMEM;
   }
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
-    for (unsigned int j = 0; j < rx_filter_len; j++) {
+  for (size_t i = 0; i < tx_pulse_len; i++) {
+    for (size_t j = 0; j < rx_filter_len; j++) {
       pulse[i + j] += tx_pulse[i] * rx_filter[j];
     }
   }
   free(tx_pulse);
   int pulse_center = (int) (pulse_len / 2);
 
-  int template_len = (int) correlator->template_len;
-  float *template = calloc(template_len, sizeof(float));
+  float *template = calloc(correlator->template_len, sizeof(float));
   if (template == NULL) {
     free(pulse);
     return -ENOMEM;
   }
-  for (int i = 0; i < (int) sync_word_bits; i++) {
-    float symbol = ((sync_word[i / 8] >> (7 - (i % 8))) & 1U) ? 1.0f : -1.0f;
+  for (int i = 0; i < (int) syncword_bits; i++) {
+    float symbol = ((syncword[i / 8] >> (7 - (i % 8))) & 1U) ? 1.0f : -1.0f;
     int center = i * (int) sps + (int) sps / 2;
-    for (int j = 0; j < template_len; j++) {
+    for (size_t j = 0; j < correlator->template_len; j++) {
       int pulse_index = j - center + pulse_center;
       if (pulse_index >= 0 && pulse_index < (int) pulse_len) {
         template[j] += symbol * pulse[pulse_index];
@@ -108,18 +107,18 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
   free(pulse);
 
   float mean = 0.0f;
-  for (int i = 0; i < template_len; i++) {
+  for (size_t i = 0; i < correlator->template_len; i++) {
     mean += template[i];
   }
-  mean /= (float) template_len;
+  mean /= (float) correlator->template_len;
   float energy = 0.0f;
-  for (int i = 0; i < template_len; i++) {
+  for (size_t i = 0; i < correlator->template_len; i++) {
     template[i] -= mean;
     energy += template[i] * template[i];
   }
   correlator->template_mean = mean;
   correlator->template_energy = energy;
-  correlator->correlator = dotprod_rrrf_create(template, template_len);
+  correlator->correlator = dotprod_rrrf_create(template, correlator->template_len);
   free(template);
   if (correlator->correlator == NULL) {
     return -EINVAL;
@@ -127,13 +126,13 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
   return 0;
 }
 
-int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, unsigned int rx_filter_len, const uint8_t *sync_word, size_t sync_word_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
+int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, const uint8_t *syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
   if (sps < 2 || sps % 2 != 0) {
     fprintf(stderr, "<3>gfsk correlator: samples per symbol must be even and at least 2: %u\n", sps);
     return -EINVAL;
   }
-  if (sync_word == NULL || sync_word_bits == 0) {
-    fprintf(stderr, "<3>gfsk correlator: sync word must not be empty\n");
+  if (syncword == NULL || syncword_bits == 0) {
+    fprintf(stderr, "<3>gfsk correlator: syncword must not be empty\n");
     return -EINVAL;
   }
   struct gfsk_correlator_t *result = malloc(sizeof(struct gfsk_correlator_t));
@@ -145,12 +144,12 @@ int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay
   result->sps = sps;
   result->threshold = threshold;
   result->max_input_buffer_length = max_input_buffer_length;
-  result->template_len = sync_word_bits * sps;
+  result->template_len = syncword_bits * sps;
   result->peak_search_len = GFSK_CORRELATOR_PEAK_SEARCH_SYMBOLS * sps;
   result->sampler_lag = result->template_len + result->peak_search_len + sps;
   result->history_len = result->sampler_lag + 2 * sps;
 
-  int code = gfsk_correlator_create_template(bt, filter_delay, rx_filter, rx_filter_len, sync_word, sync_word_bits, result);
+  int code = gfsk_correlator_create_template(bt, filter_delay, rx_filter, rx_filter_len, syncword, syncword_bits, result);
   if (code != 0) {
     gfsk_correlator_destroy(result);
     return code;

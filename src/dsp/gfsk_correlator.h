@@ -19,10 +19,10 @@ typedef struct gfsk_correlator_t gfsk_correlator;
 // bt, filter_delay - parameters of the tx gaussian pulse (LIQUID_CPFSK_GMSK)
 // rx_filter - filter applied to the discriminator output. together with the tx pulse it defines
 //             how the sync word looks like at the input
-// sync_word - on-air symbols, msb first
+// syncword - on-air symbols, msb first
 // threshold - normalized correlation (pearson, so independent of amplitude and frequency offset)
 //             to declare the sync word found
-int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, unsigned int rx_filter_len, const uint8_t *sync_word, size_t sync_word_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator);
+int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, const uint8_t *syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator);
 
 void gfsk_correlator_process(const float *input, size_t input_len, int8_t **output, size_t *output_len, gfsk_correlator *correlator);
 
