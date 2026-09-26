@@ -1,4 +1,5 @@
 #include "gfsk_modem2.h"
+#include "gfsk_correlator.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,26 +20,12 @@
 // the ais training sequence (24 bits) + hdlc start flag. nrzi makes the polarity arbitrary, so
 // both the sync word and its inverse are detected
 // static const uint8_t GFSK_MODEM2_SYNC_WORD[] = {0xCC, 0xCC, 0xCC, 0xFE};
-// static const uint8_t GFSK_MODEM2_SYNC_WORD[] = { 0x2D, 0x90, 0xB1, 0xF5 };
-static const uint8_t GFSK_MODEM2_SYNC_WORD[] = { 0x50, 0x72, 0xF6, 0x4B };
+// static const uint8_t GFSK_MODEM2_SYNC_WORD[] = { 0x50, 0x72, 0xF6, 0x4B };
+static const uint8_t GFSK_MODEM2_SYNC_WORD[] = {0xAA, 0xAA, 0xAA, 0x7E};
 #define GFSK_MODEM2_SYNC_WORD_BITS 32
 // normalized correlation (pearson, so independent of amplitude and frequency offset) to declare
 // the sync word found
 #define GFSK_MODEM2_CORRELATION_THRESHOLD 0.7f
-// once the threshold is crossed, the peak is searched for this many symbols further. the training
-// sequence repeats every 4 symbols, so its sidelobes can cross the threshold before the real peak
-#define GFSK_MODEM2_PEAK_SEARCH_SYMBOLS 8
-// smallest amplitude of the sync word (in units of the configured deviation) that is used for gain
-// normalization. anything that correlates above the threshold is way above it
-#define GFSK_MODEM2_MIN_AMPLITUDE 1e-3f
-
-#define GFSK_MODEM2_TEMPLATE_LEN (GFSK_MODEM2_SYNC_WORD_BITS * GFSK_MODEM2_SPS)
-#define GFSK_MODEM2_PEAK_SEARCH_LEN (GFSK_MODEM2_PEAK_SEARCH_SYMBOLS * GFSK_MODEM2_SPS)
-// the sampler runs this many samples behind the correlator: once the sync word is found, the burst
-// is sampled from the first symbol of the sync word with the estimated timing
-#define GFSK_MODEM2_SAMPLER_LAG (GFSK_MODEM2_TEMPLATE_LEN + GFSK_MODEM2_PEAK_SEARCH_LEN + GFSK_MODEM2_SPS)
-// samples kept between calls: the sampler lag, plus room for its interpolation
-#define GFSK_MODEM2_HISTORY_LEN (GFSK_MODEM2_SAMPLER_LAG + 2 * GFSK_MODEM2_SPS)
 
 struct gfsk_modem2_t {
   float modulation_index;
@@ -64,35 +51,10 @@ struct gfsk_modem2_t {
 
   // gmsk receive filter on the discriminator output. dc gain is 1
   firfilt_rrrf matched_filter;
+  float *matched_filter_output;
 
-  // filtered discriminator output: GFSK_MODEM2_HISTORY_LEN samples from the previous calls, then
-  // the samples of the current call. all positions below are indexes into it
-  float *samples;
-
-  // sync word template (zero mean), as it looks after the matched filter
-  dotprod_rrrf correlator;
-  float template_mean;
-  float template_energy;
-
-  // next window end to correlate
-  size_t correlator_index;
-  // no new detection before this index, so the same sync word is not detected twice
-  size_t holdoff_index;
-  bool peak_search;
-  size_t peak_index;
-  float peak_value;
-
-  // per burst estimates from the sync word
-  // position of the next symbol to output
-  double sample_position;
-  // frequency offset: dc of the discriminator output
-  float dc;
-  // 1 / amplitude of the sync word, so that the soft symbols are +-1 regardless of the deviation
-  float gain;
-
-  // soft symbols, +-1 for +-deviation
-  int8_t *output;
-  size_t output_len;
+  // finds the sync word and samples the burst with the timing, dc and gain estimated from it
+  gfsk_correlator *correlator;
 
   // TX chain ////////////////////////////////
   size_t max_modulation_input_bits;
@@ -125,65 +87,6 @@ static int gfsk_modem2_create_rx_filter(float bt, float **filter, unsigned int *
   }
   *filter = result;
   *filter_len = len;
-  return 0;
-}
-
-// the sync word as it comes out of the rx filter: every symbol is the tx frequency pulse
-// (LIQUID_CPFSK_GMSK) convolved with the rx filter. symbol i is centered at i * SPS + SPS / 2
-static int gfsk_modem2_create_correlator(float bt, const float *rx_filter, unsigned int rx_filter_len, struct gfsk_modem2_t *modem) {
-  unsigned int tx_pulse_len = 2 * GFSK_MODEM2_SPS * GFSK_MODEM2_FILTER_DELAY + 1;
-  float tx_pulse[2 * GFSK_MODEM2_SPS * GFSK_MODEM2_FILTER_DELAY + 1];
-  liquid_firdes_gmsktx(GFSK_MODEM2_SPS, GFSK_MODEM2_FILTER_DELAY, bt, 0.0f, tx_pulse);
-  float tx_pulse_sum = 0.0f;
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
-    tx_pulse_sum += tx_pulse[i];
-  }
-  // a run of the same symbol is +-1 at the discriminator output
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
-    tx_pulse[i] *= (float) GFSK_MODEM2_SPS / tx_pulse_sum;
-  }
-
-  unsigned int pulse_len = tx_pulse_len + rx_filter_len - 1;
-  float *pulse = calloc(pulse_len, sizeof(float));
-  if (pulse == NULL) {
-    return -ENOMEM;
-  }
-  for (unsigned int i = 0; i < tx_pulse_len; i++) {
-    for (unsigned int j = 0; j < rx_filter_len; j++) {
-      pulse[i + j] += tx_pulse[i] * rx_filter[j];
-    }
-  }
-  int pulse_center = (int) (pulse_len / 2);
-
-  float template[GFSK_MODEM2_TEMPLATE_LEN] = {0};
-  for (int i = 0; i < GFSK_MODEM2_SYNC_WORD_BITS; i++) {
-    float symbol = ((GFSK_MODEM2_SYNC_WORD[i / 8] >> (7 - (i % 8))) & 1U) ? 1.0f : -1.0f;
-    int center = i * GFSK_MODEM2_SPS + GFSK_MODEM2_SPS / 2;
-    for (int j = 0; j < GFSK_MODEM2_TEMPLATE_LEN; j++) {
-      int pulse_index = j - center + pulse_center;
-      if (pulse_index >= 0 && pulse_index < (int) pulse_len) {
-        template[j] += symbol * pulse[pulse_index];
-      }
-    }
-  }
-  free(pulse);
-
-  float mean = 0.0f;
-  for (int i = 0; i < GFSK_MODEM2_TEMPLATE_LEN; i++) {
-    mean += template[i];
-  }
-  mean /= (float) GFSK_MODEM2_TEMPLATE_LEN;
-  float energy = 0.0f;
-  for (int i = 0; i < GFSK_MODEM2_TEMPLATE_LEN; i++) {
-    template[i] -= mean;
-    energy += template[i] * template[i];
-  }
-  modem->template_mean = mean;
-  modem->template_energy = energy;
-  modem->correlator = dotprod_rrrf_create(template, GFSK_MODEM2_TEMPLATE_LEN);
-  if (modem->correlator == NULL) {
-    return -EINVAL;
-  }
   return 0;
 }
 
@@ -273,7 +176,7 @@ int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32
     return code;
   }
   result->matched_filter = firfilt_rrrf_create(rx_filter, rx_filter_len);
-  code = gfsk_modem2_create_correlator(settings->bt, rx_filter, rx_filter_len, result);
+  code = gfsk_correlator_create(GFSK_MODEM2_SPS, settings->bt, GFSK_MODEM2_FILTER_DELAY, rx_filter, rx_filter_len, GFSK_MODEM2_SYNC_WORD, GFSK_MODEM2_SYNC_WORD_BITS, GFSK_MODEM2_CORRELATION_THRESHOLD, rx_max_input_buffer_length, &result->correlator);
   free(rx_filter);
   if (result->matched_filter == NULL) {
     gfsk_modem2_destroy(result);
@@ -283,23 +186,8 @@ int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32
     gfsk_modem2_destroy(result);
     return code;
   }
-
-  // history starts with zeros: nothing correlates with them
-  result->samples = calloc(GFSK_MODEM2_HISTORY_LEN + rx_max_input_buffer_length, sizeof(float));
-  if (result->samples == NULL) {
-    gfsk_modem2_destroy(result);
-    return -ENOMEM;
-  }
-  result->correlator_index = GFSK_MODEM2_HISTORY_LEN;
-  result->holdoff_index = 0;
-  result->sample_position = GFSK_MODEM2_HISTORY_LEN;
-  result->dc = 0.0f;
-  result->gain = 1.0f;
-
-  // 1 symbol per SPS samples, plus a few for the fractional sample position
-  result->output_len = rx_max_input_buffer_length / GFSK_MODEM2_SPS + 4;
-  result->output = malloc(sizeof(int8_t) * result->output_len);
-  if (result->output == NULL) {
+  result->matched_filter_output = malloc(sizeof(float) * rx_max_input_buffer_length);
+  if (result->matched_filter_output == NULL) {
     gfsk_modem2_destroy(result);
     return -ENOMEM;
   }
@@ -344,78 +232,6 @@ size_t gfsk_modem2_max_modulation_buffer_length(void *modem) {
   return gfsk->resampler_tx != NULL ? gfsk->resampler_tx_output_len : gfsk->max_modulation_buffer_length;
 }
 
-// normalized correlation of the window that ends at end (inclusive) with the sync word template.
-// the sign is the polarity. correlation is the raw dot product with the zero mean template
-static float gfsk_modem2_correlate(gfsk_modem2 *demod, size_t end, float *correlation, float *mean) {
-  const float *window = demod->samples + end + 1 - GFSK_MODEM2_TEMPLATE_LEN;
-  float sum = 0.0f;
-  float sum_squares = 0.0f;
-  for (size_t i = 0; i < GFSK_MODEM2_TEMPLATE_LEN; i++) {
-    sum += window[i];
-    sum_squares += window[i] * window[i];
-  }
-  float dot = 0.0f;
-  dotprod_rrrf_execute(demod->correlator, (float *) window, &dot);
-  *correlation = dot;
-  *mean = sum / (float) GFSK_MODEM2_TEMPLATE_LEN;
-  float variance = sum_squares - sum * sum / (float) GFSK_MODEM2_TEMPLATE_LEN;
-  if (variance <= 1e-9f) {
-    return 0.0f;
-  }
-  return dot / sqrtf(variance * demod->template_energy);
-}
-
-// the peak of the correlation is the sync word: estimate timing, frequency offset and amplitude of
-// the burst from it
-static void gfsk_modem2_sync(gfsk_modem2 *demod) {
-  float correlation = 0.0f;
-  float mean = 0.0f;
-  float peak = fabsf(gfsk_modem2_correlate(demod, demod->peak_index, &correlation, &mean));
-  float before_correlation = 0.0f;
-  float after_correlation = 0.0f;
-  float ignored = 0.0f;
-  float before = fabsf(gfsk_modem2_correlate(demod, demod->peak_index - 1, &before_correlation, &ignored));
-  float after = fabsf(gfsk_modem2_correlate(demod, demod->peak_index + 1, &after_correlation, &ignored));
-  // parabolic interpolation of the fractional peak position
-  float fraction = 0.0f;
-  float denominator = before - 2.0f * peak + after;
-  if (denominator < 0.0f) {
-    fraction = 0.5f * (before - after) / denominator;
-    if (fraction > 0.5f) {
-      fraction = 0.5f;
-    } else if (fraction < -0.5f) {
-      fraction = -0.5f;
-    }
-  }
-
-  // least squares fit of the window to amplitude * template + dc
-  float amplitude = correlation / demod->template_energy;
-  demod->dc = mean - amplitude * demod->template_mean;
-  if (fabsf(amplitude) > GFSK_MODEM2_MIN_AMPLITUDE) {
-    demod->gain = 1.0f / fabsf(amplitude);
-  }
-
-  // restart sampling from the first symbol of the sync word, so the sync word itself is in the output
-  demod->sample_position = (double) demod->peak_index + (double) fraction - (GFSK_MODEM2_TEMPLATE_LEN - 1) + GFSK_MODEM2_SPS / 2;
-  demod->holdoff_index = demod->peak_index + GFSK_MODEM2_TEMPLATE_LEN;
-  demod->peak_search = false;
-}
-
-static void gfsk_modem2_output_symbol(gfsk_modem2 *demod, size_t *num_symbols) {
-  size_t index = (size_t) demod->sample_position;
-  float mu = (float) (demod->sample_position - (double) index);
-  float value = demod->samples[index] * (1.0f - mu) + demod->samples[index + 1] * mu;
-  float r = (value - demod->dc) * demod->gain * 127.0f;
-  if (r > INT8_MAX) {
-    r = INT8_MAX;
-  } else if (r < INT8_MIN) {
-    r = INT8_MIN;
-  }
-  demod->output[*num_symbols] = (int8_t) rintf(r);
-  (*num_symbols)++;
-  demod->sample_position += GFSK_MODEM2_SPS;
-}
-
 void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   gfsk_modem2 *demod = (gfsk_modem2 *) modem;
   if (input_len > demod->max_input_buffer_length) {
@@ -438,42 +254,8 @@ void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t
   }
 
   freqdem_demodulate_block(demod->discriminator, (float complex *) input, (unsigned int) input_len, demod->discriminator_output);
-  firfilt_rrrf_execute_block(demod->matched_filter, demod->discriminator_output, (unsigned int) input_len, demod->samples + GFSK_MODEM2_HISTORY_LEN);
-
-  size_t samples_len = GFSK_MODEM2_HISTORY_LEN + input_len;
-  size_t num_symbols = 0;
-  for (; demod->correlator_index < samples_len; demod->correlator_index++) {
-    size_t index = demod->correlator_index;
-    if (index >= demod->holdoff_index) {
-      float correlation = 0.0f;
-      float mean = 0.0f;
-      float value = fabsf(gfsk_modem2_correlate(demod, index, &correlation, &mean));
-      if (value >= GFSK_MODEM2_CORRELATION_THRESHOLD && (!demod->peak_search || value > demod->peak_value)) {
-        demod->peak_search = true;
-        demod->peak_index = index;
-        demod->peak_value = value;
-      }
-    }
-    if (demod->peak_search && index - demod->peak_index >= GFSK_MODEM2_PEAK_SEARCH_LEN) {
-      gfsk_modem2_sync(demod);
-    }
-    while (demod->sample_position + GFSK_MODEM2_SAMPLER_LAG <= (double) index) {
-      gfsk_modem2_output_symbol(demod, &num_symbols);
-    }
-  }
-
-  // keep the history for the next call
-  size_t shift = samples_len - GFSK_MODEM2_HISTORY_LEN;
-  memmove(demod->samples, demod->samples + shift, sizeof(float) * GFSK_MODEM2_HISTORY_LEN);
-  demod->correlator_index -= shift;
-  demod->sample_position -= (double) shift;
-  demod->holdoff_index = demod->holdoff_index > shift ? demod->holdoff_index - shift : 0;
-  if (demod->peak_search) {
-    demod->peak_index -= shift;
-  }
-
-  *output = demod->output;
-  *output_len = num_symbols;
+  firfilt_rrrf_execute_block(demod->matched_filter, demod->discriminator_output, (unsigned int) input_len, demod->matched_filter_output);
+  gfsk_correlator_process(demod->matched_filter_output, input_len, output, output_len, demod->correlator);
 }
 
 void gfsk_modem2_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem) {
@@ -531,14 +313,11 @@ void gfsk_modem2_destroy(void *modem) {
   if (m->matched_filter != NULL) {
     firfilt_rrrf_destroy(m->matched_filter);
   }
+  if (m->matched_filter_output != NULL) {
+    free(m->matched_filter_output);
+  }
   if (m->correlator != NULL) {
-    dotprod_rrrf_destroy(m->correlator);
-  }
-  if (m->samples != NULL) {
-    free(m->samples);
-  }
-  if (m->output != NULL) {
-    free(m->output);
+    gfsk_correlator_destroy(m->correlator);
   }
   if (m->mod != NULL) {
     cpfskmod_destroy(m->mod);

@@ -24,6 +24,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_correlator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem2.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
