@@ -15,13 +15,18 @@
 
 #define BAUD_RATE 4800
 #define INPUT_LEN 128
-// tx gaussian pulse, rx matched filter, resamplers and symsync add a few symbols of delay.
+// tx gaussian pulse, rx filters and resamplers add a few symbols of delay before the sync word.
 // exact value depends on the configuration, so search for it instead of hardcoding
 #define MAX_BIT_LAG 40
-// let the agc and the symbol timing loop settle
-#define SKIP_BITS 300
-// noiseless loopback: everything after the loops have settled should be recovered
+// timing and frequency come from the sync word, so there is nothing to settle
+#define SKIP_BITS MAX_BIT_LAG
+// noiseless loopback: everything from the sync word on should be recovered
 #define MAX_MISMATCH_RATIO 0.02
+
+// same as the one hardcoded in gfsk_modem2.c: ais training sequence + hdlc flag, on-air
+static const uint8_t SYNC_WORD[] = {0xCC, 0xCC, 0xCC, 0xFE};
+// nrzi can invert the polarity of the whole burst
+static const uint8_t SYNC_WORD_INVERTED[] = {0x33, 0x33, 0x33, 0x01};
 
 gfsk_modem2 *mod = NULL;
 gfsk_modem2 *demod = NULL;
@@ -97,6 +102,7 @@ static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(INPUT_LEN);
+  memcpy(mod_input, SYNC_WORD, sizeof(SYNC_WORD));
 
   float complex *modulated = NULL;
   size_t modulated_len = 0;
@@ -137,13 +143,13 @@ void test_exact_sps20_h1() { round_trip(20 * BAUD_RATE, BAUD_RATE / 2, 0); }
 void test_fractional_sps9_h05() { round_trip(44100, BAUD_RATE / 4, 0); }
 void test_fractional_sps9_h1() { round_trip(44100, BAUD_RATE / 2, 0); }
 void test_carrier_offset_h1() { round_trip(4 * BAUD_RATE, BAUD_RATE / 2, 200.0); }
-// half of the deviation: the timing loop fails if dc is removed after symsync instead of before
-void test_carrier_offset_large_h1() { round_trip(44100, BAUD_RATE / 2, BAUD_RATE / 4); }
+// half of the deviation: estimated from the sync word
+void test_carrier_offset_large_h1(){ round_trip(44100, BAUD_RATE / 2, BAUD_RATE / 4); }
 void test_carrier_offset_large_h05() { round_trip(4 * BAUD_RATE, BAUD_RATE / 4, BAUD_RATE / 8); }
 void test_carrier_offset_fractional_h05() { round_trip(44100, BAUD_RATE / 4, -150.0); }
 
-// a tone at +deviation is a run of 1 bits. output must be positive and close to full scale, for any
-// modulation index (h = 1 here: a symbol-spaced phase detector would be ambiguous)
+// a tone at +deviation is a run of 1 bits. no sync word, so the output is scaled by the configured
+// deviation: positive and close to full scale, for any modulation index (h = 1 here)
 void test_soft_symbols_scale() {
   GfskModemSettings settings = default_settings(4 * BAUD_RATE, BAUD_RATE / 2);
   settings.use_dc_block = false;
@@ -162,6 +168,146 @@ void test_soft_symbols_scale() {
   for (size_t i = output_len - 100; i < output_len; i++) {
     TEST_ASSERT_INT8_WITHIN(3, 127, output[i]);
   }
+}
+
+// once the sync word is found, soft symbols are normalized by its amplitude: full scale even if the
+// configured deviation is twice the actual one
+void test_soft_symbols_normalized_by_sync_word() {
+  GfskModemSettings settings = default_settings(8 * BAUD_RATE, BAUD_RATE / 4);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  settings.deviation = BAUD_RATE / 2;
+  uint32_t max_samples = (uint32_t) gfsk_modem2_max_modulation_buffer_length(mod);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, max_samples, &demod));
+
+  uint8_t input[4 + 16 + 16 + 8];
+  memcpy(input, SYNC_WORD, sizeof(SYNC_WORD));
+  memset(input + 4, 0xFF, 16);
+  memset(input + 4 + 16, 0x00, 16);
+  // flush the demodulator lag
+  memset(input + 4 + 32, 0x55, 8);
+  float complex *modulated = NULL;
+  size_t modulated_len = 0;
+  gfsk_modem2_modulate(input, sizeof(input), &modulated, &modulated_len, mod);
+  int8_t *output = NULL;
+  size_t output_len = 0;
+  gfsk_modem2_demodulate(modulated, modulated_len, &output, &output_len, demod);
+
+  size_t positive = 0;
+  size_t negative = 0;
+  for (size_t i = 0; i < output_len; i++) {
+    if (output[i] >= 115) {
+      positive++;
+    } else if (output[i] <= -115) {
+      negative++;
+    }
+  }
+  // runs of 16 bytes, minus the transitions at the edges
+  TEST_ASSERT_GREATER_THAN_size_t(120, positive);
+  TEST_ASSERT_GREATER_THAN_size_t(120, negative);
+}
+
+static uint32_t noise_state = 0x1234567;
+
+static float noise_uniform() {
+  noise_state ^= noise_state << 13;
+  noise_state ^= noise_state >> 17;
+  noise_state ^= noise_state << 5;
+  return ((float) (noise_state >> 8) + 0.5f) / 16777216.0f;
+}
+
+static float complex noise_sample(float sigma) {
+  float r = sigma * sqrtf(-2.0f * logf(noise_uniform()));
+  float phase = 2.0f * (float) M_PI * noise_uniform();
+  return r * cexpf(I * phase);
+}
+
+static size_t append_noise(float complex *signal, size_t offset, size_t len, float sigma) {
+  for (size_t i = 0; i < len; i++) {
+    signal[offset + i] = noise_sample(sigma);
+  }
+  return offset + len;
+}
+
+static size_t append_burst(const uint8_t *burst, size_t burst_len, double carrier_offset_hz, float amplitude, float sigma, uint64_t sample_rate, float complex *signal, size_t offset) {
+  float complex *modulated = NULL;
+  size_t modulated_len = 0;
+  gfsk_modem2_modulate(burst, burst_len, &modulated, &modulated_len, mod);
+  TEST_ASSERT(modulated != NULL);
+  for (size_t i = 0; i < modulated_len; i++) {
+    float phase = (float) (2.0 * M_PI * carrier_offset_hz * (double) i / (double) sample_rate + 1.3);
+    signal[offset + i] = amplitude * modulated[i] * cexpf(I * phase) + noise_sample(sigma);
+  }
+  return offset + modulated_len;
+}
+
+// lowest bit error ratio of the burst anywhere in the output
+static double burst_mismatch_ratio(const int8_t *output, size_t output_len, const uint8_t *burst, size_t burst_bits) {
+  double best = 1.0;
+  for (size_t offset = 0; offset + burst_bits <= output_len; offset++) {
+    size_t mismatches = 0;
+    for (size_t i = 0; i < burst_bits; i++) {
+      unsigned int expected = (burst[i / 8] >> (7 - (i % 8))) & 1U;
+      unsigned int actual = output[offset + i] >= 0 ? 1U : 0U;
+      if (expected != actual) {
+        mismatches++;
+      }
+    }
+    double ratio = (double) mismatches / (double) burst_bits;
+    if (ratio < best) {
+      best = ratio;
+    }
+  }
+  return best;
+}
+
+// bursts separated by noise, each with its own carrier offset, amplitude, timing and polarity:
+// every one of them is estimated from its own sync word
+void test_bursts() {
+  uint64_t sample_rate = 44100;
+  GfskModemSettings settings = default_settings(sample_rate, BAUD_RATE / 4);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  size_t chunk_len = 4096;
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, (uint32_t) chunk_len, &demod));
+
+  setup_random_input(2 * INPUT_LEN);
+  uint8_t *first = mod_input;
+  uint8_t *second = mod_input + INPUT_LEN;
+  memcpy(first, SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(second, SYNC_WORD_INVERTED, sizeof(SYNC_WORD_INVERTED));
+
+  float sigma = 0.05f;
+  size_t signal_len = 60000;
+  float complex *signal = malloc(sizeof(float complex) * signal_len);
+  TEST_ASSERT_NOT_NULL(signal);
+  size_t len = append_noise(signal, 0, 1000, sigma);
+  len = append_burst(first, INPUT_LEN, 300.0, 1.0f, sigma, sample_rate, signal, len);
+  len = append_noise(signal, len, 3001, sigma);
+  len = append_burst(second, INPUT_LEN, -500.0, 0.5f, sigma, sample_rate, signal, len);
+  len = append_noise(signal, len, 3000, sigma);
+  TEST_ASSERT(len <= signal_len);
+
+  size_t output_capacity = len / (sample_rate / BAUD_RATE) + 64;
+  int8_t *output = malloc(output_capacity);
+  TEST_ASSERT_NOT_NULL(output);
+  size_t output_len = 0;
+  for (size_t i = 0; i < len; i += chunk_len) {
+    size_t current = len - i < chunk_len ? len - i : chunk_len;
+    int8_t *demodulated = NULL;
+    size_t demodulated_len = 0;
+    gfsk_modem2_demodulate(signal + i, current, &demodulated, &demodulated_len, demod);
+    TEST_ASSERT(output_len + demodulated_len <= output_capacity);
+    memcpy(output + output_len, demodulated, demodulated_len);
+    output_len += demodulated_len;
+  }
+  free(signal);
+
+  // the last symbols of a burst are still in the tx filter when the next modulate call starts
+  size_t burst_bits = (INPUT_LEN - 1) * 8;
+  double first_ratio = burst_mismatch_ratio(output, output_len, first, burst_bits);
+  double second_ratio = burst_mismatch_ratio(output, output_len, second, burst_bits);
+  free(output);
+  TEST_ASSERT_TRUE_MESSAGE(first_ratio <= MAX_MISMATCH_RATIO, "first burst not recovered");
+  TEST_ASSERT_TRUE_MESSAGE(second_ratio <= MAX_MISMATCH_RATIO, "second burst not recovered");
 }
 
 // modulated tone frequency must match the configured deviation: a stream of 1 bits at +deviation
@@ -282,6 +428,8 @@ int main(void) {
   RUN_TEST(test_carrier_offset_large_h05);
   RUN_TEST(test_carrier_offset_fractional_h05);
   RUN_TEST(test_soft_symbols_scale);
+  RUN_TEST(test_soft_symbols_normalized_by_sync_word);
+  RUN_TEST(test_bursts);
   RUN_TEST(test_modulation_deviation);
   RUN_TEST(test_create_invalid_settings);
   RUN_TEST(test_create_smallest_sps);

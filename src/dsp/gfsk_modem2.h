@@ -13,11 +13,16 @@
 //
 // Differences from gfsk_modem:
 //  - modulation: liquid's cpfskmod (LIQUID_CPFSK_GMSK pulse, modulation index h = 2 * deviation / baud_rate)
-//  - demodulation: liquid's freqdem discriminator, then symsync with a gmsk receive filter for
-//    matched filtering and timing recovery. liquid's cpfskdem is not used: it assumes perfect
-//    timing, and its symbol-spaced phase detector is ambiguous for h >= 1
-//  - both chains run at a fixed 8 samples per symbol (cpfskmod needs an even number, and symsync's
-//    loop gain depends on it); a resampler bridges from/to the actual sample rate when it differs
+//  - demodulation is data-aided and meant for bursts: liquid's freqdem discriminator and a gmsk
+//    receive filter, then a correlator looks for a known sync word (currently hardcoded: ais
+//    training sequence + hdlc flag, either polarity). its peak gives the symbol timing, the
+//    frequency offset (dc) and the amplitude of the burst, which are then held for the whole burst:
+//    there is no timing loop and no dc blocker, so settings->use_dc_block is ignored. soft symbols
+//    are normalized by the amplitude of the sync word, so +-127 does not depend on the deviation.
+//    the output is continuous: between bursts the last estimates are kept. the sync word itself is
+//    included in the output. output lags the input by ~41 symbols (sync word + peak search)
+//  - both chains run at a fixed 8 samples per symbol (cpfskmod needs an even number, and the
+//    correlator template is built at it); a resampler bridges from/to the actual sample rate
 //  - settings->bandwidth is the full occupied bandwidth. if not 0, a low-pass filter at half of it
 //    is applied to the input before the discriminator
 typedef struct gfsk_modem2_t gfsk_modem2;
