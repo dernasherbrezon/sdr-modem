@@ -47,8 +47,7 @@ message ModemRequest {
         psk_modem_settings bpsk = 2;
         psk_modem_settings dpsk = 3;
         psk_modem_settings sdpsk = 4;
-        psk_modem_settings oqpsk = 5;
-        psk_pm_modem_settings psk_pm = 6;
+        psk_pm_modem_settings psk_pm = 5;
     }
     oneof framing {
         none_framing none = 9;

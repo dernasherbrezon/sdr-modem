@@ -102,8 +102,7 @@ typedef enum {
   MODEM_REQUEST__MODEM_SETTINGS_BPSK = 2,
   MODEM_REQUEST__MODEM_SETTINGS_DPSK = 3,
   MODEM_REQUEST__MODEM_SETTINGS_SDPSK = 4,
-  MODEM_REQUEST__MODEM_SETTINGS_OQPSK = 5,
-  MODEM_REQUEST__MODEM_SETTINGS_PSK_PM = 6
+  MODEM_REQUEST__MODEM_SETTINGS_PSK_PM = 5
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MODEM_REQUEST__MODEM_SETTINGS__CASE)
 } ModemRequest__ModemSettingsCase;
 
@@ -126,7 +125,6 @@ struct  ModemRequest
     PskModemSettings *bpsk;
     PskModemSettings *dpsk;
     GfskModemSettings *gfsk;
-    PskModemSettings *oqpsk;
     PskPmModemSettings *psk_pm;
     PskModemSettings *sdpsk;
   };

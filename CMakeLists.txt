@@ -19,21 +19,14 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_server.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/bpsk_modem.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/clock_recovery_mm.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/frequency_modulator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_correlator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gaussian_taps.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/interp_fir_filter.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/mmse_fir_interpolator.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/oqpsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/psk_pm_modem.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/quadrature_demod.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
@@ -94,10 +87,6 @@ add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )
 
-add_test(NAME test_clock_recovery_mm COMMAND test_clock_recovery_mm)
-add_executable(test_clock_recovery_mm ${CMAKE_CURRENT_SOURCE_DIR}/test/test_clock_recovery_mm.c)
-target_link_libraries(test_clock_recovery_mm sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_dc_blocker COMMAND test_dc_blocker)
 add_executable(test_dc_blocker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dc_blocker.c)
 target_link_libraries(test_dc_blocker sdr_modemLib sdr_modemTestLib)
@@ -110,10 +99,6 @@ add_test(NAME test_freq_offset COMMAND test_freq_offset)
 add_executable(test_freq_offset ${CMAKE_CURRENT_SOURCE_DIR}/test/test_freq_offset.c)
 target_link_libraries(test_freq_offset sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_frequency_modulator COMMAND test_frequency_modulator)
-add_executable(test_frequency_modulator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_frequency_modulator.c)
-target_link_libraries(test_frequency_modulator sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_gfsk_modem COMMAND test_gfsk_modem)
 add_executable(test_gfsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gfsk_modem.c)
 target_link_libraries(test_gfsk_modem sdr_modemLib sdr_modemTestLib)
@@ -122,41 +107,21 @@ add_test(NAME test_bpsk_modem COMMAND test_bpsk_modem)
 add_executable(test_bpsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_bpsk_modem.c)
 target_link_libraries(test_bpsk_modem sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_oqpsk_modem COMMAND test_oqpsk_modem)
-add_executable(test_oqpsk_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_oqpsk_modem.c)
-target_link_libraries(test_oqpsk_modem sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_psk_pm_modem COMMAND test_psk_pm_modem)
 add_executable(test_psk_pm_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_psk_pm_modem.c)
 target_link_libraries(test_psk_pm_modem sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_gaussian_taps COMMAND test_gaussian_taps)
-add_executable(test_gaussian_taps ${CMAKE_CURRENT_SOURCE_DIR}/test/test_gaussian_taps.c)
-target_link_libraries(test_gaussian_taps sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_halfband_decim COMMAND test_halfband_decim)
 add_executable(test_halfband_decim ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_decim.c)
 target_link_libraries(test_halfband_decim sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_interp_fir_filter COMMAND test_interp_fir_filter)
-add_executable(test_interp_fir_filter ${CMAKE_CURRENT_SOURCE_DIR}/test/test_interp_fir_filter.c)
-target_link_libraries(test_interp_fir_filter sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_linked_list COMMAND test_linked_list)
 add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)
 target_link_libraries(test_linked_list sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_mmse_fir_interpolator COMMAND test_mmse_fir_interpolator)
-add_executable(test_mmse_fir_interpolator ${CMAKE_CURRENT_SOURCE_DIR}/test/test_mmse_fir_interpolator.c)
-target_link_libraries(test_mmse_fir_interpolator sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_plutosdr COMMAND test_plutosdr)
 add_executable(test_plutosdr ${CMAKE_CURRENT_SOURCE_DIR}/test/test_plutosdr.c)
 target_link_libraries(test_plutosdr sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_quadrature_demod COMMAND test_quadrature_demod)
-add_executable(test_quadrature_demod ${CMAKE_CURRENT_SOURCE_DIR}/test/test_quadrature_demod.c)
-target_link_libraries(test_quadrature_demod sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_queue COMMAND test_queue)
 add_executable(test_queue ${CMAKE_CURRENT_SOURCE_DIR}/test/test_queue.c)

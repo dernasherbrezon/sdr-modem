@@ -76,8 +76,6 @@ static int app_config_convert_modem_type(const char *type) {
     return MODEM_TYPE_DPSK;
   } else if (strcmp(type, "sdpsk") == 0) {
     return MODEM_TYPE_SDPSK;
-  } else if (strcmp(type, "oqpsk") == 0) {
-    return MODEM_TYPE_OQPSK;
   } else if (strcmp(type, "psk_pm") == 0) {
     return MODEM_TYPE_PSK_PM;
   }
@@ -520,12 +518,6 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     if (code != 0) {
       return code;
     }
-  } else if (result->modem == MODEM_TYPE_OQPSK) {
-    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    code = app_config_load_psk_from_file(libconfig, &result->req.oqpsk);
-    if (code != 0) {
-      return code;
-    }
   } else if (result->modem == MODEM_TYPE_PSK_PM) {
     result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
     code = app_config_load_psk_pm_from_file(libconfig, &result->req.psk_pm);
@@ -890,12 +882,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     if (code != 0) {
       return code;
     }
-  } else if (result->modem == MODEM_TYPE_OQPSK) {
-    result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_OQPSK;
-    int code = app_config_merge_psk_modem_settings(&psk_settings, &result->req.oqpsk);
-    if (code != 0) {
-      return code;
-    }
   } else if (result->modem == MODEM_TYPE_PSK_PM) {
     result->req.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_PSK_PM;
     int code = app_config_merge_psk_pm_modem_settings(&psk_pm_settings, &result->req.psk_pm);
@@ -1033,9 +1019,6 @@ static int app_config_validate_and_log(app_config *result) {
       break;
     case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
       psk_settings = result->req.sdpsk;
-      break;
-    case MODEM_REQUEST__MODEM_SETTINGS_OQPSK:
-      psk_settings = result->req.oqpsk;
       break;
     default:
       // do nothing

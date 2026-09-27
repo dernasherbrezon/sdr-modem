@@ -753,7 +753,7 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
   (ProtobufCMessageInit) none_framing__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor modem_request__field_descriptors[9] =
+static const ProtobufCFieldDescriptor modem_request__field_descriptors[8] =
 {
   {
     "gfsk",
@@ -804,20 +804,8 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "oqpsk",
-    5,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(ModemRequest, modem_settings_case),
-    offsetof(ModemRequest, oqpsk),
-    &psk_modem_settings__descriptor,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "psk_pm",
-    6,
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(ModemRequest, modem_settings_case),
@@ -868,19 +856,18 @@ static const unsigned modem_request__field_indices_by_name[] = {
   1,   /* field[1] = bpsk */
   2,   /* field[2] = dpsk */
   0,   /* field[0] = gfsk */
-  6,   /* field[6] = none */
-  4,   /* field[4] = oqpsk */
-  5,   /* field[5] = psk_pm */
+  5,   /* field[5] = none */
+  4,   /* field[4] = psk_pm */
   3,   /* field[3] = sdpsk */
-  7,   /* field[7] = syncword */
-  8,   /* field[8] = syncword_bits */
+  6,   /* field[6] = syncword */
+  7,   /* field[7] = syncword_bits */
 };
 static const ProtobufCIntRange modem_request__number_ranges[3 + 1] =
 {
   { 1, 0 },
-  { 9, 6 },
-  { 16, 7 },
-  { 0, 9 }
+  { 9, 5 },
+  { 16, 6 },
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor modem_request__descriptor =
 {
@@ -890,7 +877,7 @@ const ProtobufCMessageDescriptor modem_request__descriptor =
   "ModemRequest",
   "",
   sizeof(ModemRequest),
-  9,
+  8,
   modem_request__field_descriptors,
   modem_request__field_indices_by_name,
   3,  modem_request__number_ranges,

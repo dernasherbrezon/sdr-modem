@@ -15,7 +15,6 @@
 #include <math.h>
 #include <complex.h>
 #include "../src/dsp/bpsk_modem.h"
-#include "../src/dsp/oqpsk_modem.h"
 #include "../src/dsp/psk_pm_modem.h"
 #include "../src/dsp/gfsk_modem.h"
 
@@ -193,28 +192,6 @@ static int create_bpsk(const modem_case *modem_case, uint32_t chunk_bytes, modem
   return 0;
 }
 
-static int create_oqpsk(const modem_case *modem_case, uint32_t chunk_bytes, modem_pair *pair) {
-  oqpsk_modem_settings settings = {0};
-  settings.sample_rate = modem_case->sample_rate;
-  settings.baud_rate = modem_case->baud_rate;
-  settings.rrc_beta = RRC_BETA;
-  settings.rrc_delay = RRC_DELAY;
-  settings.costas_bandwidth = COSTAS_BANDWIDTH;
-  oqpsk_modem *mod = NULL;
-  oqpsk_modem *demod = NULL;
-  int code = oqpsk_modem_create(&settings, chunk_bytes, &mod);
-  if (code != 0) {
-    return code;
-  }
-  code = oqpsk_modem_create(&settings, (uint32_t) oqpsk_modem_max_modulation_buffer_length(mod), &demod);
-  if (code != 0) {
-    oqpsk_modem_destroy(mod);
-    return code;
-  }
-  *pair = (modem_pair) {mod, demod, oqpsk_modem_modulate, oqpsk_modem_demodulate, oqpsk_modem_destroy};
-  return 0;
-}
-
 static int create_psk_pm(const modem_case *modem_case, uint32_t chunk_bytes, modem_pair *pair) {
   psk_pm_modem_settings settings = {0};
   settings.sample_rate = modem_case->sample_rate;
@@ -270,7 +247,6 @@ static const modem_case CASES[] = {
     {"bpsk",   PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 2, 300, 0.0,  10.0, BPSK,  create_bpsk,   theory_coherent_psk},
     {"dpsk",   PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 1, 300, 0.0,  10.0, DPSK,  create_bpsk,   theory_differential_psk},
     {"sdpsk",  PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 1, 300, 0.0,  10.0, SDPSK, create_bpsk,   theory_differential_psk},
-    {"oqpsk",  PSK_SAMPLE_RATE, PSK_BAUD_RATE, 2, 4, 300, 0.0,  10.0, BPSK,  create_oqpsk,  theory_coherent_psk},
     {"psk_pm", PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 2, 300, 10.0, 22.0, BPSK,  create_psk_pm, theory_psk_pm},
     {"gfsk",   GFSK_SAMPLE_RATE, GFSK_BAUD_RATE, 1, 1, 300, 0.0, 14.0, BPSK,  create_gfsk,   theory_gfsk}
 };
