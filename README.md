@@ -38,7 +38,7 @@ Sample configuration with reasonable defaults:
 
 sdr-modem depends on several libraries:
 
-* [libvolk](https://www.libvolk.org). It is recommended to use the latest version (Currently it is 2.x). After libvolk [installed or built](https://github.com/gnuradio/volk#building-on-most-x86-32-bit-and-64-bit-platforms), it needs to detect optimal kernels. Run the command ```volk_profile``` to generate and save profile.
+* [liquid-dsp](https://github.com/jgaeddert/liquid-dsp)
 * [libconfig](https://hyperrealm.github.io/libconfig/libconfig_manual.html)
 * [libprotobuf-c](https://github.com/protobuf-c/protobuf-c)
 * libz. Should be installed in every operational system
@@ -53,7 +53,7 @@ curl -fsSL https://leosatdata.com/r2cloud.gpg.key | sudo gpg --dearmor -o /usr/s
 sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
 sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
 sudo apt-get update
-sudo apt-get install libvolk2-dev libprotobuf-c-dev libconfig-dev check libiio
+sudo apt-get install libliquid-dev libprotobuf-c-dev libconfig-dev libiio-dev
 ```
 
 ## Build
@@ -64,3 +64,7 @@ cd build
 cmake ..
 make
 ```
+
+## License
+
+sdr-modem is licensed under the [Apache License 2.0](LICENSE).
