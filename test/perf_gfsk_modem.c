@@ -1,7 +1,6 @@
 #include "utils.h"
 #include <time.h>
 #include "../src/dsp/gfsk_modem.h"
-#include "../src/dsp/gfsk_modem.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -28,7 +27,7 @@ void perf_gfsk_mod() {
     .use_dc_block = true,
     .bt = 0.5F
   };
-  int code = gfsk_modem_create(&settings, settings.sample_rate, 2016000, &mod);
+  int code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, 2016000, &mod);
   if (code != 0) {
     return;
   }
@@ -80,7 +79,7 @@ void perf_gfsk_demod() {
     .bt = 0.5F
   };
   gfsk_modem *demod = NULL;
-  int code = gfsk_modem_create(&settings, settings.sample_rate, 2016000, &demod);
+  int code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, 2016000, &demod);
   if (code != 0) {
     return;
   }

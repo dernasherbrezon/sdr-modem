@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdlib.h>
+#include <math.h>
 #include <unity.h>
 #include <signal.h>
 #include "../src/tcp_server.h"
@@ -188,10 +189,15 @@ void test_plutosdr_tx() {
   size_t actual_len = 0;
   iio_lib_mock_get_tx(&actual, &actual_len);
 
-  const int16_t expected[] = {32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0, 32767, 0};
-
-  // assert only first 50, thus actual_size = 50
-  assert_int16_array(expected, 50, actual, 50);
+  // gfsk has a constant envelope. the tx resampler (19200 -> 580000) ramps up during its filter
+  // delay, so check only the samples after it
+  size_t skip_samples = 600;
+  size_t check_samples = 1000;
+  TEST_ASSERT_GREATER_OR_EQUAL(2 * (skip_samples + check_samples), actual_len);
+  for (size_t i = skip_samples; i < skip_samples + check_samples; i++) {
+    float envelope = sqrtf((float) actual[2 * i] * actual[2 * i] + (float) actual[2 * i + 1] * actual[2 * i + 1]);
+    TEST_ASSERT_FLOAT_WITHIN(0.05f * 32767, 32767, envelope);
+  }
 }
 
 void test_invalid_config() {

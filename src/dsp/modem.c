@@ -4,32 +4,9 @@
 #include <stdio.h>
 #include <math.h>
 #include "gfsk_modem.h"
-#include "gfsk_modem2.h"
 #include "bpsk_modem.h"
 #include "oqpsk_modem.h"
 #include "psk_pm_modem.h"
-
-// gfsk implementation: 0 - gfsk_modem (own dsp blocks), 1 - gfsk_modem2 (liquid-dsp cpfskmod/freqdem/symsync).
-// can be overridden from the command line, e.g. -DMODEM_GFSK_USE_MODEM2=1
-#ifndef MODEM_GFSK_USE_MODEM2
-#define MODEM_GFSK_USE_MODEM2 0
-#endif
-
-#if MODEM_GFSK_USE_MODEM2
-#define MODEM_GFSK_TYPE gfsk_modem2
-#define MODEM_GFSK_CREATE(req, sample_rate, max_input_buffer_length, modem) gfsk_modem2_create((req)->gfsk, (req)->syncword, (req)->syncword_bits, sample_rate, max_input_buffer_length, modem)
-#define MODEM_GFSK_MODULATE gfsk_modem2_modulate
-#define MODEM_GFSK_DEMODULATE gfsk_modem2_demodulate
-#define MODEM_GFSK_MAX_MODULATION_BUFFER_LENGTH gfsk_modem2_max_modulation_buffer_length
-#define MODEM_GFSK_DESTROY gfsk_modem2_destroy
-#else
-#define MODEM_GFSK_TYPE gfsk_modem
-#define MODEM_GFSK_CREATE(req, sample_rate, max_input_buffer_length, modem) gfsk_modem_create((req)->gfsk, sample_rate, max_input_buffer_length, modem)
-#define MODEM_GFSK_MODULATE gfsk_modem_modulate
-#define MODEM_GFSK_DEMODULATE gfsk_modem_demodulate
-#define MODEM_GFSK_MAX_MODULATION_BUFFER_LENGTH gfsk_modem_max_modulation_buffer_length
-#define MODEM_GFSK_DESTROY gfsk_modem_destroy
-#endif
 
 // hardcoded per design: half-band decimator stop-band attenuation
 #define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
@@ -216,15 +193,15 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     return code;
   }
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    code = MODEM_GFSK_CREATE(req, decimated_sample_rate, decimated_buffer_length, (MODEM_GFSK_TYPE **) &result->modem);
+    code = gfsk_modem_create(req->gfsk, req->syncword, req->syncword_bits, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
     if (code != 0) {
       modem_destroy(result);
       return code;
     }
-    result->modulate = MODEM_GFSK_MODULATE;
-    result->demodulate = MODEM_GFSK_DEMODULATE;
-    result->max_modulation_buffer_length = MODEM_GFSK_MAX_MODULATION_BUFFER_LENGTH;
-    result->destroy = MODEM_GFSK_DESTROY;
+    result->modulate = gfsk_modem_modulate;
+    result->demodulate = gfsk_modem_demodulate;
+    result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
+    result->destroy = gfsk_modem_destroy;
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
     code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
