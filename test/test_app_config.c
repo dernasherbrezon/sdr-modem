@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unity.h>
 #include <math.h>
+#include <errno.h>
 #include "../src/app_config.h"
 
 app_config *config = NULL;
@@ -126,6 +127,39 @@ void test_guess_tx_file_format_cu8() {
   TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
 }
 
+void test_syncword_from_file() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
+  int code = app_config_create(11, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_UINT64(0xCCCCCCFE, config->req.syncword);
+  TEST_ASSERT_EQUAL_UINT32(32, config->req.syncword_bits);
+}
+
+void test_merge_syncword() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "0xaa7", NULL};
+  int code = app_config_create(13, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_UINT64(0xAA7, config->req.syncword);
+  TEST_ASSERT_EQUAL_UINT32(12, config->req.syncword_bits);
+}
+
+void test_max_syncword() {
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "FEDCBA9876543210", NULL};
+  int code = app_config_create(13, argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  TEST_ASSERT_EQUAL_UINT64(0xFEDCBA9876543210ULL, config->req.syncword);
+  TEST_ASSERT_EQUAL_UINT32(64, config->req.syncword_bits);
+}
+
+void test_invalid_syncword() {
+  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "AAX7", NULL};
+  TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv1, &config));
+  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "0x", NULL};
+  TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv2, &config));
+  char *argv3[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "00112233445566778", NULL};
+  TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv3, &config));
+}
+
 void tearDown() {
   app_config_destroy(config);
   config = NULL;
@@ -153,5 +187,9 @@ int main(void) {
   RUN_TEST(test_guess_rx_file_format_cs16);
   RUN_TEST(test_guess_rx_file_format_unknown);
   RUN_TEST(test_guess_tx_file_format_cu8);
+  RUN_TEST(test_syncword_from_file);
+  RUN_TEST(test_merge_syncword);
+  RUN_TEST(test_max_syncword);
+  RUN_TEST(test_invalid_syncword);
   return UNITY_END();
 }

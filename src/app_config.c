@@ -91,6 +91,44 @@ static int app_config_convert_framing_type(const char *type) {
   return -1;
 }
 
+static int app_config_hex_to_nibble(char c) {
+  if (c >= '0' && c <= '9') {
+    return c - '0';
+  }
+  if (c >= 'a' && c <= 'f') {
+    return c - 'a' + 10;
+  }
+  if (c >= 'A' && c <= 'F') {
+    return c - 'A' + 10;
+  }
+  return -1;
+}
+
+// syncword is a hex string, msb first, e.g. "CCCCCCFE". optional "0x" prefix.
+// every hex digit is 4 bits, so syncword_bits is calculated from the string length
+static int app_config_parse_syncword(const char *hex, ModemRequest *req) {
+  if (strncmp(hex, "0x", 2) == 0 || strncmp(hex, "0X", 2) == 0) {
+    hex += 2;
+  }
+  size_t hex_len = strlen(hex);
+  if (hex_len == 0 || hex_len > sizeof(uint64_t) * 2) {
+    fprintf(stderr, "<3>invalid syncword. expected 1-%zu hex digits: %s\n", sizeof(uint64_t) * 2, hex);
+    return -EINVAL;
+  }
+  uint64_t syncword = 0;
+  for (size_t i = 0; i < hex_len; i++) {
+    int nibble = app_config_hex_to_nibble(hex[i]);
+    if (nibble < 0) {
+      fprintf(stderr, "<3>invalid syncword. expected hex digits: %s\n", hex);
+      return -EINVAL;
+    }
+    syncword = (syncword << 4) | (uint64_t) nibble;
+  }
+  req->syncword = syncword;
+  req->syncword_bits = (uint32_t) (hex_len * 4);
+  return 0;
+}
+
 static int app_config_convert_direction(const char *direction) {
   if (strcmp(direction, "rx") == 0) {
     return DIRECTION_RX;
@@ -497,6 +535,13 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     result->framing = app_config_convert_framing_type(config_setting_get_string(setting));
     //ignore framing for now
   }
+  setting = config_lookup(libconfig, "syncword");
+  if (setting != NULL) {
+    code = app_config_parse_syncword(config_setting_get_string(setting), &result->req);
+    if (code != 0) {
+      return code;
+    }
+  }
 
   setting = config_lookup(libconfig, "debug_constellation_file");
   if (setting != NULL) {
@@ -545,6 +590,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_OUTPUT,
     OPT_MODEM,
     OPT_FRAMING,
+    OPT_SYNCWORD,
     OPT_GFSK_CENTER_FREQ,
     OPT_GFSK_SAMPLE_RATE,
     OPT_GFSK_BAUD_RATE,
@@ -596,6 +642,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"output", required_argument, NULL, OPT_OUTPUT},
     {"modem", required_argument, NULL, OPT_MODEM},
     {"framing", required_argument, NULL, OPT_FRAMING},
+    {"syncword", required_argument, NULL, OPT_SYNCWORD},
     {"gfsk_center_freq", required_argument, NULL, OPT_GFSK_CENTER_FREQ},
     {"gfsk_sample_rate", required_argument, NULL, OPT_GFSK_SAMPLE_RATE},
     {"gfsk_baud_rate", required_argument, NULL, OPT_GFSK_BAUD_RATE},
@@ -709,6 +756,13 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_FRAMING:
         result->framing = app_config_convert_framing_type(optarg);
         break;
+      case OPT_SYNCWORD: {
+        int code = app_config_parse_syncword(optarg, &result->req);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
       case OPT_GFSK_CENTER_FREQ:
         gfsk_settings.center_freq = strtoull(optarg, NULL, 10);
         break;
@@ -1005,6 +1059,9 @@ static int app_config_validate_and_log(app_config *result) {
   if (result->framing < 0) {
     fprintf(stderr, "<3>invalid framing\n");
     return -1;
+  }
+  if (result->req.syncword_bits != 0) {
+    fprintf(stdout, "syncword: 0x%0*llX bits: %u\n", (int) (result->req.syncword_bits / 4), (unsigned long long) result->req.syncword, result->req.syncword_bits);
   }
   return 0;
 }
