@@ -220,8 +220,9 @@ static int create_psk_pm(const modem_case *modem_case, uint32_t chunk_bytes, mod
 }
 
 static int create_gfsk(const modem_case *modem_case, uint32_t chunk_bytes, modem_pair *pair) {
-  GfskModemSettings settings = {
-      .sample_rate = modem_case->sample_rate,
+  gfsk_modem_settings settings = {
+      .rx_sample_rate = modem_case->sample_rate,
+      .tx_sample_rate = modem_case->sample_rate,
       .baud_rate = modem_case->baud_rate,
       .deviation = GFSK_DEVIATION,
       .bandwidth = GFSK_BANDWIDTH,
@@ -230,11 +231,11 @@ static int create_gfsk(const modem_case *modem_case, uint32_t chunk_bytes, modem
   };
   gfsk_modem *mod = NULL;
   gfsk_modem *demod = NULL;
-  int code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, chunk_bytes, &mod);
+  int code = gfsk_modem_create(&settings, chunk_bytes, &mod);
   if (code != 0) {
     return code;
   }
-  code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, (uint32_t) gfsk_modem_max_modulation_buffer_length(mod), &demod);
+  code = gfsk_modem_create(&settings, (uint32_t) gfsk_modem_max_modulation_buffer_length(mod), &demod);
   if (code != 0) {
     gfsk_modem_destroy(mod);
     return code;

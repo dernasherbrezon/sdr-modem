@@ -108,6 +108,20 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
+static int modem_create_gfsk(GfskModemSettings *req, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem **modem) {
+  gfsk_modem_settings settings = {0};
+  settings.rx_sample_rate = sample_rate;
+  settings.tx_sample_rate = req->sample_rate;
+  settings.baud_rate = req->baud_rate;
+  settings.deviation = req->deviation;
+  settings.bandwidth = req->bandwidth;
+  settings.bt = req->bt;
+  settings.use_dc_block = req->use_dc_block;
+  settings.syncword = syncword;
+  settings.syncword_bits = syncword_bits;
+  return gfsk_modem_create(&settings, max_input_buffer_length, modem);
+}
+
 static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, psk_modem_type type, uint32_t max_input_buffer_length, bpsk_modem **modem) {
   bpsk_modem_settings settings = {0};
   settings.sample_rate = sample_rate;
@@ -160,7 +174,7 @@ int sdr_modem_create(app_config *config, struct ModemRequest *req, const char *f
     return code;
   }
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    code = gfsk_modem_create(req->gfsk, req->syncword, req->syncword_bits, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
+    code = modem_create_gfsk(req->gfsk, req->syncword, req->syncword_bits, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
     if (code != 0) {
       sdr_modem_destroy(result);
       return code;

@@ -131,7 +131,7 @@ static symsync_rrrf gfsk_modem_create_symbol_sync(float bt) {
   return result;
 }
 
-static int gfsk_modem_create_symbol_timing(GfskModemSettings *settings, size_t max_input_buffer_length, struct gfsk_modem_t *result) {
+static int gfsk_modem_create_symbol_timing(const gfsk_modem_settings *settings, size_t max_input_buffer_length, struct gfsk_modem_t *result) {
   if (settings->use_dc_block) {
     int code = dc_blocker_create(GFSK_MODEM_SPS * GFSK_MODEM_DC_BLOCK_SYMBOLS, &result->dc);
     if (code != 0) {
@@ -155,7 +155,7 @@ static int gfsk_modem_create_symbol_timing(GfskModemSettings *settings, size_t m
   return 0;
 }
 
-static int gfsk_modem_create_correlator(GfskModemSettings *settings, uint64_t syncword, uint32_t syncword_bits, size_t max_input_buffer_length, struct gfsk_modem_t *result) {
+static int gfsk_modem_create_correlator(const gfsk_modem_settings *settings, size_t max_input_buffer_length, struct gfsk_modem_t *result) {
   float *rx_filter = NULL;
   unsigned int rx_filter_len = 0;
   int code = gfsk_modem_create_rx_filter(settings->bt, &rx_filter, &rx_filter_len);
@@ -163,7 +163,7 @@ static int gfsk_modem_create_correlator(GfskModemSettings *settings, uint64_t sy
     return code;
   }
   result->matched_filter = firfilt_rrrf_create(rx_filter, rx_filter_len);
-  code = gfsk_correlator_create(GFSK_MODEM_SPS, settings->bt, GFSK_MODEM_FILTER_DELAY, rx_filter, rx_filter_len, syncword, syncword_bits, GFSK_MODEM_CORRELATION_THRESHOLD, max_input_buffer_length, &result->correlator);
+  code = gfsk_correlator_create(GFSK_MODEM_SPS, settings->bt, GFSK_MODEM_FILTER_DELAY, rx_filter, rx_filter_len, settings->syncword, settings->syncword_bits, GFSK_MODEM_CORRELATION_THRESHOLD, max_input_buffer_length, &result->correlator);
   free(rx_filter);
   if (result->matched_filter == NULL) {
     return -EINVAL;
@@ -178,7 +178,7 @@ static int gfsk_modem_create_correlator(GfskModemSettings *settings, uint64_t sy
   return 0;
 }
 
-int gfsk_modem_create(GfskModemSettings *settings, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem **modem) {
+int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_buffer_length, gfsk_modem **modem) {
   if (settings->baud_rate == 0 || settings->deviation == 0) {
     fprintf(stderr, "<3>gfsk modem: baud_rate and deviation must not be 0\n");
     return -EINVAL;
@@ -187,17 +187,17 @@ int gfsk_modem_create(GfskModemSettings *settings, uint64_t syncword, uint32_t s
     fprintf(stderr, "<3>gfsk modem: bt must be in (0, 1]: %f\n", settings->bt);
     return -EINVAL;
   }
-  if (syncword_bits > sizeof(syncword) * 8) {
-    fprintf(stderr, "<3>gfsk modem: syncword_bits must not be more than %zu: %u\n", sizeof(syncword) * 8, syncword_bits);
+  if (settings->syncword_bits > sizeof(settings->syncword) * 8) {
+    fprintf(stderr, "<3>gfsk modem: syncword_bits must not be more than %zu: %u\n", sizeof(settings->syncword) * 8, settings->syncword_bits);
     return -EINVAL;
   }
-  if ((double) sample_rate / (double) settings->baud_rate < 2.0 || (double) settings->sample_rate / (double) settings->baud_rate < 2.0) {
+  if ((double) settings->rx_sample_rate / (double) settings->baud_rate < 2.0 || (double) settings->tx_sample_rate / (double) settings->baud_rate < 2.0) {
     fprintf(stderr, "<3>gfsk modem: samples per symbol must be at least 2; check sample_rate/baud_rate\n");
     return -EINVAL;
   }
   uint64_t internal_sample_rate = (uint64_t) GFSK_MODEM_SPS * (uint64_t) settings->baud_rate;
-  bool rx_needs_resampling = sample_rate != internal_sample_rate;
-  bool tx_needs_resampling = settings->sample_rate != internal_sample_rate;
+  bool rx_needs_resampling = settings->rx_sample_rate != internal_sample_rate;
+  bool tx_needs_resampling = settings->tx_sample_rate != internal_sample_rate;
 
   struct gfsk_modem_t *result = malloc(sizeof(struct gfsk_modem_t));
   if (result == NULL) {
@@ -213,7 +213,7 @@ int gfsk_modem_create(GfskModemSettings *settings, uint64_t syncword, uint32_t s
 
   size_t rx_max_input_buffer_length = max_input_buffer_length;
   if (rx_needs_resampling) {
-    double resample_rate = (double) internal_sample_rate / (double) sample_rate;
+    double resample_rate = (double) internal_sample_rate / (double) settings->rx_sample_rate;
     result->resampler_rx = msresamp_crcf_create((float) resample_rate, GFSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
     if (result->resampler_rx == NULL) {
       gfsk_modem_destroy(result);
@@ -259,8 +259,8 @@ int gfsk_modem_create(GfskModemSettings *settings, uint64_t syncword, uint32_t s
   }
 
   int code;
-  if (syncword_bits != 0) {
-    code = gfsk_modem_create_correlator(settings, syncword, syncword_bits, rx_max_input_buffer_length, result);
+  if (settings->syncword_bits != 0) {
+    code = gfsk_modem_create_correlator(settings, rx_max_input_buffer_length, result);
   } else {
     code = gfsk_modem_create_symbol_timing(settings, rx_max_input_buffer_length, result);
   }
@@ -286,7 +286,7 @@ int gfsk_modem_create(GfskModemSettings *settings, uint64_t syncword, uint32_t s
   }
 
   if (tx_needs_resampling) {
-    double resample_rate = (double) settings->sample_rate / (double) internal_sample_rate;
+    double resample_rate = (double) settings->tx_sample_rate / (double) internal_sample_rate;
     result->resampler_tx = msresamp_crcf_create((float) resample_rate, GFSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
     if (result->resampler_tx == NULL) {
       gfsk_modem_destroy(result);

@@ -19,15 +19,16 @@ int main(void) {
 
 void perf_gfsk_mod() {
   gfsk_modem *mod = NULL;
-  GfskModemSettings settings = {
-    .sample_rate = 19200,
+  gfsk_modem_settings settings = {
+    .rx_sample_rate = 19200,
+    .tx_sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
     .bandwidth = 10800,
     .use_dc_block = true,
     .bt = 0.5F
   };
-  int code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, 2016000, &mod);
+  int code = gfsk_modem_create(&settings, 2016000, &mod);
   if (code != 0) {
     return;
   }
@@ -70,8 +71,9 @@ void perf_gfsk_mod() {
 }
 
 void perf_gfsk_demod() {
-  GfskModemSettings settings = {
-    .sample_rate = 19200,
+  gfsk_modem_settings settings = {
+    .rx_sample_rate = 19200,
+    .tx_sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
     .bandwidth = 10800,
@@ -79,7 +81,7 @@ void perf_gfsk_demod() {
     .bt = 0.5F
   };
   gfsk_modem *demod = NULL;
-  int code = gfsk_modem_create(&settings, 0, 0, settings.sample_rate, 2016000, &demod);
+  int code = gfsk_modem_create(&settings, 2016000, &demod);
   if (code != 0) {
     return;
   }
