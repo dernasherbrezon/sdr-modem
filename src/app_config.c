@@ -167,6 +167,9 @@ static int app_config_merge_gfsk_modem_settings(GfskModemSettings *from, GfskMod
   if (from->bandwidth != 0) {
     settings->bandwidth = from->bandwidth;
   }
+  if (from->use_dc_block) {
+    settings->use_dc_block = from->use_dc_block;
+  }
 
   return 0;
 }

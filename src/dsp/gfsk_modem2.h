@@ -20,6 +20,10 @@
 //    are normalized by the amplitude of the sync word, so +-127 does not depend on the deviation.
 //    the output is continuous: between bursts the last estimates are kept. the sync word itself is
 //    included in the output. output lags the input by ~41 symbols (sync word + peak search)
+//  - without a sync word (syncword_bits = 0) demodulation is continuous instead: the discriminator
+//    output goes through an optional dc blocker (settings->use_dc_block) and liquid's symsync with a
+//    gmsk receive filter bank. its timing error detector assumes h = 0.5 (gmsk). soft symbols are
+//    scaled by the configured deviation
 //  - both chains run at a fixed 8 samples per symbol (cpfskmod needs an even number, and the
 //    correlator template is built at it); a resampler bridges from/to the actual sample rate
 //  - settings->bandwidth is the full occupied bandwidth. if not 0, a low-pass filter at half of it
@@ -30,7 +34,8 @@ typedef struct gfsk_modem2_t gfsk_modem2;
 // caller applied upstream); it may differ from settings->sample_rate, which is always the raw
 // input/output rate and is still used as-is for the TX (modulate) chain.
 // settings->bt must be in (0, 1]
-// syncword - on-air symbols, msb first (see ModemRequest.syncword); syncword_bits must be in [1, 64]
+// syncword - on-air symbols, msb first (see ModemRequest.syncword); syncword_bits must be in [0, 64].
+//            0 means no sync word: symbol timing is recovered by symsync
 int gfsk_modem2_create(GfskModemSettings *settings, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem);
 
 void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);

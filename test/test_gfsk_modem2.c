@@ -16,9 +16,11 @@
 #define BAUD_RATE 4800
 #define INPUT_LEN 128
 // tx gaussian pulse, rx filters and resamplers add a few symbols of delay before the sync word.
-// exact value depends on the configuration, so search for it instead of hardcoding
-#define MAX_BIT_LAG 40
-// timing and frequency come from the sync word, so there is nothing to settle
+// exact value depends on the configuration, so search for it instead of hardcoding. without sync word
+// the dc blocker adds another ~64 symbols
+#define MAX_BIT_LAG 100
+// with sync word timing and frequency come from it, so there is nothing to settle. without sync word
+// symsync converges well within the dc blocker delay
 #define SKIP_BITS MAX_BIT_LAG
 // noiseless loopback: everything from the sync word on should be recovered
 #define MAX_MISMATCH_RATIO 0.02
@@ -92,14 +94,14 @@ static double best_mismatch_ratio(const int8_t *output, size_t output_len) {
   return best;
 }
 
-static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz) {
+static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz, uint32_t syncword_bits) {
   GfskModemSettings settings = default_settings(sample_rate, deviation);
 
-  int code = gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod);
+  int code = gfsk_modem2_create(&settings, SYNC_WORD, syncword_bits, settings.sample_rate, INPUT_LEN, &mod);
   TEST_ASSERT_EQUAL_INT(0, code);
   // demodulator has to accept everything the modulator can produce
   uint32_t max_samples = (uint32_t) gfsk_modem2_max_modulation_buffer_length(mod);
-  code = gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, max_samples, &demod);
+  code = gfsk_modem2_create(&settings, SYNC_WORD, syncword_bits, settings.sample_rate, max_samples, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(INPUT_LEN);
@@ -134,6 +136,15 @@ static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_
   TEST_ASSERT_TRUE_MESSAGE(best_mismatch_ratio(output, output_len) <= MAX_MISMATCH_RATIO, "too many bit errors");
 }
 
+static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz) {
+  round_trip_syncword(sample_rate, deviation, carrier_offset_hz, SYNC_WORD_BITS);
+}
+
+// no sync word: timing is recovered by symsync, dc is removed by the dc blocker
+static void round_trip_symsync(uint64_t sample_rate, double carrier_offset_hz) {
+  round_trip_syncword(sample_rate, BAUD_RATE / 4, carrier_offset_hz, 0);
+}
+
 // deviation is baud_rate / 4 (h = 0.5, i.e. gmsk) and baud_rate / 2 (h = 1)
 void test_exact_sps4_h05() { round_trip(4 * BAUD_RATE, BAUD_RATE / 4, 0); }
 void test_exact_sps4_h1() { round_trip(4 * BAUD_RATE, BAUD_RATE / 2, 0); }
@@ -148,6 +159,32 @@ void test_carrier_offset_h1() { round_trip(4 * BAUD_RATE, BAUD_RATE / 2, 200.0);
 void test_carrier_offset_large_h1(){ round_trip(44100, BAUD_RATE / 2, BAUD_RATE / 4); }
 void test_carrier_offset_large_h05() { round_trip(4 * BAUD_RATE, BAUD_RATE / 4, BAUD_RATE / 8); }
 void test_carrier_offset_fractional_h05() { round_trip(44100, BAUD_RATE / 4, -150.0); }
+
+void test_symsync_exact_sps4() { round_trip_symsync(4 * BAUD_RATE, 0); }
+void test_symsync_exact_sps10() { round_trip_symsync(10 * BAUD_RATE, 0); }
+void test_symsync_fractional_sps9() { round_trip_symsync(44100, 0); }
+void test_symsync_carrier_offset() { round_trip_symsync(44100, 300.0); }
+
+// without sync word soft symbols are scaled by the configured deviation
+void test_symsync_soft_symbols_scale() {
+  GfskModemSettings settings = default_settings(4 * BAUD_RATE, BAUD_RATE / 4);
+  settings.use_dc_block = false;
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, 0, 0, settings.sample_rate, 4096, &demod));
+  size_t len = 4096;
+  float complex *input = malloc(sizeof(float complex) * len);
+  TEST_ASSERT_NOT_NULL(input);
+  for (size_t i = 0; i < len; i++) {
+    input[i] = cexpf(I * (float) (2.0 * M_PI * (BAUD_RATE / 4.0) * (double) i / (double) settings.sample_rate));
+  }
+  int8_t *output = NULL;
+  size_t output_len = 0;
+  gfsk_modem2_demodulate(input, len, &output, &output_len, demod);
+  free(input);
+  TEST_ASSERT_GREATER_THAN_size_t(500, output_len);
+  for (size_t i = output_len - 100; i < output_len; i++) {
+    TEST_ASSERT_INT8_WITHIN(3, 127, output[i]);
+  }
+}
 
 // a tone at +deviation is a run of 1 bits. no sync word, so the output is scaled by the configured
 // deviation: positive and close to full scale, for any modulation index (h = 1 here)
@@ -354,12 +391,8 @@ void test_create_invalid_settings() {
   assert_create_fails(48000, BAUD_RATE, 2400, 1.5f);
 }
 
-void test_create_without_syncword() {
+void test_create_invalid_syncword() {
   GfskModemSettings settings = default_settings(48000, 2400);
-  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, 0, 0, settings.sample_rate, INPUT_LEN, &mod));
-  TEST_ASSERT_NULL(mod);
-  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 0, settings.sample_rate, INPUT_LEN, &mod));
-  TEST_ASSERT_NULL(mod);
   TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 65, settings.sample_rate, INPUT_LEN, &mod));
   TEST_ASSERT_NULL(mod);
 }
@@ -438,12 +471,17 @@ int main(void) {
   RUN_TEST(test_carrier_offset_large_h1);
   RUN_TEST(test_carrier_offset_large_h05);
   RUN_TEST(test_carrier_offset_fractional_h05);
+  RUN_TEST(test_symsync_exact_sps4);
+  RUN_TEST(test_symsync_exact_sps10);
+  RUN_TEST(test_symsync_fractional_sps9);
+  RUN_TEST(test_symsync_carrier_offset);
+  RUN_TEST(test_symsync_soft_symbols_scale);
   RUN_TEST(test_soft_symbols_scale);
   RUN_TEST(test_soft_symbols_normalized_by_sync_word);
   RUN_TEST(test_bursts);
   RUN_TEST(test_modulation_deviation);
   RUN_TEST(test_create_invalid_settings);
-  RUN_TEST(test_create_without_syncword);
+  RUN_TEST(test_create_invalid_syncword);
   RUN_TEST(test_create_smallest_sps);
   RUN_TEST(test_create_rx_rate_differs_from_tx);
   RUN_TEST(test_invalid_buffers);
