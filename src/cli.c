@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <string.h>
 
+#include "api_utils.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/file_source.h"
 #include "sdr/plutosdr.h"
@@ -29,8 +30,8 @@ struct cli_t {
 static int cli_create_sdr(app_config *config, struct cli_t *result) {
   if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
-      .rx_center_freq = modem_request_get_center_freq(&config->req),
-      .rx_sample_rate = modem_request_get_sample_rate(&config->req)
+      .rx_center_freq = api_utils_get_center_freq(&config->req),
+      .rx_sample_rate = api_utils_get_sample_rate(&config->req)
     };
     int code = sdr_server_client_create(1, &rx, config->sdr_server_address, config->sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->device);
     if (code != 0) {
@@ -41,15 +42,15 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
     if (stream_config == NULL) {
       return -1;
     }
-    stream_config->sample_rate = modem_request_get_sample_rate(&config->req);
-    stream_config->center_freq = modem_request_get_center_freq(&config->req);
+    stream_config->sample_rate = api_utils_get_sample_rate(&config->req);
+    stream_config->center_freq = api_utils_get_center_freq(&config->req);
     stream_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     stream_config->manual_gain = config->plutosdr_gain;
     int code = 0;
     if (config->direction == DIRECTION_RX) {
       code = plutosdr_create(1, true, stream_config, NULL, config->plutosdr_timeout_millis, config->buffer_size, config->iio, &result->device);
     } else {
-      size_t max_modulation_buffer_length = modem_max_modulation_buffer_length(result->modem);
+      size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
       code = plutosdr_create(1, false, NULL, stream_config, config->plutosdr_timeout_millis, max_modulation_buffer_length, config->iio, &result->device);
     }
     if (code != 0) {
@@ -58,10 +59,10 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
   } else if (config->sdr_type == SDR_TYPE_FILE) {
     int code = 0;
     if (config->direction == DIRECTION_RX) {
-      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, modem_request_get_sample_rate(&config->req), config->buffer_size, &result->device);
+      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, api_utils_get_sample_rate(&config->req), config->buffer_size, &result->device);
     } else {
-      size_t max_modulation_buffer_length = modem_max_modulation_buffer_length(result->modem);
-      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, modem_request_get_sample_rate(&config->req), max_modulation_buffer_length, &result->device);
+      size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
+      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, api_utils_get_sample_rate(&config->req), max_modulation_buffer_length, &result->device);
     }
     if (code != 0) {
       return -1;
@@ -74,24 +75,24 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
-  int code = modem_create(config, &config->req, config->freq_offset_file, &result->modem);
+  int code = sdr_modem_create(config, &config->req, config->freq_offset_file, &result->modem);
   if (code != 0) {
     return code;
   }
-  code = modem_set_debug_freq_offset_file(config->debug_freq_offset_file, result->modem);
+  code = sdr_modem_set_debug_freq_offset_file(config->debug_freq_offset_file, result->modem);
   if (code != 0) {
     return code;
   }
-  code = modem_set_debug_constellation_file(config->debug_constellation_file, result->modem);
+  code = sdr_modem_set_debug_constellation_file(config->debug_constellation_file, result->modem);
   if (code != 0) {
     return code;
   }
   if (config->direction == DIRECTION_RX) {
-    code = modem_set_debug_baseband_file(config->debug_baseband_file, result->modem);
+    code = sdr_modem_set_debug_baseband_file(config->debug_baseband_file, result->modem);
     if (code != 0) {
       return code;
     }
-    code = modem_set_debug_subcarrier_file(config->debug_subcarrier_file, result->modem);
+    code = sdr_modem_set_debug_subcarrier_file(config->debug_subcarrier_file, result->modem);
     if (code != 0) {
       return code;
     }
@@ -158,7 +159,7 @@ int cli_process(cli *cli) {
       }
       int8_t *demodulated = NULL;
       size_t demodulated_len = 0;
-      modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->modem);
+      sdr_modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->modem);
       size_t actually_written = fwrite(demodulated, sizeof(int8_t), demodulated_len, cli->output_file);
       if (actually_written != demodulated_len) {
         break;
@@ -172,7 +173,7 @@ int cli_process(cli *cli) {
       }
       float complex *output = NULL;
       size_t output_len = 0;
-      modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->modem);
+      sdr_modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->modem);
       int code = cli->device->sdr_process_tx(output, output_len, cli->device->plugin);
       if (code != 0) {
         break;
@@ -207,7 +208,7 @@ void cli_destroy(cli *cli) {
     fclose(cli->input_file);
   }
   if (cli->modem != NULL) {
-    modem_destroy(cli->modem);
+    sdr_modem_destroy(cli->modem);
   }
   if (cli->input_temp != NULL) {
     free(cli->input_temp);

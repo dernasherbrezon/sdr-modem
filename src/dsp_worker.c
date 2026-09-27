@@ -62,7 +62,7 @@ static void *dsp_worker_callback(void *arg) {
     int8_t *demod_output = NULL;
     size_t demod_output_len = 0;
     if (worker->modem != NULL) {
-      modem_demodulate(input, input_len, &demod_output, &demod_output_len, worker->modem);
+      sdr_modem_demodulate(input, input_len, &demod_output, &demod_output_len, worker->modem);
     }
     if (demod_output == NULL) {
       complete_buffer_processing(worker->queue);
@@ -100,7 +100,7 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->id = id;
   result->client_socket = client_socket;
 
-  int code = modem_create(server_config, req, NULL, &result->modem);
+  int code = sdr_modem_create(server_config, req, NULL, &result->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", result->id);
     dsp_worker_destroy(result);
@@ -153,7 +153,7 @@ void dsp_worker_destroy(void *data) {
     fclose(worker->demod_file);
   }
   if (worker->modem != NULL) {
-    modem_destroy(worker->modem);
+    sdr_modem_destroy(worker->modem);
   }
   free(worker);
 }

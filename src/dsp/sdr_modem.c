@@ -1,10 +1,12 @@
 #include "sdr_modem.h"
+#include "../api_utils.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <math.h>
 #include "gfsk_modem.h"
 #include "bpsk_modem.h"
+#include "halfband_decim.h"
 #include "psk_pm_modem.h"
 
 // hardcoded per design: half-band decimator stop-band attenuation
@@ -49,58 +51,7 @@ struct sdr_modem_t {
   uint64_t baseband_sample_rate;
 };
 
-static uint64_t modem_get_sample_rate(ModemRequest *req) {
-  switch (req->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
-      return req->gfsk->sample_rate;
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
-      return req->bpsk->sample_rate;
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
-      return req->psk_pm->sample_rate;
-    default:
-      return 0;
-  }
-}
-
-uint64_t modem_request_get_center_freq(const struct ModemRequest *req) {
-  switch (req->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
-      return req->gfsk->center_freq;
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
-      return req->bpsk->center_freq;
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
-      return req->psk_pm->center_freq;
-    default:
-      return 0;
-  }
-}
-
-uint64_t modem_request_get_sample_rate(const struct ModemRequest *req) {
-  return modem_get_sample_rate((ModemRequest *) req);
-}
-
-uint32_t modem_request_get_baud_rate(const struct ModemRequest *req) {
-  switch (req->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
-      return req->gfsk->baud_rate;
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      return req->bpsk->baud_rate;
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
-      return req->psk_pm->baud_rate;
-    default:
-      return 0;
-  }
-}
-
-static uint32_t modem_get_bandwidth(ModemRequest *req) {
+static uint32_t modem_request_get_bandwidth(ModemRequest *req) {
   switch (req->modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
       return req->gfsk->bandwidth;
@@ -185,7 +136,7 @@ static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, ui
   return psk_pm_modem_create(&settings, max_input_buffer_length, modem);
 }
 
-int modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem) {
+int sdr_modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     //do nothing, but supported
     *modem = NULL;
@@ -199,19 +150,19 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
   int code = 0;
-  uint64_t sample_rate = modem_get_sample_rate(req);
-  uint32_t bandwidth = modem_get_bandwidth(req);
+  uint64_t sample_rate = api_utils_get_sample_rate(req);
+  uint32_t bandwidth = modem_request_get_bandwidth(req);
   uint64_t decimated_sample_rate = sample_rate;
   uint32_t decimated_buffer_length = config->buffer_size;
   code = modem_halfband_decim_create(sample_rate, bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
   if (code != 0) {
-    modem_destroy(result);
+    sdr_modem_destroy(result);
     return code;
   }
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
     code = gfsk_modem_create(req->gfsk, req->syncword, req->syncword_bits, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
     result->modulate = gfsk_modem_modulate;
@@ -221,7 +172,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
     code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
     result->modulate = bpsk_modem_modulate;
@@ -231,7 +182,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_DPSK) {
     code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
     result->modulate = bpsk_modem_modulate;
@@ -241,7 +192,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_SDPSK) {
     code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SDPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
     result->modulate = bpsk_modem_modulate;
@@ -251,7 +202,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
   } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
     code = modem_create_psk_pm(req->psk_pm, decimated_sample_rate, decimated_buffer_length, (psk_pm_modem **) &result->modem);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
     result->modulate = psk_pm_modem_modulate;
@@ -273,7 +224,7 @@ int modem_create(app_config *config, struct ModemRequest *req, const char *freq_
     }
     code = freq_offset_create(freq_offset_file, sample_rate, max_buffer_length, &result->freq_offset);
     if (code != 0) {
-      modem_destroy(result);
+      sdr_modem_destroy(result);
       return code;
     }
   }
@@ -300,14 +251,14 @@ static int modem_reopen_debug_file(FILE **file, const char *path, const char *na
   return 0;
 }
 
-int modem_set_debug_freq_offset_file(const char *debug_freq_offset_file, sdr_modem *modem) {
+int sdr_modem_set_debug_freq_offset_file(const char *debug_freq_offset_file, sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
   return modem_reopen_debug_file(&modem->debug_freq_offset_file, debug_freq_offset_file, "freq offset");
 }
 
-int modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *modem) {
+int sdr_modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
@@ -318,7 +269,7 @@ int modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *mo
   return code;
 }
 
-int modem_set_debug_constellation_file(const char *debug_constellation_file, sdr_modem *modem) {
+int sdr_modem_set_debug_constellation_file(const char *debug_constellation_file, sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
@@ -335,7 +286,7 @@ int modem_set_debug_constellation_file(const char *debug_constellation_file, sdr
   }
 }
 
-int modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem *modem) {
+int sdr_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
@@ -346,7 +297,7 @@ int modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem
   return psk_pm_modem_set_debug_subcarrier_file(debug_subcarrier_file, modem->modem);
 }
 
-void modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
+void sdr_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
   modem->modulate(input, input_len, output, output_len, modem->modem);
   if (modem->debug_freq_offset_file != NULL && *output != NULL) {
     fwrite(*output, sizeof(float complex), *output_len, modem->debug_freq_offset_file);
@@ -356,7 +307,7 @@ void modem_modulate(const uint8_t *input, size_t input_len, float complex **outp
   }
 }
 
-void modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, sdr_modem *modem) {
+void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, sdr_modem *modem) {
   if (modem->freq_offset != NULL) {
     float complex *corrected = NULL;
     size_t corrected_len = 0;
@@ -380,14 +331,14 @@ void modem_demodulate(const float complex *input, size_t input_len, int8_t **out
   modem->demodulate(input, input_len, output, output_len, modem->modem);
 }
 
-size_t modem_max_modulation_buffer_length(sdr_modem *modem) {
+size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
   return modem->max_modulation_buffer_length(modem->modem);
 }
 
-void modem_destroy(sdr_modem *modem) {
+void sdr_modem_destroy(sdr_modem *modem) {
   if (modem == NULL) {
     return;
   }

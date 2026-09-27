@@ -86,3 +86,49 @@ int api_utils_write_response(int socket, ResponseStatus status, uint32_t details
     return code;
 }
 
+uint64_t api_utils_get_center_freq(const struct ModemRequest *req) {
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->center_freq;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
+      return req->bpsk->center_freq;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->center_freq;
+    default:
+      return 0;
+  }
+}
+
+uint64_t api_utils_get_sample_rate(const struct ModemRequest *req) {
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->sample_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
+      return req->bpsk->sample_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->sample_rate;
+    default:
+      return 0;
+  }
+}
+
+uint32_t api_utils_get_baud_rate(const struct ModemRequest *req) {
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      return req->gfsk->baud_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      return req->bpsk->baud_rate;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      return req->psk_pm->baud_rate;
+    default:
+      return 0;
+  }
+}
