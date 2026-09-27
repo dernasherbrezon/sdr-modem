@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
-#include "dsp/modem.h"
+#include "dsp/sdr_modem.h"
 #include "queue.h"
 #include <complex.h>
 #include "tcp_utils.h"

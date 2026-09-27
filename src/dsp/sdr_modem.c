@@ -1,4 +1,4 @@
-#include "modem.h"
+#include "sdr_modem.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -13,6 +13,41 @@
 // so that the half-band filter's own transition band does not clip the signal
 #define MODEM_HALFBAND_MIN_OVERSAMPLE 2.0f
 #define MODEM_HALFBAND_MAX_STAGES 6
+
+struct sdr_modem_t {
+  void *modem;
+
+  void (*modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
+
+  void (*demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
+
+  size_t (*max_modulation_buffer_length)(void *modem);
+
+  void (*destroy)(void *modem);
+
+  // optional. decimates raw I/Q down to just above the signal bandwidth before demodulate, so the
+  // wrapped modem's own DSP chain runs at a lower, cheaper sample rate
+  halfband_decim *halfband;
+
+  // optional. applied to raw I/Q before demodulate and to the modulated output before tx
+  freq_offset *freq_offset;
+
+  // optional. dumps raw I/Q samples for debugging: on rx, the (possibly freq_offset-corrected)
+  // samples right before demodulate; on tx, the modulated samples right after modulate, before
+  // freq_offset correction is applied
+  FILE *debug_freq_offset_file;
+
+  // optional. rx only: dumps the baseband I/Q samples right after halfband decimation
+  // (i.e. right before the wrapped demodulator runs), or the freq_offset-corrected raw
+  // input when no halfband decimation is configured
+  FILE *debug_baseband_file;
+
+  // which wrapped modem is in use, needed to dispatch modem-specific debug setters
+  ModemRequest__ModemSettingsCase modem_settings_case;
+
+  // sample rate seen by the wrapped modem, i.e. after halfband decimation
+  uint64_t baseband_sample_rate;
+};
 
 static uint64_t modem_get_sample_rate(ModemRequest *req) {
   switch (req->modem_settings_case) {

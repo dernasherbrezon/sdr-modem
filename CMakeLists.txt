@@ -24,7 +24,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_correlator.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sdr_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/psk_pm_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c

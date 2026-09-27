@@ -19,7 +19,7 @@
 #include "api_utils.h"
 #include "dsp_worker.h"
 #include "sdr_worker.h"
-#include "dsp/modem.h"
+#include "dsp/sdr_modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"

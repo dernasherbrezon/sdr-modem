@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <string.h>
 
-#include "dsp/modem.h"
+#include "dsp/sdr_modem.h"
 #include "sdr/file_source.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_device.h"
