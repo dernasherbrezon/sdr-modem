@@ -29,11 +29,8 @@
 typedef struct gfsk_modem_t gfsk_modem;
 
 typedef struct {
-  // rate the demodulator's DSP chain runs at, in Hz (i.e. after any decimation the caller applied upstream)
-  uint64_t rx_sample_rate;
-  // raw output rate of the modulator, in Hz. may differ from rx_sample_rate
-  uint64_t tx_sample_rate;
-  uint32_t baud_rate;        // both rx_sample_rate / baud_rate and tx_sample_rate / baud_rate must be >= 2
+  uint64_t sample_rate;      // sample rate of the input/output I/Q stream, in Hz
+  uint32_t baud_rate;        // sample_rate / baud_rate must be >= 2
   int64_t deviation;         // frequency deviation, in Hz. must not be 0
   uint32_t bandwidth;        // full occupied bandwidth, in Hz. 0 disables the input low-pass filter
   float bt;                  // gaussian filter bandwidth-time product, in (0, 1]

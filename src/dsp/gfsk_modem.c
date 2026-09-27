@@ -191,13 +191,12 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
     fprintf(stderr, "<3>gfsk modem: syncword_bits must not be more than %zu: %u\n", sizeof(settings->syncword) * 8, settings->syncword_bits);
     return -EINVAL;
   }
-  if ((double) settings->rx_sample_rate / (double) settings->baud_rate < 2.0 || (double) settings->tx_sample_rate / (double) settings->baud_rate < 2.0) {
+  if ((double) settings->sample_rate / (double) settings->baud_rate < 2.0) {
     fprintf(stderr, "<3>gfsk modem: samples per symbol must be at least 2; check sample_rate/baud_rate\n");
     return -EINVAL;
   }
   uint64_t internal_sample_rate = (uint64_t) GFSK_MODEM_SPS * (uint64_t) settings->baud_rate;
-  bool rx_needs_resampling = settings->rx_sample_rate != internal_sample_rate;
-  bool tx_needs_resampling = settings->tx_sample_rate != internal_sample_rate;
+  bool needs_resampling = settings->sample_rate != internal_sample_rate;
 
   struct gfsk_modem_t *result = malloc(sizeof(struct gfsk_modem_t));
   if (result == NULL) {
@@ -212,8 +211,8 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
   //////// RX chain
 
   size_t rx_max_input_buffer_length = max_input_buffer_length;
-  if (rx_needs_resampling) {
-    double resample_rate = (double) internal_sample_rate / (double) settings->rx_sample_rate;
+  if (needs_resampling) {
+    double resample_rate = (double) internal_sample_rate / (double) settings->sample_rate;
     result->resampler_rx = msresamp_crcf_create((float) resample_rate, GFSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
     if (result->resampler_rx == NULL) {
       gfsk_modem_destroy(result);
@@ -285,8 +284,8 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
     return -EINVAL;
   }
 
-  if (tx_needs_resampling) {
-    double resample_rate = (double) settings->tx_sample_rate / (double) internal_sample_rate;
+  if (needs_resampling) {
+    double resample_rate = (double) settings->sample_rate / (double) internal_sample_rate;
     result->resampler_tx = msresamp_crcf_create((float) resample_rate, GFSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB);
     if (result->resampler_tx == NULL) {
       gfsk_modem_destroy(result);

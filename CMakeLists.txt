@@ -26,6 +26,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/gfsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/sdr_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_decim.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_interp.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/psk_pm_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
@@ -114,6 +115,10 @@ target_link_libraries(test_psk_pm_modem sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_halfband_decim COMMAND test_halfband_decim)
 add_executable(test_halfband_decim ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_decim.c)
 target_link_libraries(test_halfband_decim sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_halfband_interp COMMAND test_halfband_interp)
+add_executable(test_halfband_interp ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_interp.c)
+target_link_libraries(test_halfband_interp sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_linked_list COMMAND test_linked_list)
 add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)

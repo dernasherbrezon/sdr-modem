@@ -189,8 +189,8 @@ void test_plutosdr_tx() {
   size_t actual_len = 0;
   iio_lib_mock_get_tx(&actual, &actual_len);
 
-  // gfsk has a constant envelope. the tx resampler (19200 -> 580000) ramps up during its filter
-  // delay, so check only the samples after it
+  // gfsk has a constant envelope. the tx resampler (19200 -> 145000) and the halfband interpolator
+  // (145000 -> 580000) ramp up during their filter delay, so check only the samples after it
   size_t skip_samples = 600;
   size_t check_samples = 1000;
   TEST_ASSERT_GREATER_OR_EQUAL(2 * (skip_samples + check_samples), actual_len);

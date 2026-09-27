@@ -37,8 +37,7 @@ uint8_t *mod_input = NULL;
 
 static gfsk_modem_settings default_settings(uint64_t sample_rate, uint32_t deviation, uint32_t syncword_bits) {
   gfsk_modem_settings settings = {0};
-  settings.rx_sample_rate = sample_rate;
-  settings.tx_sample_rate = sample_rate;
+  settings.sample_rate = sample_rate;
   settings.baud_rate = BAUD_RATE;
   settings.deviation = deviation;
   settings.bandwidth = 0;
@@ -177,7 +176,7 @@ void test_symsync_soft_symbols_scale() {
   float complex *input = malloc(sizeof(float complex) * len);
   TEST_ASSERT_NOT_NULL(input);
   for (size_t i = 0; i < len; i++) {
-    input[i] = cexpf(I * (float) (2.0 * M_PI * (BAUD_RATE / 4.0) * (double) i / (double) settings.rx_sample_rate));
+    input[i] = cexpf(I * (float) (2.0 * M_PI * (BAUD_RATE / 4.0) * (double) i / (double) settings.sample_rate));
   }
   int8_t *output = NULL;
   size_t output_len = 0;
@@ -199,7 +198,7 @@ void test_soft_symbols_scale() {
   float complex *input = malloc(sizeof(float complex) * len);
   TEST_ASSERT_NOT_NULL(input);
   for (size_t i = 0; i < len; i++) {
-    input[i] = cexpf(I * (float) (2.0 * M_PI * (BAUD_RATE / 2.0) * (double) i / (double) settings.rx_sample_rate));
+    input[i] = cexpf(I * (float) (2.0 * M_PI * (BAUD_RATE / 2.0) * (double) i / (double) settings.sample_rate));
   }
   int8_t *output = NULL;
   size_t output_len = 0;
@@ -368,7 +367,7 @@ void test_modulation_deviation() {
   for (size_t i = 0; i < count; i++) {
     sum += cargf(conjf(tail[i]) * tail[i + 1]);
   }
-  double frequency = sum / (double) count * settings.tx_sample_rate / (2 * M_PI);
+  double frequency = sum / (double) count * settings.sample_rate / (2 * M_PI);
   TEST_ASSERT_FLOAT_WITHIN(30.0f, 3000.0f, (float) frequency);
   // constant envelope
   TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, cabsf(tail[100]));
@@ -403,13 +402,6 @@ void test_create_invalid_syncword() {
 void test_create_smallest_sps() {
   gfsk_modem_settings settings = default_settings(2 * BAUD_RATE, 2400, SYNC_WORD_BITS);
   TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, INPUT_LEN, &mod));
-}
-
-// rx runs at a different (decimated) rate than the raw tx one
-void test_create_rx_rate_differs_from_tx() {
-  gfsk_modem_settings settings = default_settings(192000, 2400, SYNC_WORD_BITS);
-  settings.rx_sample_rate = 24000;
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, INPUT_LEN, &demod));
 }
 
 void test_invalid_buffers() {
@@ -487,7 +479,6 @@ int main(void) {
   RUN_TEST(test_create_invalid_settings);
   RUN_TEST(test_create_invalid_syncword);
   RUN_TEST(test_create_smallest_sps);
-  RUN_TEST(test_create_rx_rate_differs_from_tx);
   RUN_TEST(test_invalid_buffers);
   return UNITY_END();
 }

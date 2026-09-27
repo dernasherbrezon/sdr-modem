@@ -221,8 +221,7 @@ static int create_psk_pm(const modem_case *modem_case, uint32_t chunk_bytes, mod
 
 static int create_gfsk(const modem_case *modem_case, uint32_t chunk_bytes, modem_pair *pair) {
   gfsk_modem_settings settings = {
-      .rx_sample_rate = modem_case->sample_rate,
-      .tx_sample_rate = modem_case->sample_rate,
+      .sample_rate = modem_case->sample_rate,
       .baud_rate = modem_case->baud_rate,
       .deviation = GFSK_DEVIATION,
       .bandwidth = GFSK_BANDWIDTH,

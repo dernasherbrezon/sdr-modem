@@ -20,8 +20,7 @@ int main(void) {
 void perf_gfsk_mod() {
   gfsk_modem *mod = NULL;
   gfsk_modem_settings settings = {
-    .rx_sample_rate = 19200,
-    .tx_sample_rate = 19200,
+    .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
     .bandwidth = 10800,
@@ -72,8 +71,7 @@ void perf_gfsk_mod() {
 
 void perf_gfsk_demod() {
   gfsk_modem_settings settings = {
-    .rx_sample_rate = 19200,
-    .tx_sample_rate = 19200,
+    .sample_rate = 19200,
     .baud_rate = 4800,
     .deviation = 3000,
     .bandwidth = 10800,
