@@ -116,6 +116,11 @@ typedef enum {
 struct  ModemRequest
 {
   ProtobufCMessage base;
+  uint64_t syncword;
+  /*
+   * 0 means no syncword used
+   */
+  uint32_t syncword_bits;
   ModemRequest__ModemSettingsCase modem_settings_case;
   union {
     PskModemSettings *bpsk;
@@ -132,7 +137,7 @@ struct  ModemRequest
 };
 #define MODEM_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&modem_request__descriptor) \
-, MODEM_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, MODEM_REQUEST__FRAMING__NOT_SET, {0} }
+, 0, 0, MODEM_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, MODEM_REQUEST__FRAMING__NOT_SET, {0} }
 
 
 struct  Response

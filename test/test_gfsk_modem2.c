@@ -23,8 +23,9 @@
 // noiseless loopback: everything from the sync word on should be recovered
 #define MAX_MISMATCH_RATIO 0.02
 
-// same as the one hardcoded in gfsk_modem2.c: ais training sequence + hdlc flag, on-air
+// ais training sequence + hdlc flag, on-air
 static const uint8_t SYNC_WORD[] = {0xCC, 0xCC, 0xCC, 0xFE};
+#define SYNC_WORD_BITS (sizeof(SYNC_WORD) * 8)
 // nrzi can invert the polarity of the whole burst
 static const uint8_t SYNC_WORD_INVERTED[] = {0x33, 0x33, 0x33, 0x01};
 
@@ -94,11 +95,11 @@ static double best_mismatch_ratio(const int8_t *output, size_t output_len) {
 static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz) {
   GfskModemSettings settings = default_settings(sample_rate, deviation);
 
-  int code = gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod);
+  int code = gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod);
   TEST_ASSERT_EQUAL_INT(0, code);
   // demodulator has to accept everything the modulator can produce
   uint32_t max_samples = (uint32_t) gfsk_modem2_max_modulation_buffer_length(mod);
-  code = gfsk_modem2_create(&settings, settings.sample_rate, max_samples, &demod);
+  code = gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, max_samples, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(INPUT_LEN);
@@ -153,7 +154,7 @@ void test_carrier_offset_fractional_h05() { round_trip(44100, BAUD_RATE / 4, -15
 void test_soft_symbols_scale() {
   GfskModemSettings settings = default_settings(4 * BAUD_RATE, BAUD_RATE / 2);
   settings.use_dc_block = false;
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, 4096, &demod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, 4096, &demod));
   size_t len = 4096;
   float complex *input = malloc(sizeof(float complex) * len);
   TEST_ASSERT_NOT_NULL(input);
@@ -174,10 +175,10 @@ void test_soft_symbols_scale() {
 // configured deviation is twice the actual one
 void test_soft_symbols_normalized_by_sync_word() {
   GfskModemSettings settings = default_settings(8 * BAUD_RATE, BAUD_RATE / 4);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod));
   settings.deviation = BAUD_RATE / 2;
   uint32_t max_samples = (uint32_t) gfsk_modem2_max_modulation_buffer_length(mod);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, max_samples, &demod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, max_samples, &demod));
 
   uint8_t input[4 + 16 + 16 + 8];
   memcpy(input, SYNC_WORD, sizeof(SYNC_WORD));
@@ -265,9 +266,9 @@ static double burst_mismatch_ratio(const int8_t *output, size_t output_len, cons
 void test_bursts() {
   uint64_t sample_rate = 44100;
   GfskModemSettings settings = default_settings(sample_rate, BAUD_RATE / 4);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod));
   size_t chunk_len = 4096;
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, (uint32_t) chunk_len, &demod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, (uint32_t) chunk_len, &demod));
 
   setup_random_input(2 * INPUT_LEN);
   uint8_t *first = mod_input;
@@ -313,7 +314,7 @@ void test_bursts() {
 // modulated tone frequency must match the configured deviation: a stream of 1 bits at +deviation
 void test_modulation_deviation() {
   GfskModemSettings settings = default_settings(8 * BAUD_RATE, 3000);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, 64, &mod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, 64, &mod));
   uint8_t ones[64];
   memset(ones, 0xFF, sizeof(ones));
   float complex *output = NULL;
@@ -338,7 +339,7 @@ static void assert_create_fails(uint64_t sample_rate, uint32_t baud_rate, uint32
   settings.baud_rate = baud_rate;
   settings.bt = bt;
   gfsk_modem2 *created = NULL;
-  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, sample_rate, INPUT_LEN, &created));
+  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, sample_rate, INPUT_LEN, &created));
   TEST_ASSERT_NULL(created);
 }
 
@@ -353,20 +354,28 @@ void test_create_invalid_settings() {
   assert_create_fails(48000, BAUD_RATE, 2400, 1.5f);
 }
 
+void test_create_without_syncword() {
+  GfskModemSettings settings = default_settings(48000, 2400);
+  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, NULL, 0, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_NULL(mod);
+  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 0, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_NULL(mod);
+}
+
 void test_create_smallest_sps() {
   GfskModemSettings settings = default_settings(2 * BAUD_RATE, 2400);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod));
 }
 
 // rx runs at a different (decimated) rate than the raw tx one
 void test_create_rx_rate_differs_from_tx() {
   GfskModemSettings settings = default_settings(192000, 2400);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, 24000, INPUT_LEN, &demod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, 24000, INPUT_LEN, &demod));
 }
 
 void test_invalid_buffers() {
   GfskModemSettings settings = default_settings(44100, 2400);
-  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, INPUT_LEN, &mod));
   float complex *input = calloc(INPUT_LEN + 1, sizeof(float complex));
   TEST_ASSERT_NOT_NULL(input);
 
@@ -432,6 +441,7 @@ int main(void) {
   RUN_TEST(test_bursts);
   RUN_TEST(test_modulation_deviation);
   RUN_TEST(test_create_invalid_settings);
+  RUN_TEST(test_create_without_syncword);
   RUN_TEST(test_create_smallest_sps);
   RUN_TEST(test_create_rx_rate_differs_from_tx);
   RUN_TEST(test_invalid_buffers);

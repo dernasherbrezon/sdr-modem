@@ -53,6 +53,9 @@ message ModemRequest {
     oneof framing {
         none_framing none = 9;
     }
+    uint64 syncword = 16;
+    // 0 means no syncword used
+    uint32 syncword_bits = 17;
 }
 
 enum response_status {

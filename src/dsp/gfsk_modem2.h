@@ -14,9 +14,8 @@
 // Differences from gfsk_modem:
 //  - modulation: liquid's cpfskmod (LIQUID_CPFSK_GMSK pulse, modulation index h = 2 * deviation / baud_rate)
 //  - demodulation is data-aided and meant for bursts: liquid's freqdem discriminator and a gmsk
-//    receive filter, then a correlator looks for a known sync word (currently hardcoded: ais
-//    training sequence + hdlc flag, either polarity). its peak gives the symbol timing, the
-//    frequency offset (dc) and the amplitude of the burst, which are then held for the whole burst:
+//    receive filter, then a correlator looks for the sync word (either polarity). its peak gives
+//    the symbol timing, the frequency offset (dc) and the amplitude of the burst, which are then held for the whole burst:
 //    there is no timing loop and no dc blocker, so settings->use_dc_block is ignored. soft symbols
 //    are normalized by the amplitude of the sync word, so +-127 does not depend on the deviation.
 //    the output is continuous: between bursts the last estimates are kept. the sync word itself is
@@ -31,7 +30,8 @@ typedef struct gfsk_modem2_t gfsk_modem2;
 // caller applied upstream); it may differ from settings->sample_rate, which is always the raw
 // input/output rate and is still used as-is for the TX (modulate) chain.
 // settings->bt must be in (0, 1]
-int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem);
+// syncword - on-air symbols, msb first (see ModemRequest.syncword); syncword_bits must not be 0
+int gfsk_modem2_create(GfskModemSettings *settings, const uint8_t *syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem);
 
 void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 

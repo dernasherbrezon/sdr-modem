@@ -16,13 +16,6 @@
 #define GFSK_MODEM2_LOWPASS_NUM_TAPS 129
 #define GFSK_MODEM2_LOWPASS_STOPBAND_ATTENUATION_DB 60.0f
 
-// FIXME: hardcoded until it is moved to the settings. on-air symbols (i.e. after nrzi, msb first) of
-// the ais training sequence (24 bits) + hdlc start flag. nrzi makes the polarity arbitrary, so
-// both the sync word and its inverse are detected
-// static const uint8_t GFSK_MODEM2_SYNC_WORD[] = {0xCC, 0xCC, 0xCC, 0xFE};
-// static const uint8_t GFSK_MODEM2_SYNC_WORD[] = { 0x50, 0x72, 0xF6, 0x4B };
-static const uint8_t GFSK_MODEM2_SYNC_WORD[] = {0xAA, 0xAA, 0xAA, 0x7E};
-#define GFSK_MODEM2_SYNC_WORD_BITS 32
 // normalized correlation (pearson, so independent of amplitude and frequency offset) to declare
 // the sync word found
 #define GFSK_MODEM2_CORRELATION_THRESHOLD 0.7f
@@ -90,13 +83,17 @@ static int gfsk_modem2_create_rx_filter(float bt, float **filter, unsigned int *
   return 0;
 }
 
-int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem) {
+int gfsk_modem2_create(GfskModemSettings *settings, const uint8_t *syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem) {
   if (settings->baud_rate == 0 || settings->deviation == 0) {
     fprintf(stderr, "<3>gfsk modem2: baud_rate and deviation must not be 0\n");
     return -EINVAL;
   }
   if (settings->bt <= 0.0f || settings->bt > 1.0f) {
     fprintf(stderr, "<3>gfsk modem2: bt must be in (0, 1]: %f\n", settings->bt);
+    return -EINVAL;
+  }
+  if (syncword == NULL || syncword_bits == 0) {
+    fprintf(stderr, "<3>gfsk modem2: syncword is required\n");
     return -EINVAL;
   }
   if ((double) sample_rate / (double) settings->baud_rate < 2.0 || (double) settings->sample_rate / (double) settings->baud_rate < 2.0) {
@@ -176,7 +173,7 @@ int gfsk_modem2_create(GfskModemSettings *settings, uint64_t sample_rate, uint32
     return code;
   }
   result->matched_filter = firfilt_rrrf_create(rx_filter, rx_filter_len);
-  code = gfsk_correlator_create(GFSK_MODEM2_SPS, settings->bt, GFSK_MODEM2_FILTER_DELAY, rx_filter, rx_filter_len, GFSK_MODEM2_SYNC_WORD, GFSK_MODEM2_SYNC_WORD_BITS, GFSK_MODEM2_CORRELATION_THRESHOLD, rx_max_input_buffer_length, &result->correlator);
+  code = gfsk_correlator_create(GFSK_MODEM2_SPS, settings->bt, GFSK_MODEM2_FILTER_DELAY, rx_filter, rx_filter_len, syncword, syncword_bits, GFSK_MODEM2_CORRELATION_THRESHOLD, rx_max_input_buffer_length, &result->correlator);
   free(rx_filter);
   if (result->matched_filter == NULL) {
     gfsk_modem2_destroy(result);

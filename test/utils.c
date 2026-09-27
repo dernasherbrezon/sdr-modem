@@ -17,6 +17,8 @@ struct ModemRequest *create_request() {
   struct ModemRequest result = MODEM_REQUEST__INIT;
   result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
   result.gfsk = &gfsk_settings;
+  result.syncword = 0xCCCCCCFE;
+  result.syncword_bits = 32;
 
   size_t len = modem_request__get_packed_size(&result);
   uint8_t *buffer = malloc(sizeof(uint8_t) * len);

@@ -753,7 +753,7 @@ const ProtobufCMessageDescriptor none_framing__descriptor =
   (ProtobufCMessageInit) none_framing__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor modem_request__field_descriptors[7] =
+static const ProtobufCFieldDescriptor modem_request__field_descriptors[9] =
 {
   {
     "gfsk",
@@ -839,6 +839,30 @@ static const ProtobufCFieldDescriptor modem_request__field_descriptors[7] =
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "syncword",
+    16,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(ModemRequest, syncword),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "syncword_bits",
+    17,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(ModemRequest, syncword_bits),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned modem_request__field_indices_by_name[] = {
   1,   /* field[1] = bpsk */
@@ -848,12 +872,15 @@ static const unsigned modem_request__field_indices_by_name[] = {
   4,   /* field[4] = oqpsk */
   5,   /* field[5] = psk_pm */
   3,   /* field[3] = sdpsk */
+  7,   /* field[7] = syncword */
+  8,   /* field[8] = syncword_bits */
 };
-static const ProtobufCIntRange modem_request__number_ranges[2 + 1] =
+static const ProtobufCIntRange modem_request__number_ranges[3 + 1] =
 {
   { 1, 0 },
   { 9, 6 },
-  { 0, 7 }
+  { 16, 7 },
+  { 0, 9 }
 };
 const ProtobufCMessageDescriptor modem_request__descriptor =
 {
@@ -863,10 +890,10 @@ const ProtobufCMessageDescriptor modem_request__descriptor =
   "ModemRequest",
   "",
   sizeof(ModemRequest),
-  7,
+  9,
   modem_request__field_descriptors,
   modem_request__field_indices_by_name,
-  2,  modem_request__number_ranges,
+  3,  modem_request__number_ranges,
   (ProtobufCMessageInit) modem_request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

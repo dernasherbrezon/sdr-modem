@@ -1,5 +1,4 @@
-// Bit error rate (BER) simulation for the modems: bpsk (BPSK, DPSK, SDPSK), oqpsk, psk_pm, gfsk and gfsk2
-// (liquid-dsp based gfsk).
+// Bit error rate (BER) simulation for the modems: bpsk (BPSK, DPSK, SDPSK), oqpsk, psk_pm, gfsk
 //
 // For every modem and every Eb/N0 point random bits are modulated, passed through an AWGN channel
 // and demodulated. The measured BER is written into a .csv file next to the theoretical BER, so the
@@ -19,7 +18,6 @@
 #include "../src/dsp/oqpsk_modem.h"
 #include "../src/dsp/psk_pm_modem.h"
 #include "../src/dsp/gfsk_modem.h"
-#include "../src/dsp/gfsk_modem2.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -268,38 +266,13 @@ static int create_gfsk(const modem_case *modem_case, uint32_t chunk_bytes, modem
   return 0;
 }
 
-static int create_gfsk2(const modem_case *modem_case, uint32_t chunk_bytes, modem_pair *pair) {
-  GfskModemSettings settings = {
-      .sample_rate = modem_case->sample_rate,
-      .baud_rate = modem_case->baud_rate,
-      .deviation = GFSK_DEVIATION,
-      .bandwidth = GFSK_BANDWIDTH,
-      .use_dc_block = true,
-      .bt = GFSK_BT
-  };
-  gfsk_modem2 *mod = NULL;
-  gfsk_modem2 *demod = NULL;
-  int code = gfsk_modem2_create(&settings, settings.sample_rate, chunk_bytes, &mod);
-  if (code != 0) {
-    return code;
-  }
-  code = gfsk_modem2_create(&settings, settings.sample_rate, (uint32_t) gfsk_modem2_max_modulation_buffer_length(mod), &demod);
-  if (code != 0) {
-    gfsk_modem2_destroy(mod);
-    return code;
-  }
-  *pair = (modem_pair) {mod, demod, gfsk_modem2_modulate, gfsk_modem2_demodulate, gfsk_modem2_destroy};
-  return 0;
-}
-
 static const modem_case CASES[] = {
     {"bpsk",   PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 2, 300, 0.0,  10.0, BPSK,  create_bpsk,   theory_coherent_psk},
     {"dpsk",   PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 1, 300, 0.0,  10.0, DPSK,  create_bpsk,   theory_differential_psk},
     {"sdpsk",  PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 1, 300, 0.0,  10.0, SDPSK, create_bpsk,   theory_differential_psk},
     {"oqpsk",  PSK_SAMPLE_RATE, PSK_BAUD_RATE, 2, 4, 300, 0.0,  10.0, BPSK,  create_oqpsk,  theory_coherent_psk},
     {"psk_pm", PSK_SAMPLE_RATE, PSK_BAUD_RATE, 1, 2, 300, 10.0, 22.0, BPSK,  create_psk_pm, theory_psk_pm},
-    {"gfsk",   GFSK_SAMPLE_RATE, GFSK_BAUD_RATE, 1, 1, 300, 0.0, 14.0, BPSK,  create_gfsk,   theory_gfsk},
-    {"gfsk2",  GFSK_SAMPLE_RATE, GFSK_BAUD_RATE, 1, 1, 300, 0.0, 14.0, BPSK,  create_gfsk2,  theory_gfsk},
+    {"gfsk",   GFSK_SAMPLE_RATE, GFSK_BAUD_RATE, 1, 1, 300, 0.0, 14.0, BPSK,  create_gfsk,   theory_gfsk}
 };
 
 // simulation ////////////////////////////////////////////////////////////////////////////////////
