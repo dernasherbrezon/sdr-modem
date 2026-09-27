@@ -360,6 +360,8 @@ void test_create_without_syncword() {
   TEST_ASSERT_NULL(mod);
   TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 0, settings.sample_rate, INPUT_LEN, &mod));
   TEST_ASSERT_NULL(mod);
+  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 65, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_NULL(mod);
 }
 
 void test_create_smallest_sps() {

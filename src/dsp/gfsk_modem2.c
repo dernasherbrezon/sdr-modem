@@ -96,6 +96,10 @@ int gfsk_modem2_create(GfskModemSettings *settings, uint64_t syncword, uint32_t 
     fprintf(stderr, "<3>gfsk modem2: syncword is required\n");
     return -EINVAL;
   }
+  if (syncword_bits > sizeof(syncword) * 8) {
+    fprintf(stderr, "<3>gfsk modem2: syncword_bits must not be more than %zu: %u\n", sizeof(syncword) * 8, syncword_bits);
+    return -EINVAL;
+  }
   if ((double) sample_rate / (double) settings->baud_rate < 2.0 || (double) settings->sample_rate / (double) settings->baud_rate < 2.0) {
     fprintf(stderr, "<3>gfsk modem2: samples per symbol must be at least 2; check sample_rate/baud_rate\n");
     return -EINVAL;
