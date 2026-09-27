@@ -17,7 +17,7 @@
 
 #if MODEM_GFSK_USE_MODEM2
 #define MODEM_GFSK_TYPE gfsk_modem2
-#define MODEM_GFSK_CREATE(req, sample_rate, max_input_buffer_length, modem) gfsk_modem2_create((req)->gfsk, (req)->syncword.data, modem_request_get_syncword_bits(req), sample_rate, max_input_buffer_length, modem)
+#define MODEM_GFSK_CREATE(req, sample_rate, max_input_buffer_length, modem) gfsk_modem2_create((req)->gfsk, (req)->syncword, (req)->syncword_bits, sample_rate, max_input_buffer_length, modem)
 #define MODEM_GFSK_MODULATE gfsk_modem2_modulate
 #define MODEM_GFSK_DEMODULATE gfsk_modem2_demodulate
 #define MODEM_GFSK_MAX_MODULATION_BUFFER_LENGTH gfsk_modem2_max_modulation_buffer_length

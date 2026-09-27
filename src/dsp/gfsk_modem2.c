@@ -83,7 +83,7 @@ static int gfsk_modem2_create_rx_filter(float bt, float **filter, unsigned int *
   return 0;
 }
 
-int gfsk_modem2_create(GfskModemSettings *settings, const uint8_t *syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem) {
+int gfsk_modem2_create(GfskModemSettings *settings, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem) {
   if (settings->baud_rate == 0 || settings->deviation == 0) {
     fprintf(stderr, "<3>gfsk modem2: baud_rate and deviation must not be 0\n");
     return -EINVAL;
@@ -92,7 +92,7 @@ int gfsk_modem2_create(GfskModemSettings *settings, const uint8_t *syncword, uin
     fprintf(stderr, "<3>gfsk modem2: bt must be in (0, 1]: %f\n", settings->bt);
     return -EINVAL;
   }
-  if (syncword == NULL || syncword_bits == 0) {
+  if (syncword_bits == 0) {
     fprintf(stderr, "<3>gfsk modem2: syncword is required\n");
     return -EINVAL;
   }

@@ -31,7 +31,7 @@ typedef struct gfsk_modem2_t gfsk_modem2;
 // input/output rate and is still used as-is for the TX (modulate) chain.
 // settings->bt must be in (0, 1]
 // syncword - on-air symbols, msb first (see ModemRequest.syncword); syncword_bits must not be 0
-int gfsk_modem2_create(GfskModemSettings *settings, const uint8_t *syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem);
+int gfsk_modem2_create(GfskModemSettings *settings, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem2 **modem);
 
 void gfsk_modem2_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 

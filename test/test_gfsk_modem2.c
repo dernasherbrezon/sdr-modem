@@ -24,7 +24,7 @@
 #define MAX_MISMATCH_RATIO 0.02
 
 // ais training sequence + hdlc flag, on-air
-static const uint8_t SYNC_WORD[] = {0xCC, 0xCC, 0xCC, 0xFE};
+static const uint32_t SYNC_WORD = 0xCCCCCCFE;
 #define SYNC_WORD_BITS (sizeof(SYNC_WORD) * 8)
 // nrzi can invert the polarity of the whole burst
 static const uint8_t SYNC_WORD_INVERTED[] = {0x33, 0x33, 0x33, 0x01};
@@ -103,7 +103,7 @@ static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(INPUT_LEN);
-  memcpy(mod_input, SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(mod_input, &SYNC_WORD, sizeof(SYNC_WORD));
 
   float complex *modulated = NULL;
   size_t modulated_len = 0;
@@ -181,7 +181,7 @@ void test_soft_symbols_normalized_by_sync_word() {
   TEST_ASSERT_EQUAL_INT(0, gfsk_modem2_create(&settings, SYNC_WORD, SYNC_WORD_BITS, settings.sample_rate, max_samples, &demod));
 
   uint8_t input[4 + 16 + 16 + 8];
-  memcpy(input, SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(input, &SYNC_WORD, sizeof(SYNC_WORD));
   memset(input + 4, 0xFF, 16);
   memset(input + 4 + 16, 0x00, 16);
   // flush the demodulator lag
@@ -273,7 +273,7 @@ void test_bursts() {
   setup_random_input(2 * INPUT_LEN);
   uint8_t *first = mod_input;
   uint8_t *second = mod_input + INPUT_LEN;
-  memcpy(first, SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(first, &SYNC_WORD, sizeof(SYNC_WORD));
   memcpy(second, SYNC_WORD_INVERTED, sizeof(SYNC_WORD_INVERTED));
 
   float sigma = 0.05f;
@@ -356,7 +356,7 @@ void test_create_invalid_settings() {
 
 void test_create_without_syncword() {
   GfskModemSettings settings = default_settings(48000, 2400);
-  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, NULL, 0, settings.sample_rate, INPUT_LEN, &mod));
+  TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, 0, 0, settings.sample_rate, INPUT_LEN, &mod));
   TEST_ASSERT_NULL(mod);
   TEST_ASSERT_EQUAL_INT(-EINVAL, gfsk_modem2_create(&settings, SYNC_WORD, 0, settings.sample_rate, INPUT_LEN, &mod));
   TEST_ASSERT_NULL(mod);

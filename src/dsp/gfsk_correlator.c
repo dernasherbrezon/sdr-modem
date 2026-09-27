@@ -58,7 +58,7 @@ struct gfsk_correlator_t {
 
 // the sync word as it comes out of the rx filter: every symbol is the tx frequency pulse
 // (LIQUID_CPFSK_GMSK) convolved with the rx filter. symbol i is centered at i * sps + sps / 2
-static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, const uint8_t *syncword, size_t syncword_bits, struct gfsk_correlator_t *correlator) {
+static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, uint64_t syncword, size_t syncword_bits, struct gfsk_correlator_t *correlator) {
   unsigned int sps = correlator->sps;
   size_t tx_pulse_len = 2 * sps * filter_delay + 1;
   float *tx_pulse = malloc(sizeof(float) * tx_pulse_len);
@@ -95,7 +95,7 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
     return -ENOMEM;
   }
   for (int i = 0; i < (int) syncword_bits; i++) {
-    float symbol = ((syncword[i / 8] >> (7 - (i % 8))) & 1U) ? 1.0f : -1.0f;
+    float symbol = ((syncword >> (syncword_bits - i - 1)) & 1U) ? 1.0f : -1.0f;
     int center = i * (int) sps + (int) sps / 2;
     for (size_t j = 0; j < correlator->template_len; j++) {
       int pulse_index = j - center + pulse_center;
@@ -126,12 +126,12 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
   return 0;
 }
 
-int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, const uint8_t *syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
+int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, uint64_t syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
   if (sps < 2 || sps % 2 != 0) {
     fprintf(stderr, "<3>gfsk correlator: samples per symbol must be even and at least 2: %u\n", sps);
     return -EINVAL;
   }
-  if (syncword == NULL || syncword_bits == 0) {
+  if (syncword_bits == 0) {
     fprintf(stderr, "<3>gfsk correlator: syncword must not be empty\n");
     return -EINVAL;
   }
