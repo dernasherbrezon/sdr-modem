@@ -60,12 +60,7 @@ void test_round_trip() {
   code = psk_pm_modem_create(&settings, max_buffer_length, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
-  mod_input = malloc(sizeof(uint8_t) * input_len);
-  TEST_ASSERT(mod_input != NULL);
-  srand(42);
-  for (size_t i = 0; i < input_len; i++) {
-    mod_input[i] = (uint8_t) rand();
-  }
+  setup_random_input(&mod_input, input_len);
 
   float complex *modulated = NULL;
   size_t modulated_len = 0;

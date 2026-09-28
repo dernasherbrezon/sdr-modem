@@ -48,19 +48,6 @@ static gfsk_modem_settings default_settings(uint64_t sample_rate, uint32_t devia
   return settings;
 }
 
-static void setup_random_input(size_t len) {
-  mod_input = malloc(sizeof(uint8_t) * len);
-  TEST_ASSERT(mod_input != NULL);
-  // own generator so that the data is the same on every platform
-  uint32_t state = 0x2545F491;
-  for (size_t i = 0; i < len; i++) {
-    state ^= state << 13;
-    state ^= state >> 17;
-    state ^= state << 5;
-    mod_input[i] = (uint8_t) (state >> 8);
-  }
-}
-
 static unsigned int input_bit(size_t index) {
   return (mod_input[index / 8] >> (7 - (index % 8))) & 1U;
 }
@@ -106,7 +93,7 @@ static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double
   code = gfsk_modem_create(&settings, max_samples, &demod);
   TEST_ASSERT_EQUAL_INT(0, code);
 
-  setup_random_input(INPUT_LEN);
+  setup_random_input(&mod_input, INPUT_LEN);
   memcpy(mod_input, &SYNC_WORD, sizeof(SYNC_WORD));
 
   float complex *modulated = NULL;
@@ -309,7 +296,7 @@ void test_bursts() {
   size_t chunk_len = 4096;
   TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, (uint32_t) chunk_len, &demod));
 
-  setup_random_input(2 * INPUT_LEN);
+  setup_random_input(&mod_input, 2 * INPUT_LEN);
   uint8_t *first = mod_input;
   uint8_t *second = mod_input + INPUT_LEN;
   memcpy(first, &SYNC_WORD, sizeof(SYNC_WORD));
@@ -426,7 +413,7 @@ void test_invalid_buffers() {
   TEST_ASSERT_EQUAL_size_t(0, output_len);
   free(input);
 
-  setup_random_input(INPUT_LEN + 1);
+  setup_random_input(&mod_input, INPUT_LEN + 1);
   float complex *modulated = (float complex *) &sentinel;
   size_t modulated_len = 99;
   gfsk_modem_modulate(mod_input, INPUT_LEN + 1, &modulated, &modulated_len, mod);

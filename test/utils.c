@@ -51,6 +51,20 @@ void setup_input_complex_data(float complex **input, size_t input_offset, size_t
   *input = result;
 }
 
+void setup_random_input(uint8_t **input, size_t len) {
+  uint8_t *result = malloc(sizeof(uint8_t) * len);
+  TEST_ASSERT(result != NULL);
+  // own generator so that the data is the same on every platform
+  uint32_t state = 0x2545F491;
+  for (size_t i = 0; i < len; i++) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    result[i] = (uint8_t) (state >> 8);
+  }
+  *input = result;
+}
+
 void assert_complex_array(const float expected[], size_t expected_size, float complex *actual, size_t actual_size) {
   TEST_ASSERT_EQUAL_INT(expected_size, actual_size);
   for (size_t i = 0, j = 0; i < expected_size * 2; i += 2, j++) {
