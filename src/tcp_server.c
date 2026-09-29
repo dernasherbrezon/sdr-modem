@@ -70,7 +70,7 @@ static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) 
   }
   if (req->modem_settings_case != MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     rx->rx_sample_rate = api_utils_get_sample_rate(req);
-    rx->rx_center_freq = api_utils_get_center_freq(req);
+    rx->rx_center_freq = req->center_freq;
   }
 
   *result = rx;
@@ -82,7 +82,7 @@ static int validate_request(const struct ModemRequest *req, uint32_t client_id, 
     fprintf(stderr, "<3>[%d] modem settings are missing\n", client_id);
     return -1;
   }
-  if (api_utils_get_center_freq(req) == 0) {
+  if (req->center_freq == 0) {
     fprintf(stderr, "<3>[%d] missing center_freq parameter\n", client_id);
     return -1;
   }
@@ -281,7 +281,7 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
     tx_config->sample_rate = api_utils_get_sample_rate(req);
-    tx_config->center_freq = api_utils_get_center_freq(req);
+    tx_config->center_freq = req->center_freq;
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = server->app_config->plutosdr_gain;
     int code = plutosdr_create(id, false, NULL, tx_config, server->app_config->plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, output);
@@ -410,7 +410,15 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  int code = sdr_modem_create(server->app_config, tcp_worker->tx_req, NULL, &tcp_worker->modem);
+  int modem_type = MODEM_TYPE_NONE;
+  sdr_modem_settings modem_settings;
+  int code = api_utils_convert_modem_request(tcp_worker->tx_req, &modem_type, &modem_settings);
+  if (code != 0) {
+    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+    tcp_worker_destroy(tcp_worker);
+    return;
+  }
+  code = sdr_modem_create(modem_type, &modem_settings, server->app_config->buffer_size, NULL, &tcp_worker->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", tcp_worker->id);
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
@@ -448,7 +456,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
   fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          api_utils_get_center_freq(tcp_worker->tx_req),
+          tcp_worker->tx_req->center_freq,
           api_utils_get_sample_rate(tcp_worker->tx_req),
           api_utils_get_baud_rate(tcp_worker->tx_req));
 }
@@ -485,10 +493,19 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
+  int modem_type = MODEM_TYPE_NONE;
+  sdr_modem_settings modem_settings;
+  int code = api_utils_convert_modem_request(tcp_worker->rx_req, &modem_type, &modem_settings);
+  if (code != 0) {
+    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+    tcp_worker_destroy(tcp_worker);
+    return;
+  }
+
   tcp_worker->is_running = true;
 
   pthread_t client_thread;
-  int code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
+  code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
   if (code != 0) {
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
     tcp_worker_destroy(tcp_worker);
@@ -497,7 +514,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   tcp_worker->client_thread = client_thread;
 
   dsp_worker *dsp_worker = NULL;
-  code = dsp_worker_create(tcp_worker->id, tcp_worker->client_socket, server->app_config, tcp_worker->rx_req, &dsp_worker);
+  code = dsp_worker_create(tcp_worker->id, tcp_worker->client_socket, server->app_config, modem_type, &modem_settings, &dsp_worker);
   if (code != 0) {
     tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
     tcp_worker_destroy(tcp_worker);
@@ -517,7 +534,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
 
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
   fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          api_utils_get_center_freq(tcp_worker->rx_req),
+          tcp_worker->rx_req->center_freq,
           api_utils_get_sample_rate(tcp_worker->rx_req), api_utils_get_baud_rate(tcp_worker->rx_req));
 }
 

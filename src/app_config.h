@@ -4,18 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sdr/iio_lib.h"
-#include "api.pb-c.h"
+#include "dsp/gfsk_modem.h"
+#include "dsp/bpsk_modem.h"
+#include "dsp/psk_pm_modem.h"
 
 #define SDR_TYPE_PLUTOSDR 1
 #define SDR_TYPE_FILE 2
 #define SDR_TYPE_SDR_SERVER 3
-
-#define MODEM_TYPE_NONE 0
-#define MODEM_TYPE_GFSK 1
-#define MODEM_TYPE_BPSK 2
-#define MODEM_TYPE_DPSK 3
-#define MODEM_TYPE_SDPSK 4
-#define MODEM_TYPE_PSK_PM 6
 
 #define FRAMING_TYPE_NONE 0
 
@@ -57,7 +52,12 @@ typedef struct {
 
   int modem;
   int framing;
-  struct ModemRequest req;
+  uint64_t center_freq;
+  // settings of each modem type are kept separately, the active one is selected by "modem"
+  gfsk_modem_settings gfsk;
+  // bpsk, dpsk and sdpsk share the same settings. psk.type is derived from "modem"
+  bpsk_modem_settings psk;
+  psk_pm_modem_settings psk_pm;
   char *freq_offset_file;
   char *debug_freq_offset_file;
   char *debug_constellation_file;
@@ -67,6 +67,9 @@ typedef struct {
 } app_config;
 
 int app_config_create(int argc, char **argv, app_config **config);
+
+// sample rate of the selected modem. 0 if modem is not selected
+uint64_t app_config_get_sample_rate(const app_config *config);
 
 void app_config_destroy(app_config *config);
 

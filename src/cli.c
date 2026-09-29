@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <string.h>
 
-#include "api_utils.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/file_source.h"
 #include "sdr/plutosdr.h"
@@ -30,8 +29,8 @@ struct cli_t {
 static int cli_create_sdr(app_config *config, struct cli_t *result) {
   if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
-      .rx_center_freq = api_utils_get_center_freq(&config->req),
-      .rx_sample_rate = api_utils_get_sample_rate(&config->req)
+      .rx_center_freq = config->center_freq,
+      .rx_sample_rate = app_config_get_sample_rate(config)
     };
     int code = sdr_server_client_create(1, &rx, config->sdr_server_address, config->sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->device);
     if (code != 0) {
@@ -42,8 +41,8 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
     if (stream_config == NULL) {
       return -1;
     }
-    stream_config->sample_rate = api_utils_get_sample_rate(&config->req);
-    stream_config->center_freq = api_utils_get_center_freq(&config->req);
+    stream_config->sample_rate = app_config_get_sample_rate(config);
+    stream_config->center_freq = config->center_freq;
     stream_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     stream_config->manual_gain = config->plutosdr_gain;
     int code = 0;
@@ -59,10 +58,10 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
   } else if (config->sdr_type == SDR_TYPE_FILE) {
     int code = 0;
     if (config->direction == DIRECTION_RX) {
-      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, api_utils_get_sample_rate(&config->req), config->buffer_size, &result->device);
+      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, app_config_get_sample_rate(config), config->buffer_size, &result->device);
     } else {
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, api_utils_get_sample_rate(&config->req), max_modulation_buffer_length, &result->device);
+      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, app_config_get_sample_rate(config), max_modulation_buffer_length, &result->device);
     }
     if (code != 0) {
       return -1;
@@ -75,7 +74,24 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
 }
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
-  int code = sdr_modem_create(config, &config->req, config->freq_offset_file, &result->modem);
+  sdr_modem_settings settings;
+  switch (config->modem) {
+    case MODEM_TYPE_GFSK:
+      settings.gfsk = config->gfsk;
+      break;
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK:
+      settings.psk = config->psk;
+      break;
+    case MODEM_TYPE_PSK_PM:
+      settings.psk_pm = config->psk_pm;
+      break;
+    default:
+      fprintf(stderr, "<3>unsupported modem type: %d\n", config->modem);
+      return -1;
+  }
+  int code = sdr_modem_create(config->modem, &settings, config->buffer_size, config->freq_offset_file, &result->modem);
   if (code != 0) {
     return code;
   }

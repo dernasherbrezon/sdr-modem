@@ -37,7 +37,6 @@ typedef enum _ResponseStatus {
 struct  GfskModemSettings
 {
   ProtobufCMessage base;
-  uint64_t center_freq;
   uint32_t bandwidth;
   uint64_t sample_rate;
   uint32_t baud_rate;
@@ -47,13 +46,12 @@ struct  GfskModemSettings
 };
 #define GFSK_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&gfsk_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0 }
 
 
 struct  PskModemSettings
 {
   ProtobufCMessage base;
-  uint64_t center_freq;
   uint32_t bandwidth;
   uint64_t sample_rate;
   uint32_t baud_rate;
@@ -64,13 +62,12 @@ struct  PskModemSettings
 };
 #define PSK_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&psk_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  PskPmModemSettings
 {
   ProtobufCMessage base;
-  uint64_t center_freq;
   uint32_t baud_rate;
   uint64_t sample_rate;
   uint32_t subcarrier_frequency;
@@ -84,7 +81,7 @@ struct  PskPmModemSettings
 };
 #define PSK_PM_MODEM_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&psk_pm_modem_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  NoneFraming
@@ -115,6 +112,7 @@ typedef enum {
 struct  ModemRequest
 {
   ProtobufCMessage base;
+  uint64_t center_freq;
   uint64_t syncword;
   /*
    * 0 means no syncword used
@@ -135,7 +133,7 @@ struct  ModemRequest
 };
 #define MODEM_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&modem_request__descriptor) \
-, 0, 0, MODEM_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, MODEM_REQUEST__FRAMING__NOT_SET, {0} }
+, 0, 0, 0, MODEM_REQUEST__MODEM_SETTINGS__NOT_SET, {0}, MODEM_REQUEST__FRAMING__NOT_SET, {0} }
 
 
 struct  Response

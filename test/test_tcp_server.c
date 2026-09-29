@@ -258,7 +258,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_request();
-  req->gfsk->center_freq = 0;
+  req->center_freq = 0;
   assert_response_with_request(client0, TYPE_RX_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
@@ -286,7 +286,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   tx_req = create_request();
-  tx_req->gfsk->center_freq = 0;
+  tx_req->center_freq = 0;
   assert_response_with_request(client0,TYPE_TX_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();
@@ -358,7 +358,7 @@ void test_multiple_clients() {
   // different frequency
   code = sdr_modem_client_create(config->bind_address, config->port, batch_size, config->read_timeout_seconds, &client2);
   TEST_ASSERT_EQUAL_INT(0, code);
-  req->gfsk->center_freq = 437525000 + 20000;
+  req->center_freq = 437525000 + 20000;
   assert_response_with_request(client2, TYPE_RX_REQUEST,TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 2, req);
 }
 

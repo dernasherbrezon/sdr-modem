@@ -89,7 +89,7 @@ static void *dsp_worker_callback(void *arg) {
   return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, struct ModemRequest *req,
+int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, int modem_type, const sdr_modem_settings *settings,
                       dsp_worker **worker) {
   struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
   if (result == NULL) {
@@ -100,7 +100,7 @@ int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config,
   result->id = id;
   result->client_socket = client_socket;
 
-  int code = sdr_modem_create(server_config, req, NULL, &result->modem);
+  int code = sdr_modem_create(modem_type, settings, server_config->buffer_size, NULL, &result->modem);
   if (code != 0) {
     fprintf(stderr, "<3>[%d] unable to create modem\n", result->id);
     dsp_worker_destroy(result);

@@ -5,14 +5,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "../api.pb-c.h"
-#include "../app_config.h"
 #include "freq_offset.h"
+#include "gfsk_modem.h"
+#include "bpsk_modem.h"
+#include "psk_pm_modem.h"
+
+#define MODEM_TYPE_NONE 0
+#define MODEM_TYPE_GFSK 1
+#define MODEM_TYPE_BPSK 2
+#define MODEM_TYPE_DPSK 3
+#define MODEM_TYPE_SDPSK 4
+#define MODEM_TYPE_PSK_PM 6
 
 typedef struct sdr_modem_t sdr_modem;
 
-// freq_offset_file may be NULL, in which case no frequency correction is applied
-int sdr_modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem);
+// modem-specific settings. the active member is selected by the MODEM_TYPE_* passed along with it
+typedef union {
+  gfsk_modem_settings gfsk;
+  // bpsk, dpsk and sdpsk share the same settings. psk.type must match the modem type
+  bpsk_modem_settings psk;
+  psk_pm_modem_settings psk_pm;
+} sdr_modem_settings;
+
+int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem);
 
 // all debug setters below accept NULL as the file name, which closes and disables the dump.
 // they are no-ops returning 0 if modem is NULL. return non-zero if the file cannot be opened.

@@ -10,13 +10,13 @@ struct ModemRequest *create_request() {
   gfsk_settings.bandwidth = 15600;
   gfsk_settings.deviation = 5000;
   gfsk_settings.sample_rate = 48000;
-  gfsk_settings.center_freq = 437525000;
   gfsk_settings.baud_rate = 9600;
   gfsk_settings.bt = 0.5f;
 
   struct ModemRequest result = MODEM_REQUEST__INIT;
   result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
   result.gfsk = &gfsk_settings;
+  result.center_freq = 437525000;
   result.syncword = 0xCCCCCCFE;
   result.syncword_bits = 32;
 

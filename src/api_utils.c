@@ -1,6 +1,7 @@
 #include "api_utils.h"
 #include "tcp_utils.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -86,22 +87,6 @@ int api_utils_write_response(int socket, ResponseStatus status, uint32_t details
     return code;
 }
 
-uint64_t api_utils_get_center_freq(const struct ModemRequest *req) {
-  switch (req->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
-      return req->gfsk->center_freq;
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      // bpsk/dpsk/sdpsk share the same settings message (union aliasing), so req->bpsk works for all 3
-      return req->bpsk->center_freq;
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
-      return req->psk_pm->center_freq;
-    default:
-      return 0;
-  }
-}
-
 uint64_t api_utils_get_sample_rate(const struct ModemRequest *req) {
   switch (req->modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
@@ -130,5 +115,64 @@ uint32_t api_utils_get_baud_rate(const struct ModemRequest *req) {
       return req->psk_pm->baud_rate;
     default:
       return 0;
+  }
+}
+
+static void api_utils_convert_psk(const PskModemSettings *req, psk_modem_type type, bpsk_modem_settings *settings) {
+  settings->sample_rate = req->sample_rate;
+  settings->baud_rate = req->baud_rate;
+  settings->rrc_beta = req->rrc_beta;
+  settings->rrc_delay = req->rrc_delay;
+  settings->costas_bandwidth = req->costas_bandwidth;
+  settings->symsync_filter_bank_size = req->symsync_filter_bank_size;
+  settings->bandwidth = req->bandwidth;
+  settings->type = type;
+}
+
+int api_utils_convert_modem_request(const struct ModemRequest *req, int *modem_type, sdr_modem_settings *settings) {
+  *settings = (sdr_modem_settings){0};
+  switch (req->modem_settings_case) {
+    case MODEM_REQUEST__MODEM_SETTINGS__NOT_SET:
+      *modem_type = MODEM_TYPE_NONE;
+      return 0;
+    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
+      *modem_type = MODEM_TYPE_GFSK;
+      settings->gfsk.sample_rate = req->gfsk->sample_rate;
+      settings->gfsk.baud_rate = req->gfsk->baud_rate;
+      settings->gfsk.deviation = req->gfsk->deviation;
+      settings->gfsk.bandwidth = req->gfsk->bandwidth;
+      settings->gfsk.bt = req->gfsk->bt;
+      settings->gfsk.use_dc_block = req->gfsk->use_dc_block;
+      settings->gfsk.syncword = req->syncword;
+      settings->gfsk.syncword_bits = req->syncword_bits;
+      return 0;
+    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
+      *modem_type = MODEM_TYPE_BPSK;
+      api_utils_convert_psk(req->bpsk, BPSK, &settings->psk);
+      return 0;
+    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
+      *modem_type = MODEM_TYPE_DPSK;
+      api_utils_convert_psk(req->dpsk, DPSK, &settings->psk);
+      return 0;
+    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+      *modem_type = MODEM_TYPE_SDPSK;
+      api_utils_convert_psk(req->sdpsk, SDPSK, &settings->psk);
+      return 0;
+    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+      *modem_type = MODEM_TYPE_PSK_PM;
+      settings->psk_pm.sample_rate = req->psk_pm->sample_rate;
+      settings->psk_pm.baud_rate = req->psk_pm->baud_rate;
+      settings->psk_pm.rrc_beta = req->psk_pm->rrc_beta;
+      settings->psk_pm.rrc_delay = req->psk_pm->rrc_delay;
+      settings->psk_pm.costas_bandwidth = req->psk_pm->costas_bandwidth;
+      settings->psk_pm.symsync_filter_bank_size = req->psk_pm->symsync_filter_bank_size;
+      settings->psk_pm.subcarrier_frequency = req->psk_pm->subcarrier_frequency;
+      settings->psk_pm.modulation_index = req->psk_pm->modulation_index;
+      settings->psk_pm.carrier_pll_bandwidth = req->psk_pm->carrier_pll_bandwidth;
+      settings->psk_pm.subcarrier_bandwidth = req->psk_pm->subcarrier_bandwidth;
+      return 0;
+    default:
+      fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
+      return -1;
   }
 }

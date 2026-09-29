@@ -1,5 +1,4 @@
 #include "sdr_modem.h"
-#include "../api_utils.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -30,7 +29,6 @@ struct sdr_modem_t {
 
   // optional. decimates raw I/Q down to just above the signal bandwidth before demodulate, so the
   // wrapped modem's own DSP chain runs at a lower, cheaper sample rate
-  // rx only
   halfband_decim *halfband;
 
   // optional. present whenever halfband is: interpolates the wrapped modem's modulated output back up
@@ -50,29 +48,12 @@ struct sdr_modem_t {
   // input when no halfband decimation is configured
   FILE *debug_baseband_file;
 
-  // which wrapped modem is in use, needed to dispatch modem-specific debug setters
-  ModemRequest__ModemSettingsCase modem_settings_case;
+  // which wrapped modem is in use (MODEM_TYPE_*), needed to dispatch modem-specific debug setters
+  int modem_type;
 
-  // sample rate seen by the wrapped modem, i.e. after halfband decimation
+  // sample rate after halfband decimation
   uint64_t baseband_sample_rate;
 };
-
-static uint32_t modem_request_get_bandwidth(ModemRequest *req) {
-  switch (req->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_GFSK:
-      return req->gfsk->bandwidth;
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
-      return (uint32_t) ((1 + req->bpsk->rrc_beta) * req->bpsk->baud_rate);
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
-      // occupied bandwidth spans the subcarrier tone on both sides of the (suppressed) carrier,
-      // plus the subcarrier's own RRC-shaped sidebands
-      return 2 * (req->psk_pm->subcarrier_frequency + (uint32_t) ((1 + req->psk_pm->rrc_beta) * req->psk_pm->baud_rate));
-    default:
-      return 0;
-  }
-}
 
 static unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
   if (bandwidth == 0) {
@@ -98,7 +79,49 @@ static float modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sample
   return cutoff;
 }
 
-static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth, uint32_t max_input_buffer_length,
+static int modem_get_bandwidth(int modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
+  switch (modem_type) {
+    case MODEM_TYPE_GFSK:
+      *bandwidth = settings->gfsk.bandwidth;
+      break;
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK:
+      *bandwidth = (uint32_t) ((1 + settings->psk.rrc_beta) * settings->psk.baud_rate);
+      break;
+    case MODEM_TYPE_PSK_PM:
+      // occupied bandwidth spans the subcarrier tone on both sides of the (suppressed) carrier,
+      // plus the subcarrier's own RRC-shaped sidebands
+      *bandwidth = 2 * (settings->psk_pm.subcarrier_frequency + (uint32_t) ((1 + settings->psk_pm.rrc_beta) * settings->psk_pm.baud_rate));
+      break;
+    default:
+      fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
+      return -1;
+  }
+  return 0;
+}
+
+static int modem_get_sample_date(int modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
+  switch (modem_type) {
+    case MODEM_TYPE_GFSK:
+      *sample_rate = settings->gfsk.sample_rate;
+      break;
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK:
+      *sample_rate = settings->psk.sample_rate;
+      break;
+    case MODEM_TYPE_PSK_PM:
+      *sample_rate = settings->psk_pm.sample_rate;
+      break;
+    default:
+      fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
+      return -1;
+  }
+  return 0;
+}
+
+static int modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_rate, uint32_t max_input_buffer_length,
                                        halfband_decim **halfband, uint64_t *decimated_sample_rate,
                                        uint32_t *decimated_max_input_buffer_length) {
   *halfband = NULL;
@@ -120,133 +143,81 @@ static int modem_halfband_decim_create(uint64_t sample_rate, uint32_t bandwidth,
   return 0;
 }
 
-static int modem_create_gfsk(GfskModemSettings *req, uint64_t syncword, uint32_t syncword_bits, uint64_t sample_rate, uint32_t max_input_buffer_length, gfsk_modem **modem) {
-  gfsk_modem_settings settings = {0};
-  settings.sample_rate = sample_rate;
-  settings.baud_rate = req->baud_rate;
-  settings.deviation = req->deviation;
-  settings.bandwidth = req->bandwidth;
-  settings.bt = req->bt;
-  settings.use_dc_block = req->use_dc_block;
-  settings.syncword = syncword;
-  settings.syncword_bits = syncword_bits;
-  return gfsk_modem_create(&settings, max_input_buffer_length, modem);
-}
-
-static int modem_create_bpsk_family(PskModemSettings *req, uint64_t sample_rate, psk_modem_type type, uint32_t max_input_buffer_length, bpsk_modem **modem) {
-  bpsk_modem_settings settings = {0};
-  settings.sample_rate = sample_rate;
-  settings.baud_rate = req->baud_rate;
-  settings.rrc_beta = req->rrc_beta;
-  settings.rrc_delay = req->rrc_delay;
-  settings.costas_bandwidth = req->costas_bandwidth;
-  settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
-  settings.bandwidth = req->bandwidth;
-  settings.type = type;
-  return bpsk_modem_create(&settings, max_input_buffer_length, modem);
-}
-
-static int modem_create_psk_pm(PskPmModemSettings *req, uint64_t sample_rate, uint32_t max_input_buffer_length, psk_pm_modem **modem) {
-  psk_pm_modem_settings settings = {0};
-  settings.sample_rate = sample_rate;
-  settings.baud_rate = req->baud_rate;
-  settings.rrc_beta = req->rrc_beta;
-  settings.rrc_delay = req->rrc_delay;
-  settings.costas_bandwidth = req->costas_bandwidth;
-  settings.symsync_filter_bank_size = req->symsync_filter_bank_size;
-  settings.subcarrier_frequency = req->subcarrier_frequency;
-  settings.modulation_index = req->modulation_index;
-  settings.carrier_pll_bandwidth = req->carrier_pll_bandwidth;
-  settings.subcarrier_bandwidth = req->subcarrier_bandwidth;
-  return psk_pm_modem_create(&settings, max_input_buffer_length, modem);
-}
-
-int sdr_modem_create(app_config *config, struct ModemRequest *req, const char *freq_offset_file, sdr_modem **modem) {
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
-    //do nothing, but supported
-    *modem = NULL;
-    return 0;
-  }
-
+int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
   struct sdr_modem_t *result = malloc(sizeof(struct sdr_modem_t));
   if (result == NULL) {
     return -ENOMEM;
   }
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
-  int code = 0;
-  uint64_t sample_rate = api_utils_get_sample_rate(req);
-  uint32_t bandwidth = modem_request_get_bandwidth(req);
-  uint64_t decimated_sample_rate = sample_rate;
-  uint32_t decimated_buffer_length = config->buffer_size;
-  code = modem_halfband_decim_create(sample_rate, bandwidth, config->buffer_size, &result->halfband, &decimated_sample_rate, &decimated_buffer_length);
+  result->modem_type = modem_type;
+
+  uint32_t bandwidth;
+  int code = modem_get_bandwidth(modem_type, settings, &bandwidth);
   if (code != 0) {
     sdr_modem_destroy(result);
     return code;
   }
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK) {
-    code = modem_create_gfsk(req->gfsk, req->syncword, req->syncword_bits, decimated_sample_rate, decimated_buffer_length, (gfsk_modem **) &result->modem);
-    if (code != 0) {
-      sdr_modem_destroy(result);
-      return code;
-    }
-    result->modulate = gfsk_modem_modulate;
-    result->demodulate = gfsk_modem_demodulate;
-    result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
-    result->destroy = gfsk_modem_destroy;
-  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_BPSK) {
-    code = modem_create_bpsk_family(req->bpsk, decimated_sample_rate, BPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
-    if (code != 0) {
-      sdr_modem_destroy(result);
-      return code;
-    }
-    result->modulate = bpsk_modem_modulate;
-    result->demodulate = bpsk_modem_demodulate;
-    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
-    result->destroy = bpsk_modem_destroy;
-  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_DPSK) {
-    code = modem_create_bpsk_family(req->dpsk, decimated_sample_rate, DPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
-    if (code != 0) {
-      sdr_modem_destroy(result);
-      return code;
-    }
-    result->modulate = bpsk_modem_modulate;
-    result->demodulate = bpsk_modem_demodulate;
-    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
-    result->destroy = bpsk_modem_destroy;
-  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_SDPSK) {
-    code = modem_create_bpsk_family(req->sdpsk, decimated_sample_rate, SDPSK, decimated_buffer_length, (bpsk_modem **) &result->modem);
-    if (code != 0) {
-      sdr_modem_destroy(result);
-      return code;
-    }
-    result->modulate = bpsk_modem_modulate;
-    result->demodulate = bpsk_modem_demodulate;
-    result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
-    result->destroy = bpsk_modem_destroy;
-  } else if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
-    code = modem_create_psk_pm(req->psk_pm, decimated_sample_rate, decimated_buffer_length, (psk_pm_modem **) &result->modem);
-    if (code != 0) {
-      sdr_modem_destroy(result);
-      return code;
-    }
-    result->modulate = psk_pm_modem_modulate;
-    result->demodulate = psk_pm_modem_demodulate;
-    result->max_modulation_buffer_length = psk_pm_modem_max_modulation_buffer_length;
-    result->destroy = psk_pm_modem_destroy;
-  } else {
-    fprintf(stderr, "<3>unsupported modem type: %d\n", req->modem_settings_case);
+  uint64_t sample_rate;
+  code = modem_get_sample_date(modem_type, settings, &sample_rate);
+  if (code != 0) {
     sdr_modem_destroy(result);
-    return -1;
+    return code;
+  }
+
+  uint32_t decimated_buffer_length = buffer_size;
+  code = modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length);
+  if (code != 0) {
+    sdr_modem_destroy(result);
+    return code;
+  }
+  switch (modem_type) {
+    case MODEM_TYPE_GFSK: {
+      gfsk_modem_settings decimated = settings->gfsk;
+      decimated.sample_rate = result->baseband_sample_rate;
+      result->modulate = gfsk_modem_modulate;
+      result->demodulate = gfsk_modem_demodulate;
+      result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
+      result->destroy = gfsk_modem_destroy;
+      code = gfsk_modem_create(&decimated, buffer_size, (gfsk_modem **) &result->modem);
+      break;
+    }
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK: {
+      bpsk_modem_settings decimated = settings->psk;
+      decimated.sample_rate = result->baseband_sample_rate;
+      result->modulate = bpsk_modem_modulate;
+      result->demodulate = bpsk_modem_demodulate;
+      result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
+      result->destroy = bpsk_modem_destroy;
+      code = bpsk_modem_create(&decimated, buffer_size, (bpsk_modem **) &result->modem);
+      break;
+    }
+    case MODEM_TYPE_PSK_PM: {
+      psk_pm_modem_settings decimated = settings->psk_pm;
+      decimated.sample_rate = result->baseband_sample_rate;
+      result->modulate = psk_pm_modem_modulate;
+      result->demodulate = psk_pm_modem_demodulate;
+      result->max_modulation_buffer_length = psk_pm_modem_max_modulation_buffer_length;
+      result->destroy = psk_pm_modem_destroy;
+      code = psk_pm_modem_create(&decimated, buffer_size, (psk_pm_modem **) &result->modem);
+      break;
+    }
+    default:
+      code = -1;
+  }
+  if (code != 0) {
+    sdr_modem_destroy(result);
+    return code;
   }
 
   if (result->halfband != NULL) {
     // mirror of the rx decimation: same number of stages and the same cutoff
     unsigned int halfband_stages = modem_estimate_halfband_stages(sample_rate, bandwidth);
     uint32_t max_modulation_buffer_length = (uint32_t) result->max_modulation_buffer_length(result->modem);
-    code = halfband_interp_create(halfband_stages, modem_halfband_cutoff(bandwidth, decimated_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx);
+    code = halfband_interp_create(halfband_stages, modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx);
     if (code != 0) {
-      sdr_modem_destroy(result);
       return code;
     }
   }
@@ -254,20 +225,17 @@ int sdr_modem_create(app_config *config, struct ModemRequest *req, const char *f
   if (freq_offset_file != NULL) {
     // needs to fit both the raw rx buffer and the (typically larger) modulated tx buffer, since
     // this same instance can end up being used for either direction
-    size_t max_buffer_length = config->buffer_size;
+    size_t max_buffer_length = buffer_size;
     size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result);
     if (max_modulation_buffer_length > max_buffer_length) {
       max_buffer_length = max_modulation_buffer_length;
     }
     code = freq_offset_create(freq_offset_file, sample_rate, max_buffer_length, &result->freq_offset);
     if (code != 0) {
-      sdr_modem_destroy(result);
       return code;
     }
   }
 
-  result->modem_settings_case = req->modem_settings_case;
-  result->baseband_sample_rate = decimated_sample_rate;
   *modem = result;
   return 0;
 }
@@ -310,12 +278,12 @@ int sdr_modem_set_debug_constellation_file(const char *debug_constellation_file,
   if (modem == NULL) {
     return 0;
   }
-  switch (modem->modem_settings_case) {
-    case MODEM_REQUEST__MODEM_SETTINGS_BPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_DPSK:
-    case MODEM_REQUEST__MODEM_SETTINGS_SDPSK:
+  switch (modem->modem_type) {
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK:
       return bpsk_modem_set_debug_constellation_file(debug_constellation_file, modem->modem);
-    case MODEM_REQUEST__MODEM_SETTINGS_PSK_PM:
+    case MODEM_TYPE_PSK_PM:
       return psk_pm_modem_set_debug_constellation_file(debug_constellation_file, modem->modem);
     default:
       // not supported by this modem type
@@ -327,7 +295,7 @@ int sdr_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_m
   if (modem == NULL) {
     return 0;
   }
-  if (modem->modem_settings_case != MODEM_REQUEST__MODEM_SETTINGS_PSK_PM) {
+  if (modem->modem_type != MODEM_TYPE_PSK_PM) {
     // not supported by this modem type
     return 0;
   }
