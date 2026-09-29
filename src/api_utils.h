@@ -23,6 +23,6 @@ uint32_t api_utils_get_baud_rate(const struct ModemRequest *req);
 // converts protobuf request into the native modem settings. *modem_type is one of MODEM_TYPE_* and
 // selects the populated member of settings. MODEM_TYPE_NONE if modem settings are not set.
 // returns non-zero if the modem type is not supported
-int api_utils_convert_modem_request(const struct ModemRequest *req, int *modem_type, sdr_modem_settings *settings);
+int api_utils_convert_modem_request(const struct ModemRequest *req, sdr_modem_type *modem_type, sdr_modem_settings *settings);
 
 #endif //SDR_MODEM_API_UTILS_H

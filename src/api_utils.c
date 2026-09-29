@@ -129,7 +129,7 @@ static void api_utils_convert_psk(const PskModemSettings *req, psk_modem_type ty
   settings->type = type;
 }
 
-int api_utils_convert_modem_request(const struct ModemRequest *req, int *modem_type, sdr_modem_settings *settings) {
+int api_utils_convert_modem_request(const struct ModemRequest *req, sdr_modem_type *modem_type, sdr_modem_settings *settings) {
   *settings = (sdr_modem_settings){0};
   switch (req->modem_settings_case) {
     case MODEM_REQUEST__MODEM_SETTINGS__NOT_SET:

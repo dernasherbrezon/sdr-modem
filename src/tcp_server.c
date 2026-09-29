@@ -410,7 +410,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  int modem_type = MODEM_TYPE_NONE;
+  sdr_modem_type modem_type = MODEM_TYPE_NONE;
   sdr_modem_settings modem_settings;
   int code = api_utils_convert_modem_request(tcp_worker->tx_req, &modem_type, &modem_settings);
   if (code != 0) {
@@ -493,7 +493,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
     return;
   }
 
-  int modem_type = MODEM_TYPE_NONE;
+  sdr_modem_type modem_type = MODEM_TYPE_NONE;
   sdr_modem_settings modem_settings;
   int code = api_utils_convert_modem_request(tcp_worker->rx_req, &modem_type, &modem_settings);
   if (code != 0) {

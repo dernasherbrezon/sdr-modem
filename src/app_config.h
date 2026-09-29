@@ -7,17 +7,19 @@
 #include "dsp/gfsk_modem.h"
 #include "dsp/bpsk_modem.h"
 #include "dsp/psk_pm_modem.h"
+#include "dsp/sdr_modem.h"
+#include "sdr/file_source.h"
 
-#define SDR_TYPE_PLUTOSDR 1
-#define SDR_TYPE_FILE 2
-#define SDR_TYPE_SDR_SERVER 3
+typedef enum {
+  // returned when a sdr type name cannot be parsed
+  SDR_TYPE_INVALID = -1,
+  SDR_TYPE_NONE = 0,
+  SDR_TYPE_PLUTOSDR,
+  SDR_TYPE_FILE,
+  SDR_TYPE_SDR_SERVER
+} sdr_device_type;
 
 #define FRAMING_TYPE_NONE 0
-
-#define FILE_FORMAT_GUESS 0
-#define FILE_FORMAT_CU8 1
-#define FILE_FORMAT_CF32 2
-#define FILE_FORMAT_CS16 3
 
 // direction is only meaningful in cli mode (bind_address == NULL): it selects whether the
 // single configured sdr/modem pipeline demodulates (rx) or modulates (tx). server mode ignores
@@ -36,12 +38,12 @@ typedef struct {
 
   int direction;
 
-  int sdr_type;
+  sdr_device_type sdr_type;
   char *sdr_server_address;
   int sdr_server_port;
 
   char *file;
-  int file_format;
+  file_source_format file_format;
 
   double plutosdr_gain;
   unsigned int plutosdr_timeout_millis;
@@ -50,7 +52,7 @@ typedef struct {
   char *input_file;
   char *output_file;
 
-  int modem;
+  sdr_modem_type modem;
   int framing;
   uint64_t center_freq;
   // settings of each modem type are kept separately, the active one is selected by "modem"

@@ -21,8 +21,8 @@ struct file_device_t {
   gzFile rx_gz;
   gzFile tx_gz;
 
-  int rx_format;
-  int tx_format;
+  file_source_format rx_format;
+  file_source_format tx_format;
 
   float complex *temp;
   size_t temp_len;
@@ -36,7 +36,7 @@ static bool has_gz_suffix(const char *filename) {
   return len > 3 && strcmp(filename + len - 3, ".gz") == 0;
 }
 
-static bool is_valid_file_format(int format) {
+static bool is_valid_file_format(file_source_format format) {
   return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32 || format == FILE_FORMAT_CS16;
 }
 
@@ -94,7 +94,7 @@ void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int file_source_create(uint32_t id, const char *rx_filename, int rx_format, const char *tx_filename, int tx_format, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
+int file_source_create(uint32_t id, const char *rx_filename, file_source_format rx_format, const char *tx_filename, file_source_format tx_format, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
   if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
     fprintf(stderr, "<3>[%d] unsupported file format\n", id);
     return -1;

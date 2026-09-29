@@ -32,7 +32,6 @@ void test_tx_invalid_arguments() {
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
   code = device->sdr_process_tx((complex float *) buffer, max_output_buffer_length + 1, device->plugin);
   TEST_ASSERT_EQUAL_INT(-1, code);
 

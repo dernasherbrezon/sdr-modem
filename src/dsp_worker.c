@@ -89,7 +89,7 @@ static void *dsp_worker_callback(void *arg) {
   return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, int modem_type, const sdr_modem_settings *settings,
+int dsp_worker_create(uint32_t id, int client_socket, app_config *server_config, sdr_modem_type modem_type, const sdr_modem_settings *settings,
                       dsp_worker **worker) {
   struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
   if (result == NULL) {

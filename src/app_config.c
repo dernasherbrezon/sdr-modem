@@ -8,7 +8,7 @@
 
 #include <getopt.h>
 
-static int app_config_convert_sdr_type(const char *type) {
+static sdr_device_type app_config_convert_sdr_type(const char *type) {
   if (strcmp(type, "sdr-server") == 0) {
     return SDR_TYPE_SDR_SERVER;
   } else if (strcmp(type, "plutosdr") == 0) {
@@ -16,10 +16,10 @@ static int app_config_convert_sdr_type(const char *type) {
   } else if (strcmp(type, "file") == 0) {
     return SDR_TYPE_FILE;
   }
-  return -1;
+  return SDR_TYPE_INVALID;
 }
 
-static int app_config_convert_file_format(const char *format) {
+static file_source_format app_config_convert_file_format(const char *format) {
   if (strcmp(format, "cu8") == 0) {
     return FILE_FORMAT_CU8;
   } else if (strcmp(format, "cf32") == 0) {
@@ -27,12 +27,12 @@ static int app_config_convert_file_format(const char *format) {
   } else if (strcmp(format, "cs16") == 0) {
     return FILE_FORMAT_CS16;
   }
-  return -1;
+  return FILE_FORMAT_INVALID;
 }
 
-static int app_config_guess_file_format(const char *filename) {
+static file_source_format app_config_guess_file_format(const char *filename) {
   if (filename == NULL) {
-    return -1;
+    return FILE_FORMAT_INVALID;
   }
   size_t len = strlen(filename);
   if (len > 3 && strcmp(filename + len - 3, ".gz") == 0) {
@@ -47,10 +47,10 @@ static int app_config_guess_file_format(const char *filename) {
   if (len > 5 && strncmp(filename + len - 5, ".cs16", 5) == 0) {
     return FILE_FORMAT_CS16;
   }
-  return -1;
+  return FILE_FORMAT_INVALID;
 }
 
-static int app_config_convert_modem_type(const char *type) {
+static sdr_modem_type app_config_convert_modem_type(const char *type) {
   if (strcmp(type, "gfsk") == 0) {
     return MODEM_TYPE_GFSK;
   } else if (strcmp(type, "bpsk") == 0) {
@@ -62,7 +62,7 @@ static int app_config_convert_modem_type(const char *type) {
   } else if (strcmp(type, "psk_pm") == 0) {
     return MODEM_TYPE_PSK_PM;
   }
-  return -1;
+  return MODEM_TYPE_INVALID;
 }
 
 static int app_config_convert_framing_type(const char *type) {
@@ -779,7 +779,7 @@ static int app_config_validate_and_log(app_config *result) {
     if (result->file_format == FILE_FORMAT_GUESS) {
       result->file_format = app_config_guess_file_format(result->file);
     }
-    if (result->file_format < 0) {
+    if (result->file_format == FILE_FORMAT_INVALID) {
       fprintf(stderr, "<3>invalid or unable to guess file_format\n");
       return -1;
     }
@@ -802,7 +802,7 @@ static int app_config_validate_and_log(app_config *result) {
     return -1;
   }
 
-  if (result->modem < 0) {
+  if (result->modem == MODEM_TYPE_INVALID) {
     fprintf(stderr, "<3>invalid modem\n");
     return -1;
   }

@@ -9,6 +9,15 @@
 #include "halfband_interp.h"
 #include "psk_pm_modem.h"
 
+#define ERROR_CHECK(x)           \
+    do {                           \
+      int __err_rc = (x);          \
+      if (__err_rc != 0) { \
+        sdr_modem_destroy(result); \
+        return __err_rc;           \
+      }                            \
+    } while (0)
+
 // hardcoded per design: half-band decimator/interpolator stop-band attenuation
 #define MODEM_HALFBAND_STOPBAND_ATTENUATION_DB 60.0f
 // half-band decimator: keep the decimated rate at least this many times the signal bandwidth
@@ -49,7 +58,7 @@ struct sdr_modem_t {
   FILE *debug_baseband_file;
 
   // which wrapped modem is in use (MODEM_TYPE_*), needed to dispatch modem-specific debug setters
-  int modem_type;
+  sdr_modem_type modem_type;
 
   // sample rate after halfband decimation
   uint64_t baseband_sample_rate;
@@ -79,7 +88,7 @@ static float modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sample
   return cutoff;
 }
 
-static int modem_get_bandwidth(int modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
+static int modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
       *bandwidth = settings->gfsk.bandwidth;
@@ -101,7 +110,7 @@ static int modem_get_bandwidth(int modem_type, const sdr_modem_settings *setting
   return 0;
 }
 
-static int modem_get_sample_date(int modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
+static int modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
       *sample_rate = settings->gfsk.sample_rate;
@@ -143,7 +152,7 @@ static int modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_rate,
   return 0;
 }
 
-int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
+int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
   struct sdr_modem_t *result = malloc(sizeof(struct sdr_modem_t));
   if (result == NULL) {
     return -ENOMEM;
@@ -153,24 +162,13 @@ int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_
   result->modem_type = modem_type;
 
   uint32_t bandwidth;
-  int code = modem_get_bandwidth(modem_type, settings, &bandwidth);
-  if (code != 0) {
-    sdr_modem_destroy(result);
-    return code;
-  }
+  ERROR_CHECK(modem_get_bandwidth(modem_type, settings, &bandwidth));
   uint64_t sample_rate;
-  code = modem_get_sample_date(modem_type, settings, &sample_rate);
-  if (code != 0) {
-    sdr_modem_destroy(result);
-    return code;
-  }
-
+  ERROR_CHECK(modem_get_sample_date(modem_type, settings, &sample_rate));
   uint32_t decimated_buffer_length = buffer_size;
-  code = modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length);
-  if (code != 0) {
-    sdr_modem_destroy(result);
-    return code;
-  }
+  ERROR_CHECK(modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length));
+
+  int code = 0;
   switch (modem_type) {
     case MODEM_TYPE_GFSK: {
       gfsk_modem_settings decimated = settings->gfsk;
@@ -216,10 +214,7 @@ int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_
     // mirror of the rx decimation: same number of stages and the same cutoff
     unsigned int halfband_stages = modem_estimate_halfband_stages(sample_rate, bandwidth);
     uint32_t max_modulation_buffer_length = (uint32_t) result->max_modulation_buffer_length(result->modem);
-    code = halfband_interp_create(halfband_stages, modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx);
-    if (code != 0) {
-      return code;
-    }
+    ERROR_CHECK(halfband_interp_create(halfband_stages, modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx));
   }
 
   if (freq_offset_file != NULL) {
@@ -230,10 +225,7 @@ int sdr_modem_create(int modem_type, const sdr_modem_settings *settings, uint32_
     if (max_modulation_buffer_length > max_buffer_length) {
       max_buffer_length = max_modulation_buffer_length;
     }
-    code = freq_offset_create(freq_offset_file, sample_rate, max_buffer_length, &result->freq_offset);
-    if (code != 0) {
-      return code;
-    }
+    ERROR_CHECK(freq_offset_create(freq_offset_file, sample_rate, max_buffer_length, &result->freq_offset));
   }
 
   *modem = result;
