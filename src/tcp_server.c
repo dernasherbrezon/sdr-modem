@@ -69,7 +69,7 @@ static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) 
     return -ENOMEM;
   }
   if (req->modem_settings_case != MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
-    rx->rx_sample_rate = api_utils_get_sample_rate(req);
+    rx->rx_sample_rate = req->sample_rate;
     rx->rx_center_freq = req->frequency;
   }
 
@@ -86,7 +86,7 @@ static int validate_request(const struct ModemRequest *req, uint32_t client_id, 
     fprintf(stderr, "<3>[%d] missing frequency parameter\n", client_id);
     return -1;
   }
-  if (api_utils_get_sample_rate(req) == 0) {
+  if (req->sample_rate == 0) {
     fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
     return -1;
   }
@@ -280,7 +280,7 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
       fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
     }
-    tx_config->sample_rate = api_utils_get_sample_rate(req);
+    tx_config->sample_rate = req->sample_rate;
     tx_config->center_freq = req->frequency;
     tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     tx_config->manual_gain = server->app_config->plutosdr_gain;
@@ -457,7 +457,7 @@ void handle_tx_client(int client_socket, struct message_header *header, tcp_serv
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
   fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id,
           tcp_worker->tx_req->frequency,
-          api_utils_get_sample_rate(tcp_worker->tx_req),
+          tcp_worker->tx_req->sample_rate,
           api_utils_get_baud_rate(tcp_worker->tx_req));
 }
 
@@ -535,7 +535,7 @@ void handle_rx_client(int client_socket, struct message_header *header, tcp_serv
   api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
   fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
           tcp_worker->rx_req->frequency,
-          api_utils_get_sample_rate(tcp_worker->rx_req), api_utils_get_baud_rate(tcp_worker->rx_req));
+          tcp_worker->rx_req->sample_rate, api_utils_get_baud_rate(tcp_worker->rx_req));
 }
 
 static void *acceptor_worker(void *arg) {

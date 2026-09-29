@@ -150,7 +150,7 @@ void test_plutosdr_failures2() {
   // init timeout a bit more for test to get ack with timeout failure
   reconnect_client_with_timeout(config->read_timeout_seconds * 2);
   tx_req = create_request();
-  tx_req->gfsk->sample_rate = 580000;
+  tx_req->sample_rate = 580000;
   assert_response_with_request(client0, TYPE_TX_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
 
   struct message_header header;
@@ -181,7 +181,7 @@ void test_plutosdr_tx() {
 
   reconnect_client();
   tx_req = create_request();
-  tx_req->gfsk->sample_rate = 580000;
+  tx_req->sample_rate = 580000;
   assert_response_with_request(client0,TYPE_TX_REQUEST, TYPE_RESPONSE, RESPONSE_STATUS__SUCCESS, 0, tx_req);
   assert_response_with_tx_data(RESPONSE_STATUS__SUCCESS);
 
@@ -263,7 +263,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   req = create_request();
-  req->gfsk->sample_rate = 0;
+  req->sample_rate = 0;
   assert_response_with_request(client0, TYPE_RX_REQUEST,TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, req);
 
   reconnect_client();
@@ -291,7 +291,7 @@ void test_invalid_requests() {
 
   reconnect_client();
   tx_req = create_request();
-  tx_req->gfsk->sample_rate = 0;
+  tx_req->sample_rate = 0;
   assert_response_with_request(client0, TYPE_TX_REQUEST,TYPE_RESPONSE, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, tx_req);
 
   reconnect_client();

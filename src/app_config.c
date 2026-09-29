@@ -136,10 +136,6 @@ static void app_config_load_gfsk_from_file(config_t *libconfig, app_config *resu
   gfsk_modem_settings *settings = &result->gfsk;
   const config_setting_t *setting;
 
-  setting = config_lookup(libconfig, "gfsk_sample_rate");
-  if (setting != NULL) {
-    settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
-  }
   setting = config_lookup(libconfig, "gfsk_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
@@ -168,10 +164,6 @@ static void app_config_load_psk_from_file(config_t *libconfig, app_config *resul
   bpsk_modem_settings *settings = &result->psk;
   const config_setting_t *setting;
 
-  setting = config_lookup(libconfig, "psk_sample_rate");
-  if (setting != NULL) {
-    settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
-  }
   setting = config_lookup(libconfig, "psk_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
@@ -202,10 +194,6 @@ static void app_config_load_psk_pm_from_file(config_t *libconfig, app_config *re
   psk_pm_modem_settings *settings = &result->psk_pm;
   const config_setting_t *setting;
 
-  setting = config_lookup(libconfig, "psk_pm_sample_rate");
-  if (setting != NULL) {
-    settings->sample_rate = (uint64_t) config_setting_get_int64(setting);
-  }
   setting = config_lookup(libconfig, "psk_pm_baud_rate");
   if (setting != NULL) {
     settings->baud_rate = (uint32_t) config_setting_get_int(setting);
@@ -328,6 +316,10 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   if (setting != NULL) {
     result->frequency = (uint64_t) config_setting_get_int64(setting);
   }
+  setting = config_lookup(libconfig, "sample_rate");
+  if (setting != NULL) {
+    result->sample_rate = (uint64_t) config_setting_get_int64(setting);
+  }
   app_config_load_gfsk_from_file(libconfig, result);
   app_config_load_psk_from_file(libconfig, result);
   app_config_load_psk_pm_from_file(libconfig, result);
@@ -393,20 +385,18 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_FRAMING,
     OPT_SYNCWORD,
     OPT_FREQUENCY,
-    OPT_GFSK_SAMPLE_RATE,
+    OPT_SAMPLE_RATE,
     OPT_GFSK_BAUD_RATE,
     OPT_GFSK_DEVIATION,
     OPT_GFSK_BANDWIDTH,
     OPT_GFSK_BT,
     OPT_GFSK_USE_DC_BLOCK,
-    OPT_PSK_SAMPLE_RATE,
     OPT_PSK_BAUD_RATE,
     OPT_PSK_RRC_BETA,
     OPT_PSK_RRC_DELAY,
     OPT_PSK_COSTAS_BANDWIDTH,
     OPT_PSK_SYMSYNC_FILTER_BANK_SIZE,
     OPT_PSK_BANDWIDTH,
-    OPT_PSK_PM_SAMPLE_RATE,
     OPT_PSK_PM_BAUD_RATE,
     OPT_PSK_PM_RRC_BETA,
     OPT_PSK_PM_RRC_DELAY,
@@ -443,20 +433,18 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"framing", required_argument, NULL, OPT_FRAMING},
     {"syncword", required_argument, NULL, OPT_SYNCWORD},
     {"frequency", required_argument, NULL, OPT_FREQUENCY},
-    {"gfsk_sample_rate", required_argument, NULL, OPT_GFSK_SAMPLE_RATE},
+    {"sample_rate", required_argument, NULL, OPT_SAMPLE_RATE},
     {"gfsk_baud_rate", required_argument, NULL, OPT_GFSK_BAUD_RATE},
     {"gfsk_deviation", required_argument, NULL, OPT_GFSK_DEVIATION},
     {"gfsk_bandwidth", required_argument, NULL, OPT_GFSK_BANDWIDTH},
     {"gfsk_bt", required_argument, NULL, OPT_GFSK_BT},
     {"gfsk_use_dc_block", required_argument, NULL, OPT_GFSK_USE_DC_BLOCK},
-    {"psk_sample_rate", required_argument, NULL, OPT_PSK_SAMPLE_RATE},
     {"psk_baud_rate", required_argument, NULL, OPT_PSK_BAUD_RATE},
     {"psk_rrc_beta", required_argument, NULL, OPT_PSK_RRC_BETA},
     {"psk_rrc_delay", required_argument, NULL, OPT_PSK_RRC_DELAY},
     {"psk_costas_bandwidth", required_argument, NULL, OPT_PSK_COSTAS_BANDWIDTH},
     {"psk_symsync_filter_bank_size", required_argument, NULL, OPT_PSK_SYMSYNC_FILTER_BANK_SIZE},
     {"psk_bandwidth", required_argument, NULL, OPT_PSK_BANDWIDTH},
-    {"psk_pm_sample_rate", required_argument, NULL, OPT_PSK_PM_SAMPLE_RATE},
     {"psk_pm_baud_rate", required_argument, NULL, OPT_PSK_PM_BAUD_RATE},
     {"psk_pm_rrc_beta", required_argument, NULL, OPT_PSK_PM_RRC_BETA},
     {"psk_pm_rrc_delay", required_argument, NULL, OPT_PSK_PM_RRC_DELAY},
@@ -561,8 +549,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_FREQUENCY:
         result->frequency = strtoull(optarg, NULL, 10);
         break;
-      case OPT_GFSK_SAMPLE_RATE:
-        result->gfsk.sample_rate = strtoull(optarg, NULL, 10);
+      case OPT_SAMPLE_RATE:
+        result->sample_rate = strtoull(optarg, NULL, 10);
         break;
       case OPT_GFSK_BAUD_RATE:
         result->gfsk.baud_rate = (uint32_t) atoi(optarg);
@@ -578,9 +566,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_GFSK_USE_DC_BLOCK:
         result->gfsk.use_dc_block = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
-        break;
-      case OPT_PSK_SAMPLE_RATE:
-        result->psk.sample_rate = strtoull(optarg, NULL, 10);
         break;
       case OPT_PSK_BAUD_RATE:
         result->psk.baud_rate = (uint32_t) atoi(optarg);
@@ -599,9 +584,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_PSK_BANDWIDTH:
         result->psk.bandwidth = (uint32_t) atoi(optarg);
-        break;
-      case OPT_PSK_PM_SAMPLE_RATE:
-        result->psk_pm.sample_rate = strtoull(optarg, NULL, 10);
         break;
       case OPT_PSK_PM_BAUD_RATE:
         result->psk_pm.baud_rate = (uint32_t) atoi(optarg);
@@ -892,21 +874,6 @@ int app_config_create(int argc, char **argv, app_config **config) {
 
   *config = result;
   return 0;
-}
-
-uint64_t app_config_get_sample_rate(const app_config *config) {
-  switch (config->modem) {
-    case MODEM_TYPE_GFSK:
-      return config->gfsk.sample_rate;
-    case MODEM_TYPE_BPSK:
-    case MODEM_TYPE_DPSK:
-    case MODEM_TYPE_SDPSK:
-      return config->psk.sample_rate;
-    case MODEM_TYPE_PSK_PM:
-      return config->psk_pm.sample_rate;
-    default:
-      return 0;
-  }
 }
 
 void app_config_destroy(app_config *config) {

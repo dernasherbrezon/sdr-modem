@@ -56,6 +56,7 @@ typedef struct {
   sdr_modem_type modem;
   int framing;
   uint64_t frequency;
+  uint64_t sample_rate;
   // settings of each modem type are kept separately, the active one is selected by "modem"
   gfsk_modem_settings gfsk;
   // bpsk, dpsk and sdpsk share the same settings. psk.type is derived from "modem"
@@ -70,9 +71,6 @@ typedef struct {
 } app_config;
 
 int app_config_create(int argc, char **argv, app_config **config);
-
-// sample rate of the selected modem. 0 if modem is not selected
-uint64_t app_config_get_sample_rate(const app_config *config);
 
 void app_config_destroy(app_config *config);
 

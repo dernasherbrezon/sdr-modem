@@ -2,7 +2,6 @@ syntax = "proto3";
 
 message gfsk_modem_settings {
     uint32 bandwidth = 1;
-    uint64 sample_rate = 2;
     uint32 baud_rate = 3;
     int64 deviation = 4;
     float bt = 5;
@@ -11,7 +10,6 @@ message gfsk_modem_settings {
 
 message psk_modem_settings {
     uint32 bandwidth = 1;
-    uint64 sample_rate = 2;
     uint32 baud_rate = 3;
     float rrc_beta = 4;
     uint32 rrc_delay = 5;
@@ -21,7 +19,6 @@ message psk_modem_settings {
 
 message psk_pm_modem_settings {
     uint32 baud_rate = 1;
-    uint64 sample_rate = 2;
 
     uint32 subcarrier_frequency = 3;
     float carrier_pll_bandwidth = 4;
@@ -49,6 +46,7 @@ message ModemRequest {
     oneof framing {
         none_framing none = 9;
     }
+    uint64 sample_rate = 14;
     uint64 frequency = 15;
     uint64 syncword = 16;
     // 0 means no syncword used

@@ -14,10 +14,8 @@ int api_utils_read_tx_data(int socket, const struct message_header *header, stru
 
 int api_utils_write_response(int socket, ResponseStatus status, uint32_t details);
 
-// generic accessors for the fields common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk/psk_pm).
-// return 0 if req->modem_settings_case is MODEM_REQUEST__MODEM_SETTINGS__NOT_SET or unrecognized.
-uint64_t api_utils_get_sample_rate(const struct ModemRequest *req);
-
+// generic accessor for the field common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk/psk_pm).
+// returns 0 if req->modem_settings_case is MODEM_REQUEST__MODEM_SETTINGS__NOT_SET or unrecognized.
 uint32_t api_utils_get_baud_rate(const struct ModemRequest *req);
 
 // converts protobuf request into the native modem settings. *modem_type is one of MODEM_TYPE_* and

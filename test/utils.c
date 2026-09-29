@@ -9,7 +9,6 @@ struct ModemRequest *create_request() {
   gfsk_settings.use_dc_block = true;
   gfsk_settings.bandwidth = 15600;
   gfsk_settings.deviation = 5000;
-  gfsk_settings.sample_rate = 48000;
   gfsk_settings.baud_rate = 9600;
   gfsk_settings.bt = 0.5f;
 
@@ -17,6 +16,7 @@ struct ModemRequest *create_request() {
   result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
   result.gfsk = &gfsk_settings;
   result.frequency = 437525000;
+  result.sample_rate = 48000;
   result.syncword = 0xCCCCCCFE;
   result.syncword_bits = 32;
 

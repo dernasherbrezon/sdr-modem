@@ -30,7 +30,7 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
   if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
       .rx_center_freq = config->frequency,
-      .rx_sample_rate = app_config_get_sample_rate(config)
+      .rx_sample_rate = config->sample_rate
     };
     int code = sdr_server_client_create(1, &rx, config->sdr_server_address, config->sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->device);
     if (code != 0) {
@@ -41,7 +41,7 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
     if (stream_config == NULL) {
       return -1;
     }
-    stream_config->sample_rate = app_config_get_sample_rate(config);
+    stream_config->sample_rate = config->sample_rate;
     stream_config->center_freq = config->frequency;
     stream_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     stream_config->manual_gain = config->plutosdr_gain;
@@ -58,10 +58,10 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
   } else if (config->sdr_type == SDR_TYPE_FILE) {
     int code = 0;
     if (config->direction == DIRECTION_RX) {
-      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, app_config_get_sample_rate(config), config->buffer_size, &result->device);
+      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, config->sample_rate, config->buffer_size, &result->device);
     } else {
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, app_config_get_sample_rate(config), max_modulation_buffer_length, &result->device);
+      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, config->sample_rate, max_modulation_buffer_length, &result->device);
     }
     if (code != 0) {
       return -1;
@@ -78,14 +78,17 @@ static int cli_create_modem(app_config *config, struct cli_t *result) {
   switch (config->modem) {
     case MODEM_TYPE_GFSK:
       settings.gfsk = config->gfsk;
+      settings.gfsk.sample_rate = config->sample_rate;
       break;
     case MODEM_TYPE_BPSK:
     case MODEM_TYPE_DPSK:
     case MODEM_TYPE_SDPSK:
       settings.psk = config->psk;
+      settings.psk.sample_rate = config->sample_rate;
       break;
     case MODEM_TYPE_PSK_PM:
       settings.psk_pm = config->psk_pm;
+      settings.psk_pm.sample_rate = config->sample_rate;
       break;
     default:
       fprintf(stderr, "<3>unsupported modem type: %d\n", config->modem);
