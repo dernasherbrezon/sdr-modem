@@ -324,9 +324,9 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   if (setting != NULL) {
     result->modem = app_config_convert_modem_type(config_setting_get_string(setting));
   }
-  setting = config_lookup(libconfig, "center_freq");
+  setting = config_lookup(libconfig, "frequency");
   if (setting != NULL) {
-    result->center_freq = (uint64_t) config_setting_get_int64(setting);
+    result->frequency = (uint64_t) config_setting_get_int64(setting);
   }
   app_config_load_gfsk_from_file(libconfig, result);
   app_config_load_psk_from_file(libconfig, result);
@@ -392,7 +392,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_MODEM,
     OPT_FRAMING,
     OPT_SYNCWORD,
-    OPT_CENTER_FREQ,
+    OPT_FREQUENCY,
     OPT_GFSK_SAMPLE_RATE,
     OPT_GFSK_BAUD_RATE,
     OPT_GFSK_DEVIATION,
@@ -442,7 +442,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"modem", required_argument, NULL, OPT_MODEM},
     {"framing", required_argument, NULL, OPT_FRAMING},
     {"syncword", required_argument, NULL, OPT_SYNCWORD},
-    {"center_freq", required_argument, NULL, OPT_CENTER_FREQ},
+    {"frequency", required_argument, NULL, OPT_FREQUENCY},
     {"gfsk_sample_rate", required_argument, NULL, OPT_GFSK_SAMPLE_RATE},
     {"gfsk_baud_rate", required_argument, NULL, OPT_GFSK_BAUD_RATE},
     {"gfsk_deviation", required_argument, NULL, OPT_GFSK_DEVIATION},
@@ -558,8 +558,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         }
         break;
       }
-      case OPT_CENTER_FREQ:
-        result->center_freq = strtoull(optarg, NULL, 10);
+      case OPT_FREQUENCY:
+        result->frequency = strtoull(optarg, NULL, 10);
         break;
       case OPT_GFSK_SAMPLE_RATE:
         result->gfsk.sample_rate = strtoull(optarg, NULL, 10);

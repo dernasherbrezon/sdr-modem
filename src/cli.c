@@ -29,7 +29,7 @@ struct cli_t {
 static int cli_create_sdr(app_config *config, struct cli_t *result) {
   if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
     struct sdr_rx rx = {
-      .rx_center_freq = config->center_freq,
+      .rx_center_freq = config->frequency,
       .rx_sample_rate = app_config_get_sample_rate(config)
     };
     int code = sdr_server_client_create(1, &rx, config->sdr_server_address, config->sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->device);
@@ -42,7 +42,7 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
     stream_config->sample_rate = app_config_get_sample_rate(config);
-    stream_config->center_freq = config->center_freq;
+    stream_config->center_freq = config->frequency;
     stream_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
     stream_config->manual_gain = config->plutosdr_gain;
     int code = 0;

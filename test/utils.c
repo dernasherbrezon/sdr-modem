@@ -16,7 +16,7 @@ struct ModemRequest *create_request() {
   struct ModemRequest result = MODEM_REQUEST__INIT;
   result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
   result.gfsk = &gfsk_settings;
-  result.center_freq = 437525000;
+  result.frequency = 437525000;
   result.syncword = 0xCCCCCCFE;
   result.syncword_bits = 32;
 

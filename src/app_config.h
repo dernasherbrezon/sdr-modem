@@ -39,6 +39,7 @@ typedef struct {
   int direction;
 
   sdr_device_type sdr_type;
+
   char *sdr_server_address;
   int sdr_server_port;
 
@@ -54,7 +55,7 @@ typedef struct {
 
   sdr_modem_type modem;
   int framing;
-  uint64_t center_freq;
+  uint64_t frequency;
   // settings of each modem type are kept separately, the active one is selected by "modem"
   gfsk_modem_settings gfsk;
   // bpsk, dpsk and sdpsk share the same settings. psk.type is derived from "modem"

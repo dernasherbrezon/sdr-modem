@@ -49,7 +49,7 @@ message ModemRequest {
     oneof framing {
         none_framing none = 9;
     }
-    uint64 center_freq = 15;
+    uint64 frequency = 15;
     uint64 syncword = 16;
     // 0 means no syncword used
     uint32 syncword_bits = 17;

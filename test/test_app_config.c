@@ -86,17 +86,17 @@ void test_merge_gfsk_settings() {
   TEST_ASSERT_EQUAL_INT(4800, config->gfsk.baud_rate);
 }
 
-void test_center_freq() {
+void test_frequency() {
   char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv1, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_UINT64(437525000, config->center_freq);
+  TEST_ASSERT_EQUAL_UINT64(437525000, config->frequency);
   app_config_destroy(config);
 
-  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--center_freq", "145800000", NULL};
+  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--frequency", "145800000", NULL};
   code = app_config_create(13, argv2, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_UINT64(145800000, config->center_freq);
+  TEST_ASSERT_EQUAL_UINT64(145800000, config->frequency);
 }
 
 void test_guess_rx_file_format_cf32() {
@@ -194,7 +194,7 @@ int main(void) {
   RUN_TEST(test_override_with_invalid);
   RUN_TEST(test_invalid);
   RUN_TEST(test_merge_gfsk_settings);
-  RUN_TEST(test_center_freq);
+  RUN_TEST(test_frequency);
   RUN_TEST(test_guess_rx_file_format_cf32);
   RUN_TEST(test_guess_rx_file_format_cf32_gz);
   RUN_TEST(test_guess_rx_file_format_cu8);

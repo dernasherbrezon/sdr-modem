@@ -112,7 +112,7 @@ typedef enum {
 struct  ModemRequest
 {
   ProtobufCMessage base;
-  uint64_t center_freq;
+  uint64_t frequency;
   uint64_t syncword;
   /*
    * 0 means no syncword used
