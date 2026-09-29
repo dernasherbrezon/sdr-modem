@@ -335,8 +335,6 @@ void test_multiple_clients() {
   char *argv[] = {"test_app_config", "--config", "full.conf", NULL};
   int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  // speed up test a bit
-  config->read_timeout_seconds = 2;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
   code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
