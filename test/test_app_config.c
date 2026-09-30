@@ -92,81 +92,81 @@ void test_invalid() {
 }
 
 void test_merge_gfsk_settings() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "/non-existing-directory/in.cf32", "--output", "/some-path", "--gfsk_baud_rate", "4800", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "/non-existing-directory/in.cf32", "--output", "/some-path", "--gfsk_baud_rate", "4800", NULL};
   int code = app_config_create(13, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(4800, config->gfsk.baud_rate);
 }
 
 void test_frequency() {
-  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
+  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv1, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(437525000, config->frequency);
   app_config_destroy(config);
 
-  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--frequency", "145800000", NULL};
+  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--frequency", "145800000", NULL};
   code = app_config_create(13, argv2, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(145800000, config->frequency);
 }
 
 void test_sample_rate() {
-  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
+  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv1, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(48000, config->sample_rate);
   app_config_destroy(config);
 
-  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--sample_rate", "96000", NULL};
+  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--sample_rate", "96000", NULL};
   code = app_config_create(13, argv2, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(96000, config->sample_rate);
 }
 
 void test_guess_rx_file_format_cf32() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->sdr_file.rx_file_format);
 }
 
 void test_guess_rx_file_format_cf32_gz() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32.gz", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32.gz", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CF32, config->sdr_file.rx_file_format);
 }
 
 void test_guess_rx_file_format_cu8() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cu8", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cu8", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->sdr_file.rx_file_format);
 }
 
 void test_guess_rx_file_format_cs16() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cs16", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cs16", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CS16, config->file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CS16, config->sdr_file.rx_file_format);
 }
 
 void test_guess_rx_file_format_unknown() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.raw", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.raw", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_guess_tx_file_format_cu8() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--file", "out.cu8", "--input", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--tx_file", "out.cu8", "--input", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->file_format);
+  TEST_ASSERT_EQUAL_INT(FILE_FORMAT_CU8, config->sdr_file.tx_file_format);
 }
 
 void test_syncword_from_file() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(0xCCCCCCFE, config->gfsk.syncword);
@@ -174,7 +174,7 @@ void test_syncword_from_file() {
 }
 
 void test_merge_syncword() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "0xaa7", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--syncword", "0xaa7", NULL};
   int code = app_config_create(13, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(0xAA7, config->gfsk.syncword);
@@ -182,7 +182,7 @@ void test_merge_syncword() {
 }
 
 void test_max_syncword() {
-  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "FEDCBA9876543210", NULL};
+  char *argv[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--syncword", "FEDCBA9876543210", NULL};
   int code = app_config_create(13, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_UINT64(0xFEDCBA9876543210ULL, config->gfsk.syncword);
@@ -190,11 +190,11 @@ void test_max_syncword() {
 }
 
 void test_invalid_syncword() {
-  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "AAX7", NULL};
+  char *argv1[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--syncword", "AAX7", NULL};
   TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv1, &config));
-  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "0x", NULL};
+  char *argv2[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--syncword", "0x", NULL};
   TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv2, &config));
-  char *argv3[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "in.cf32", "--output", "/some-path", "--syncword", "00112233445566778", NULL};
+  char *argv3[] = {"test_app_config", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "in.cf32", "--output", "/some-path", "--syncword", "00112233445566778", NULL};
   TEST_ASSERT_EQUAL_INT(-EINVAL, app_config_create(13, argv3, &config));
 }
 

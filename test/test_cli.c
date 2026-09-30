@@ -31,7 +31,7 @@ void write_bytes(const char *path, const uint8_t *data, size_t len) {
 }
 
 void test_create_fails_missing_rx_file() {
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "/non-existing-directory/in.cf32", "--output", rx_output_path, NULL};
+  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "/non-existing-directory/in.cf32", "--output", rx_output_path, NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -40,7 +40,7 @@ void test_create_fails_missing_rx_file() {
 }
 
 void test_create_fails_missing_output_directory() {
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "inputnan.cf32", "--output", "/non-existing-directory/out.s8", NULL};
+  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "inputnan.cf32", "--output", "/non-existing-directory/out.s8", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -49,7 +49,7 @@ void test_create_fails_missing_output_directory() {
 }
 
 void test_create_fails_missing_input_file() {
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--file", tx_output_path, "--input", "/non-existing-directory/in.bin", NULL};
+  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--tx_file", tx_output_path, "--input", "/non-existing-directory/in.bin", NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -61,7 +61,7 @@ void test_tx_modulate_to_file() {
   const uint8_t data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   write_bytes(tx_input_path, data, sizeof(data));
 
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--file", tx_output_path, "--input", tx_input_path, "--buffer_size", "10", NULL};
+  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--tx_file", tx_output_path, "--input", tx_input_path, "--buffer_size", "10", NULL};
   int code = app_config_create(13, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -76,7 +76,7 @@ void test_tx_modulate_to_file() {
 }
 
 void test_rx_demodulate_to_file() {
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--file", "lucky7.cf32", "--output", rx_output_path, NULL};
+  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "lucky7.cf32", "--output", rx_output_path, NULL};
   int code = app_config_create(11, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
 

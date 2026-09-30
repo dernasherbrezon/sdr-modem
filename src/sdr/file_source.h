@@ -15,7 +15,19 @@ typedef enum {
   FILE_FORMAT_CS16
 } file_source_format;
 
-int file_source_create(uint32_t id, const char *rx_filename, file_source_format rx_format, const char *tx_filename, file_source_format tx_format, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **result);
+// file source acts as an sdr with both rx and tx capabilities: rx reads i/q samples from rx_file,
+// tx writes i/q samples to tx_file. set the file to NULL if the corresponding direction is not used.
+// "-" means stdin (rx) or stdout (tx). ".gz" suffix enables gzip
+typedef struct {
+  char *rx_file;                     // file to read i/q samples from
+  file_source_format rx_file_format; // format of the i/q samples in rx_file
+  char *tx_file;                     // file to write i/q samples to
+  file_source_format tx_file_format; // format of the i/q samples in tx_file
+  uint64_t frequency;                // center frequency of the recording, in Hz
+  uint64_t sample_rate;              // sample rate of the recording, in Hz
+} sdr_file_settings;
+
+int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);
 
 int file_source_process_rx(float complex **output, size_t *output_len, void *plugin);
 

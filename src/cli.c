@@ -55,12 +55,18 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
       return -1;
     }
   } else if (config->sdr_type == SDR_TYPE_FILE) {
+    sdr_file_settings settings = config->sdr_file;
+    settings.frequency = config->frequency;
+    settings.sample_rate = config->sample_rate;
     int code = 0;
+    // cli works in a single direction. do not open (and truncate) tx_file during rx
     if (config->direction == DIRECTION_RX) {
-      code = file_source_create(1, config->file, config->file_format, NULL, config->file_format, config->sample_rate, config->buffer_size, &result->device);
+      settings.tx_file = NULL;
+      code = file_source_create(1, &settings, config->buffer_size, &result->device);
     } else {
+      settings.rx_file = NULL;
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = file_source_create(1, NULL, config->file_format, config->file, config->file_format, config->sample_rate, max_modulation_buffer_length, &result->device);
+      code = file_source_create(1, &settings, max_modulation_buffer_length, &result->device);
     }
     if (code != 0) {
       return -1;

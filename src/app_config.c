@@ -256,6 +256,37 @@ static int app_config_load_sdr_server_from_file(config_t *libconfig, app_config 
   return 0;
 }
 
+// frequency and sample_rate are not loaded here: they are shared with other sdr types and modems,
+// so they are taken from the generic "frequency" and "sample_rate" settings at the time of use
+static int app_config_load_sdr_file_from_file(config_t *libconfig, app_config *result) {
+  sdr_file_settings *settings = &result->sdr_file;
+  const config_setting_t *setting;
+
+  setting = config_lookup(libconfig, "rx_file");
+  if (setting != NULL) {
+    int code = app_config_replace_str(config_setting_get_string(setting), &settings->rx_file);
+    if (code != 0) {
+      return code;
+    }
+  }
+  setting = config_lookup(libconfig, "rx_file_format");
+  if (setting != NULL) {
+    settings->rx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
+  }
+  setting = config_lookup(libconfig, "tx_file");
+  if (setting != NULL) {
+    int code = app_config_replace_str(config_setting_get_string(setting), &settings->tx_file);
+    if (code != 0) {
+      return code;
+    }
+  }
+  setting = config_lookup(libconfig, "tx_file_format");
+  if (setting != NULL) {
+    settings->tx_file_format = app_config_convert_file_format(config_setting_get_string(setting));
+  }
+  return 0;
+}
+
 static int app_config_load_from_file(config_t *libconfig, const char *path, app_config *result) {
   fprintf(stdout, "loading configuration from: %s\n", path);
 
@@ -316,11 +347,9 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
       result->plutosdr_timeout_millis = config_setting_get_int(setting);
     }
   }
-  if (result->sdr_type == SDR_TYPE_FILE) {
-    setting = config_lookup(libconfig, "file_format");
-    if (setting != NULL) {
-      result->file_format = app_config_convert_file_format(config_setting_get_string(setting));
-    }
+  code = app_config_load_sdr_file_from_file(libconfig, result);
+  if (code != 0) {
+    return code;
   }
 
   setting = config_lookup(libconfig, "modem");
@@ -392,8 +421,10 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_SDR_SERVER_READ_TIMEOUT_SECONDS,
     OPT_PLUTOSDR_GAIN,
     OPT_PLUTOSDR_TIMEOUT_MILLIS,
-    OPT_FILE,
-    OPT_FILE_FORMAT,
+    OPT_RX_FILE,
+    OPT_RX_FILE_FORMAT,
+    OPT_TX_FILE,
+    OPT_TX_FILE_FORMAT,
     OPT_CONFIG,
     OPT_INPUT,
     OPT_OUTPUT,
@@ -441,8 +472,10 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"sdr_server_read_timeout_seconds", required_argument, NULL, OPT_SDR_SERVER_READ_TIMEOUT_SECONDS},
     {"plutosdr_gain", required_argument, NULL, OPT_PLUTOSDR_GAIN},
     {"plutosdr_timeout_millis", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MILLIS},
-    {"file", required_argument, NULL, OPT_FILE},
-    {"file_format", required_argument, NULL, OPT_FILE_FORMAT},
+    {"rx_file", required_argument, NULL, OPT_RX_FILE},
+    {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
+    {"tx_file", required_argument, NULL, OPT_TX_FILE},
+    {"tx_file_format", required_argument, NULL, OPT_TX_FILE_FORMAT},
     {"config", required_argument, NULL, OPT_CONFIG},
     {"input", required_argument, NULL, OPT_INPUT},
     {"output", required_argument, NULL, OPT_OUTPUT},
@@ -529,15 +562,25 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_PLUTOSDR_TIMEOUT_MILLIS:
         result->plutosdr_timeout_millis = (unsigned int) atoi(optarg);
         break;
-      case OPT_FILE: {
-        int code = app_config_replace_str(optarg, &result->file);
+      case OPT_RX_FILE: {
+        int code = app_config_replace_str(optarg, &result->sdr_file.rx_file);
         if (code != 0) {
           return code;
         }
         break;
       }
-      case OPT_FILE_FORMAT:
-        result->file_format = app_config_convert_file_format(optarg);
+      case OPT_RX_FILE_FORMAT:
+        result->sdr_file.rx_file_format = app_config_convert_file_format(optarg);
+        break;
+      case OPT_TX_FILE: {
+        int code = app_config_replace_str(optarg, &result->sdr_file.tx_file);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
+      case OPT_TX_FILE_FORMAT:
+        result->sdr_file.tx_file_format = app_config_convert_file_format(optarg);
         break;
       case OPT_INPUT: {
         int code = app_config_replace_str(optarg, &result->input_file);
@@ -710,6 +753,23 @@ static void app_config_apply_psk_pm_defaults(psk_pm_modem_settings *settings) {
   }
 }
 
+// guesses the format from the file extension if not set explicitly. file is optional
+static int app_config_validate_file(const char *name, const char *file, file_source_format *format) {
+  if (file == NULL) {
+    return 0;
+  }
+  fprintf(stdout, "%s: %s\n", name, file);
+  if (*format == FILE_FORMAT_GUESS) {
+    *format = app_config_guess_file_format(file);
+  }
+  if (*format == FILE_FORMAT_INVALID) {
+    fprintf(stderr, "<3>invalid or unable to guess %s_format\n", name);
+    return -1;
+  }
+  fprintf(stdout, "%s_format: %s\n", name, *format == FILE_FORMAT_CU8 ? "cu8" : (*format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
+  return 0;
+}
+
 static int app_config_validate_and_log(app_config *result) {
   if (result->buffer_size == 0) {
     result->buffer_size = 262144;
@@ -784,19 +844,20 @@ static int app_config_validate_and_log(app_config *result) {
       fprintf(stderr, "<3>sdr_type=file is not supported in the server mode\n");
       return -1;
     }
-    if (result->file == NULL) {
-      fprintf(stderr, "<3>file parameter is missing\n");
+    if (result->direction == DIRECTION_RX && result->sdr_file.rx_file == NULL) {
+      fprintf(stderr, "<3>rx_file parameter is missing\n");
       return -1;
     }
-    fprintf(stdout, "file: %s\n", result->file);
-    if (result->file_format == FILE_FORMAT_GUESS) {
-      result->file_format = app_config_guess_file_format(result->file);
-    }
-    if (result->file_format == FILE_FORMAT_INVALID) {
-      fprintf(stderr, "<3>invalid or unable to guess file_format\n");
+    if (result->direction == DIRECTION_TX && result->sdr_file.tx_file == NULL) {
+      fprintf(stderr, "<3>tx_file parameter is missing\n");
       return -1;
     }
-    fprintf(stdout, "file_format: %s\n", result->file_format == FILE_FORMAT_CU8 ? "cu8" : (result->file_format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
+    if (app_config_validate_file("rx_file", result->sdr_file.rx_file, &result->sdr_file.rx_file_format) != 0) {
+      return -1;
+    }
+    if (app_config_validate_file("tx_file", result->sdr_file.tx_file, &result->sdr_file.tx_file_format) != 0) {
+      return -1;
+    }
   } else {
     fprintf(stderr, "<3>invalid sdr_type: %d\n", result->sdr_type);
     return -1;
@@ -935,8 +996,11 @@ void app_config_destroy(app_config *config) {
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
   }
-  if (config->file != NULL) {
-    free(config->file);
+  if (config->sdr_file.rx_file != NULL) {
+    free(config->sdr_file.rx_file);
+  }
+  if (config->sdr_file.tx_file != NULL) {
+    free(config->sdr_file.tx_file);
   }
   if (config->input_file != NULL) {
     free(config->input_file);

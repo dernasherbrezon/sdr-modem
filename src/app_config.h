@@ -43,8 +43,7 @@ typedef struct {
 
   sdr_server_settings sdr_server;
 
-  char *file;
-  file_source_format file_format;
+  sdr_file_settings sdr_file;
 
   double plutosdr_gain;
   unsigned int plutosdr_timeout_millis;

@@ -94,7 +94,11 @@ void file_source_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int file_source_create(uint32_t id, const char *rx_filename, file_source_format rx_format, const char *tx_filename, file_source_format tx_format, uint64_t sample_rate, uint32_t max_output_buffer_length, sdr_device **output) {
+int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
+  const char *rx_filename = settings->rx_file;
+  file_source_format rx_format = settings->rx_file_format;
+  const char *tx_filename = settings->tx_file;
+  file_source_format tx_format = settings->tx_file_format;
   if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
     fprintf(stderr, "<3>[%d] unsupported file format\n", id);
     return -1;
