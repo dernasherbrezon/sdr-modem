@@ -1,4 +1,4 @@
-#include "file_source.h"
+#include "sdr_file.h"
 #include <stdio.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -21,8 +21,8 @@ struct file_device_t {
   gzFile rx_gz;
   gzFile tx_gz;
 
-  file_source_format rx_format;
-  file_source_format tx_format;
+  sdr_file_format rx_format;
+  sdr_file_format tx_format;
 
   float complex *temp;
   size_t temp_len;
@@ -36,7 +36,7 @@ static bool has_gz_suffix(const char *filename) {
   return len > 3 && strcmp(filename + len - 3, ".gz") == 0;
 }
 
-static bool is_valid_file_format(file_source_format format) {
+static bool is_valid_file_format(sdr_file_format format) {
   return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32 || format == FILE_FORMAT_CS16;
 }
 
@@ -90,15 +90,15 @@ static void cf32_to_cs16(const float complex *in, int16_t *raw, size_t nsamples)
   }
 }
 
-void file_source_stop(void *plugin) {
+void sdr_file_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_file_create(uint32_t id, const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
   const char *rx_filename = settings->rx_file;
-  file_source_format rx_format = settings->rx_file_format;
+  sdr_file_format rx_format = settings->rx_file_format;
   const char *tx_filename = settings->tx_file;
-  file_source_format tx_format = settings->tx_file_format;
+  sdr_file_format tx_format = settings->tx_file_format;
   if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
     fprintf(stderr, "<3>[%d] unsupported file format\n", id);
     return -1;
@@ -114,14 +114,14 @@ int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t 
   device->temp_len = max_output_buffer_length;
   device->temp = malloc(sizeof(float complex) * device->temp_len);
   if (device->temp == NULL) {
-    file_source_destroy(device);
+    sdr_file_destroy(device);
     return -ENOMEM;
   }
   if (rx_format == FILE_FORMAT_CU8 || tx_format == FILE_FORMAT_CU8 || rx_format == FILE_FORMAT_CS16 || tx_format == FILE_FORMAT_CS16) {
     //sized for the widest raw sample format (cs16: 2 * int16_t per complex sample)
     device->raw_temp = malloc(2 * sizeof(int16_t) * device->temp_len);
     if (device->raw_temp == NULL) {
-      file_source_destroy(device);
+      sdr_file_destroy(device);
       return -ENOMEM;
     }
   }
@@ -133,14 +133,14 @@ int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t 
       device->rx_gz = gzopen(rx_filename, "rb");
       if (device->rx_gz == NULL) {
         fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
-        file_source_destroy(device);
+        sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->rx_file = fopen(rx_filename, "rb");
       if (device->rx_file == NULL) {
         fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
-        file_source_destroy(device);
+        sdr_file_destroy(device);
         return -1;
       }
     }
@@ -153,14 +153,14 @@ int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t 
       device->tx_gz = gzopen(tx_filename, "wb");
       if (device->tx_gz == NULL) {
         fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
-        file_source_destroy(device);
+        sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->tx_file = fopen(tx_filename, "wb");
       if (device->tx_file == NULL) {
         fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
-        file_source_destroy(device);
+        sdr_file_destroy(device);
         return -1;
       }
     }
@@ -168,20 +168,20 @@ int file_source_create(uint32_t id, const sdr_file_settings *settings, uint32_t 
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
   if (result == NULL) {
-    file_source_destroy(device);
+    sdr_file_destroy(device);
     return -ENOMEM;
   }
   result->plugin = device;
-  result->destroy = file_source_destroy;
-  result->sdr_process_rx = file_source_process_rx;
-  result->sdr_process_tx = file_source_process_tx;
-  result->stop_rx = file_source_stop;
+  result->destroy = sdr_file_destroy;
+  result->sdr_process_rx = sdr_file_process_rx;
+  result->sdr_process_tx = sdr_file_process_tx;
+  result->stop_rx = sdr_file_stop;
 
   *output = result;
   return 0;
 }
 
-int file_source_process_rx(float complex **output, size_t *output_len, void *plugin) {
+int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin) {
   file_device *device = (file_device *) plugin;
   size_t bytes_per_sample;
   void *read_buf;
@@ -227,7 +227,7 @@ int file_source_process_rx(float complex **output, size_t *output_len, void *plu
   return 0;
 }
 
-int file_source_process_tx(float complex *input, size_t input_len, void *plugin) {
+int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   file_device *device = (file_device *) plugin;
   if (input_len > device->temp_len) {
     fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, device->temp_len);
@@ -259,7 +259,7 @@ int file_source_process_tx(float complex *input, size_t input_len, void *plugin)
   return 0;
 }
 
-void file_source_destroy(void *plugin) {
+void sdr_file_destroy(void *plugin) {
   if (plugin == NULL) {
     return;
   }

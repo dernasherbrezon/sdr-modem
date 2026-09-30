@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "dsp/sdr_modem.h"
-#include "sdr/file_source.h"
+#include "sdr/sdr_file.h"
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_device.h"
 #include "sdr/sdr_server_client.h"
@@ -62,11 +62,11 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
     // cli works in a single direction. do not open (and truncate) tx_file during rx
     if (config->direction == DIRECTION_RX) {
       settings.tx_file = NULL;
-      code = file_source_create(1, &settings, config->buffer_size, &result->device);
+      code = sdr_file_create(1, &settings, config->buffer_size, &result->device);
     } else {
       settings.rx_file = NULL;
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = file_source_create(1, &settings, max_modulation_buffer_length, &result->device);
+      code = sdr_file_create(1, &settings, max_modulation_buffer_length, &result->device);
     }
     if (code != 0) {
       return -1;

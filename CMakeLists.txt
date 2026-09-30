@@ -29,7 +29,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/halfband_interp.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/psk_pm_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/file_source.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_file.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_server_client.c
         )
@@ -92,9 +92,9 @@ add_test(NAME test_dc_blocker COMMAND test_dc_blocker)
 add_executable(test_dc_blocker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dc_blocker.c)
 target_link_libraries(test_dc_blocker sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_file_source COMMAND test_file_source)
-add_executable(test_file_source ${CMAKE_CURRENT_SOURCE_DIR}/test/test_file_source.c)
-target_link_libraries(test_file_source sdr_modemLib sdr_modemTestLib)
+add_test(NAME test_sdr_file COMMAND test_sdr_file)
+add_executable(test_sdr_file ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sdr_file.c)
+target_link_libraries(test_sdr_file sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_freq_offset COMMAND test_freq_offset)
 add_executable(test_freq_offset ${CMAKE_CURRENT_SOURCE_DIR}/test/test_freq_offset.c)

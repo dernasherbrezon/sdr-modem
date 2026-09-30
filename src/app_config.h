@@ -8,7 +8,7 @@
 #include "dsp/bpsk_modem.h"
 #include "dsp/psk_pm_modem.h"
 #include "dsp/sdr_modem.h"
-#include "sdr/file_source.h"
+#include "sdr/sdr_file.h"
 #include "sdr/sdr_server_client.h"
 
 typedef enum {

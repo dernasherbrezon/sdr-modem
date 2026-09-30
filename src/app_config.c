@@ -19,7 +19,7 @@ static sdr_device_type app_config_convert_sdr_type(const char *type) {
   return SDR_TYPE_INVALID;
 }
 
-static file_source_format app_config_convert_file_format(const char *format) {
+static sdr_file_format app_config_convert_file_format(const char *format) {
   if (strcmp(format, "cu8") == 0) {
     return FILE_FORMAT_CU8;
   } else if (strcmp(format, "cf32") == 0) {
@@ -30,7 +30,7 @@ static file_source_format app_config_convert_file_format(const char *format) {
   return FILE_FORMAT_INVALID;
 }
 
-static file_source_format app_config_guess_file_format(const char *filename) {
+static sdr_file_format app_config_guess_file_format(const char *filename) {
   if (filename == NULL) {
     return FILE_FORMAT_INVALID;
   }
@@ -754,7 +754,7 @@ static void app_config_apply_psk_pm_defaults(psk_pm_modem_settings *settings) {
 }
 
 // guesses the format from the file extension if not set explicitly. file is optional
-static int app_config_validate_file(const char *name, const char *file, file_source_format *format) {
+static int app_config_validate_file(const char *name, const char *file, sdr_file_format *format) {
   if (file == NULL) {
     return 0;
   }
