@@ -275,16 +275,15 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
     return -RESPONSE_DETAILS_TX_IS_BEING_USED;
   }
   if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
-    if (tx_config == NULL) {
-      fprintf(stderr, "<3>[%d] unable to init tx configuration\n", id);
-      return -RESPONSE_DETAILS_INTERNAL_ERROR;
-    }
-    tx_config->sample_rate = req->sample_rate;
-    tx_config->center_freq = req->frequency;
-    tx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
-    tx_config->manual_gain = server->app_config->plutosdr_gain;
-    int code = plutosdr_create(id, false, NULL, tx_config, server->app_config->plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, output);
+    plutosdr_settings settings = {
+        .rx_only = false,
+        .tx_sample_rate = req->sample_rate,
+        .tx_center_freq = req->frequency,
+        .tx_gain_control_mode = IIO_GAIN_MODE_MANUAL,
+        .tx_manual_gain = server->app_config->plutosdr_gain,
+        .timeout_ms = server->app_config->plutosdr_timeout_millis
+    };
+    int code = plutosdr_create(id, &settings, server->app_config->buffer_size, server->app_config->iio, output);
     if (code != 0) {
       fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
       return -RESPONSE_DETAILS_INTERNAL_ERROR;
@@ -335,18 +334,17 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
       fprintf(stderr, "<3>[%d] rx is being used\n", tcp_worker->id);
       return -RESPONSE_DETAILS_RX_IS_BEING_USED;
     }
-    struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
-    if (rx_config == NULL) {
-      free(rx);
-      fprintf(stderr, "<3>[%d] unable to init tx configuration\n", tcp_worker->id);
-      return -RESPONSE_DETAILS_INTERNAL_ERROR;
-    }
-    rx_config->sample_rate = rx->rx_sample_rate;
-    rx_config->center_freq = rx->rx_center_freq;
-    rx_config->gain_control_mode = IIO_GAIN_MODE_MANUAL;
-    rx_config->manual_gain = server->app_config->plutosdr_gain;
+    plutosdr_settings settings = {
+        // tx can be requested later by another client. disable it only if not in use yet
+        .rx_only = !server->tx_initialized,
+        .rx_sample_rate = rx->rx_sample_rate,
+        .rx_center_freq = rx->rx_center_freq,
+        .rx_gain_control_mode = IIO_GAIN_MODE_MANUAL,
+        .rx_manual_gain = server->app_config->plutosdr_gain,
+        .timeout_ms = server->app_config->plutosdr_timeout_millis
+    };
     sdr_device *rx_device = NULL;
-    code = plutosdr_create(tcp_worker->id, !server->tx_initialized, rx_config, NULL, server->app_config->plutosdr_timeout_millis, server->app_config->buffer_size, server->app_config->iio, &rx_device);
+    code = plutosdr_create(tcp_worker->id, &settings, server->app_config->buffer_size, server->app_config->iio, &rx_device);
     if (code != 0) {
       free(rx);
       fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);

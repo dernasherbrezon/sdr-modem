@@ -46,9 +46,6 @@ struct plutosdr_t {
     float complex *output;
     size_t output_len;
 
-    struct stream_cfg *rx_config;
-    struct stream_cfg *tx_config;
-
     iio_lib *lib;
     atomic_bool rx_is_running;
 };
@@ -257,7 +254,7 @@ static struct iio_channel *plutosdr_find_streaming_channel(enum iio_direction d,
     return pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
 }
 
-int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, struct stream_cfg *cfg, enum iio_direction type, const char *channel_name, plutosdr *iio) {
+int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, uint64_t sample_rate, uint64_t center_freq, uint8_t gain_control_mode, double manual_gain, enum iio_direction type, const char *channel_name, plutosdr *iio) {
     struct iio_channel *chn = plutosdr_find_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
@@ -275,7 +272,7 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, 
         plutosdr_write_lli(chn, "powerdown", 0, iio);
     }
 
-    int code = plutosdr_write_lli(chn, "frequency", (long long) cfg->center_freq, iio);
+    int code = plutosdr_write_lli(chn, "frequency", (long long) center_freq, iio);
     if (code != 0) {
         return code;
     }
@@ -284,21 +281,21 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, 
     if (chn == NULL) {
         return -1;
     }
-    code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) cfg->sample_rate, iio);
+    code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio);
     if (code != 0) {
         return code;
     }
-    code = plutosdr_write_lli(chn, "sampling_frequency", (long long) cfg->sample_rate, iio);
+    code = plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio);
     if (code != 0) {
         return code;
     }
-    switch (cfg->gain_control_mode) {
+    switch (gain_control_mode) {
         case IIO_GAIN_MODE_MANUAL:
             if (type == RX) {
                 code = plutosdr_write_str(chn, "gain_control_mode", "manual", iio);
             }
             if (code == 0) {
-                code = plutosdr_error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", cfg->manual_gain), "hardwaregain", iio);
+                code = plutosdr_error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", manual_gain), "hardwaregain", iio);
             }
             break;
         case IIO_GAIN_MODE_FAST_ATTACK:
@@ -311,7 +308,7 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, 
             code = plutosdr_write_str(chn, "gain_control_mode", "hybrid", iio);
             break;
         default:
-            fprintf(stderr, "unknown gain mode: %d\n", cfg->gain_control_mode);
+            fprintf(stderr, "unknown gain mode: %d\n", gain_control_mode);
             code = -1;
             break;
     }
@@ -322,36 +319,36 @@ int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, 
     return code;
 }
 
-int plutosdr_select_fir_filter_config(struct stream_cfg *cfg, int *decimation, int16_t **fir_filter_taps) {
-    if (cfg == NULL) {
+int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
+    if (sample_rate == 0) {
         *decimation = 0;
         *fir_filter_taps = NULL;
         return 0;
     }
 
-    if (cfg->sample_rate < MIN_FIR_FILTER) {
-        fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", cfg->sample_rate);
+    if (sample_rate < MIN_FIR_FILTER) {
+        fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", sample_rate);
         return -1;
-    } else if (cfg->sample_rate < MIN_FIR_FILTER_2) {
+    } else if (sample_rate < MIN_FIR_FILTER_2) {
         *decimation = 4;
         *fir_filter_taps = fir_128_4;
-    } else if (cfg->sample_rate < MIN_NO_FIR_FILTER) {
+    } else if (sample_rate < MIN_NO_FIR_FILTER) {
         *decimation = 2;
         *fir_filter_taps = fir_128_2;
     }
     return 0;
 }
 
-int plutosdr_setup_fir_filter(struct iio_context *ctx, struct stream_cfg *rx_config, struct stream_cfg *tx_config, plutosdr *pluto) {
+int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sample_rate, uint64_t tx_sample_rate, plutosdr *pluto) {
     int rx_decimation = 0;
     int16_t *rx_fir_filter_taps = NULL;
-    int code = plutosdr_select_fir_filter_config(rx_config, &rx_decimation, &rx_fir_filter_taps);
+    int code = plutosdr_select_fir_filter_config(rx_sample_rate, &rx_decimation, &rx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
     int tx_decimation = 0;
     int16_t *tx_fir_filter_taps = NULL;
-    code = plutosdr_select_fir_filter_config(tx_config, &tx_decimation, &tx_fir_filter_taps);
+    code = plutosdr_select_fir_filter_config(tx_sample_rate, &tx_decimation, &tx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
@@ -459,8 +456,8 @@ ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
     return 0;
 }
 
-int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
-    if (rx_config == NULL && tx_config == NULL) {
+int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
+    if (settings == NULL || (settings->rx_sample_rate == 0 && settings->tx_sample_rate == 0)) {
         fprintf(stderr, "configuration is missing\n");
         return -1;
     }
@@ -469,8 +466,6 @@ int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, str
         return -ENOMEM;
     }
     *pluto = (struct plutosdr_t) {0};
-    pluto->rx_config = rx_config;
-    pluto->tx_config = tx_config;
     pluto->lib = lib;
     pluto->id = id;
 
@@ -485,14 +480,14 @@ int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, str
         return -1;
     }
 
-    code = pluto->lib->iio_context_set_timeout(global_iio_ctx, timeout_ms);
+    code = pluto->lib->iio_context_set_timeout(global_iio_ctx, settings->timeout_ms);
     if (code < 0) {
         fprintf(stderr, "unable to setup timeout: %zd\n", code);
         plutosdr_destroy(pluto);
         return -1;
     }
 
-    code = plutosdr_setup_fir_filter(global_iio_ctx, rx_config, tx_config, pluto);
+    code = plutosdr_setup_fir_filter(global_iio_ctx, settings->rx_sample_rate, settings->tx_sample_rate, pluto);
     if (code < 0) {
         plutosdr_destroy(pluto);
         return -1;
@@ -502,7 +497,7 @@ int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, str
     //used for incoming argument validation
     pluto->output_len = max_input_buffer_length;
 
-    if (tx_config != NULL) {
+    if (settings->tx_sample_rate != 0) {
         pluto->tx = plutosdr_find_device(global_iio_ctx, TX, pluto);
         if (pluto->tx == NULL) {
             fprintf(stderr, "unable to find tx result\n");
@@ -516,7 +511,7 @@ int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, str
             return -1;
         }
 
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_only, tx_config, TX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, settings->rx_only, settings->tx_sample_rate, settings->tx_center_freq, settings->tx_gain_control_mode, settings->tx_manual_gain, TX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -543,14 +538,14 @@ int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, str
         }
     }
 
-    if (rx_config != NULL) {
+    if (settings->rx_sample_rate != 0) {
         pluto->rx = plutosdr_find_device(global_iio_ctx, RX, pluto);
         if (pluto->rx == NULL) {
             fprintf(stderr, "unable to find rx result\n");
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, rx_only, rx_config, RX, "voltage0", pluto);
+        code = plutosdr_configure_streaming_channel(global_iio_ctx, settings->rx_only, settings->rx_sample_rate, settings->rx_center_freq, settings->rx_gain_control_mode, settings->rx_manual_gain, RX, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -638,11 +633,5 @@ void plutosdr_destroy(void *plugin) {
     }
     pthread_mutex_unlock(&global_iio_mutex);
 
-    if (pluto->rx_config != NULL) {
-        free(pluto->rx_config);
-    }
-    if (pluto->tx_config != NULL) {
-        free(pluto->tx_config);
-    }
     free(pluto);
 }

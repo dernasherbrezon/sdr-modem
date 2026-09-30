@@ -70,36 +70,40 @@ void init_rx_data(size_t expected_rx_len, size_t expected_tx_len) {
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
-struct stream_cfg *create_rx_config() {
-  struct stream_cfg *rx_config = malloc(sizeof(struct stream_cfg));
-  TEST_ASSERT(rx_config != NULL);
-  rx_config->sample_rate = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
-  rx_config->center_freq = 434236000;
-  rx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
-  return rx_config;
+plutosdr_settings create_settings(bool rx, bool tx) {
+  plutosdr_settings settings = {0};
+  settings.timeout_ms = 10000;
+  if (rx) {
+    settings.rx_sample_rate = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
+    settings.rx_center_freq = 434236000;
+    settings.rx_gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
+  }
+  if (tx) {
+    float baud_rate = 9600;
+    settings.tx_sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
+    settings.tx_center_freq = 434236000;
+    settings.tx_gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
+  }
+  return settings;
 }
 
-struct stream_cfg *create_tx_config() {
-  float baud_rate = 9600;
-  uint32_t sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
-
-  struct stream_cfg *tx_config = malloc(sizeof(struct stream_cfg));
-  TEST_ASSERT(tx_config != NULL);
-  tx_config->sample_rate = sample_rate;
-  tx_config->center_freq = 434236000;
-  tx_config->gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
-  return tx_config;
+int create_plutosdr(bool rx, bool tx, uint32_t max_input_buffer_length) {
+  plutosdr_settings settings = create_settings(rx, tx);
+  return plutosdr_create(1, &settings, max_input_buffer_length, lib, &sdr);
 }
 
 void test_no_configs() {
-  int code = plutosdr_create(1, false, NULL, NULL, 10000, 2000000, NULL, &sdr);
+  int code = plutosdr_create(1, NULL, 2000000, NULL, &sdr);
+  TEST_ASSERT_EQUAL_INT(-1, code);
+  plutosdr_settings settings = create_settings(false, false);
+  code = plutosdr_create(1, &settings, 2000000, NULL, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_exceeded_rx_input() {
   init_rx_data(50, 0);
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 20, lib, &sdr);
+  int code = create_plutosdr(true, true, 20);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float complex *actual = NULL;
@@ -111,7 +115,7 @@ void test_exceeded_rx_input() {
 void test_no_rx_config() {
   init_rx_data(50, 0);
 
-  int code = plutosdr_create(1, false, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(false, true, 2000000);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float complex *actual = NULL;
@@ -123,7 +127,7 @@ void test_no_rx_config() {
 void test_rx() {
   init_rx_data(50, 0);
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float complex *actual = NULL;
@@ -139,7 +143,7 @@ void test_rx() {
 void test_no_tx_config() {
   init_rx_data(0, 50);
 
-  int code = plutosdr_create(1, false, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, false, 2000000);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
@@ -153,7 +157,7 @@ void test_no_tx_config() {
 void test_tx() {
   init_rx_data(0, 50);
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   float input[50] = {0.000000F, 0.000488F, 0.000977F, 0.001465F, 0.001953F, 0.002441F, 0.002930F, 0.003418F, 0.003906F, 0.004395F, 0.004883F, 0.005371F, 0.005859F, 0.006348F, 0.006836F, 0.007324F, 0.007812F, 0.008301F, 0.008789F, 0.009277F, 0.009766F, 0.010254F, 0.010742F, 0.011230F,
@@ -176,7 +180,7 @@ void test_invalid_scan_context() {
   init_rx_data(10, 10);
   lib->iio_create_scan_context = empty_iio_create_scan_context;
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -184,12 +188,12 @@ void test_invalid_info_list() {
   init_rx_data(10, 10);
   lib->iio_scan_context_get_info_list = invalid_iio_scan_context_get_info_list;
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
   lib->iio_scan_context_get_info_list = empty_iio_scan_context_get_info_list;
 
-  code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -197,7 +201,7 @@ void test_invalid_ctx() {
   init_rx_data(10, 10);
   lib->iio_create_context_from_uri = empty_iio_create_context_from_uri;
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -205,7 +209,7 @@ void test_invalid_settimeout() {
   init_rx_data(10, 10);
   lib->iio_context_set_timeout = invalid_iio_context_set_timeout;
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -213,10 +217,10 @@ void test_unable_create_buffer() {
   init_rx_data(10, 10);
   lib->iio_device_create_buffer = empty_iio_device_create_buffer;
 
-  int code = plutosdr_create(1, false, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, false, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  code = plutosdr_create(1, false, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+  code = create_plutosdr(false, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
 }
@@ -225,10 +229,10 @@ void test_invalid_find_channel() {
   init_rx_data(10, 10);
   lib->iio_device_find_channel = empty_iio_device_find_channel;
 
-  int code = plutosdr_create(1, false, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, false, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  code = plutosdr_create(1, false, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+  code = create_plutosdr(false, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -236,7 +240,7 @@ void test_unable_to_write_value() {
   init_rx_data(10, 10);
   lib->iio_channel_attr_write = invalid_iio_channel_attr_write;
 
-  int code = plutosdr_create(1, false, create_rx_config(), create_tx_config(), 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -244,25 +248,25 @@ void test_invalid_find_device() {
   init_rx_data(10, 10);
   lib->iio_context_find_device = empty_iio_context_find_device;
 
-  int code = plutosdr_create(1, false, create_rx_config(), NULL, 10000, 2000000, lib, &sdr);
+  int code = create_plutosdr(true, false, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  code = plutosdr_create(1, false, NULL, create_tx_config(), 10000, 2000000, lib, &sdr);
+  code = create_plutosdr(false, true, 2000000);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
 void test_invalid_rx_config() {
   init_rx_data(10, 10);
 
-  struct stream_cfg *rx_config = create_rx_config();
+  plutosdr_settings settings = create_settings(true, false);
   //unknown mode
-  rx_config->gain_control_mode = 255;
-  int code = plutosdr_create(1, false, rx_config, NULL, 10000, 2000000, lib, &sdr);
+  settings.rx_gain_control_mode = 255;
+  int code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  rx_config = create_rx_config();
-  rx_config->sample_rate = 100000;
-  code = plutosdr_create(1, false, rx_config, NULL, 10000, 2000000, lib, &sdr);
+  settings = create_settings(true, false);
+  settings.rx_sample_rate = 100000;
+  code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 

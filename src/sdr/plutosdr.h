@@ -14,14 +14,22 @@ typedef struct plutosdr_t plutosdr;
 #define IIO_GAIN_MODE_SLOW_ATTACK 2
 #define IIO_GAIN_MODE_HYBRID 3
 
-struct stream_cfg {
-    uint64_t sample_rate; // Baseband sample rate in Hz
-    uint64_t center_freq; // Local oscillator frequency in Hz
-    uint8_t gain_control_mode;
-    double manual_gain;
-};
+// settings are only read during plutosdr_create and can be freed by the caller afterwards
+typedef struct {
+  // completely disable TX when doing RX only. significantly improves RX sensitivity
+  bool rx_only;
+  uint64_t rx_sample_rate;      // baseband sample rate in Hz. 0 if rx is not used
+  uint64_t rx_center_freq;      // local oscillator frequency in Hz
+  uint8_t rx_gain_control_mode; // one of IIO_GAIN_MODE_*
+  double rx_manual_gain;        // used only if rx_gain_control_mode is IIO_GAIN_MODE_MANUAL
+  uint64_t tx_sample_rate;      // baseband sample rate in Hz. 0 if tx is not used
+  uint64_t tx_center_freq;      // local oscillator frequency in Hz
+  uint8_t tx_gain_control_mode; // one of IIO_GAIN_MODE_*
+  double tx_manual_gain;        // used only if tx_gain_control_mode is IIO_GAIN_MODE_MANUAL
+  unsigned int timeout_ms;      // timeout for all iio operations
+} plutosdr_settings;
 
-int plutosdr_create(uint32_t id, bool rx_only, struct stream_cfg *rx_config, struct stream_cfg *tx_config, unsigned int timeout_ms, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
+int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
 
 int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
 
