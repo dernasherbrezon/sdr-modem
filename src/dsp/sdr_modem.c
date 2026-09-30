@@ -64,7 +64,7 @@ struct sdr_modem_t {
   uint64_t baseband_sample_rate;
 };
 
-static unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
+static unsigned int sdr_modem_estimate_halfband_stages(uint64_t sample_rate, uint32_t bandwidth) {
   if (bandwidth == 0) {
     return 0;
   }
@@ -77,7 +77,7 @@ static unsigned int modem_estimate_halfband_stages(uint64_t sample_rate, uint32_
 }
 
 // normalized to the decimated sample rate
-static float modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sample_rate) {
+static float sdr_modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sample_rate) {
   float cutoff = ((float) bandwidth / 2.0f) / (float) decimated_sample_rate;
   // liquid advise avoid 0 and 0.5, so put some guards here
   if (cutoff < 0.05f) {
@@ -88,7 +88,7 @@ static float modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sample
   return cutoff;
 }
 
-static int modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
+static int sdr_modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
       *bandwidth = settings->gfsk.bandwidth;
@@ -110,7 +110,7 @@ static int modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_settin
   return 0;
 }
 
-static int modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
+static int sdr_modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
       *sample_rate = settings->gfsk.sample_rate;
@@ -130,20 +130,20 @@ static int modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_sett
   return 0;
 }
 
-static int modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_rate, uint32_t max_input_buffer_length,
+static int sdr_modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_rate, uint32_t max_input_buffer_length,
                                        halfband_decim **halfband, uint64_t *decimated_sample_rate,
                                        uint32_t *decimated_max_input_buffer_length) {
   *halfband = NULL;
   *decimated_sample_rate = sample_rate;
   *decimated_max_input_buffer_length = max_input_buffer_length;
 
-  unsigned int halfband_stages = modem_estimate_halfband_stages(sample_rate, bandwidth);
+  unsigned int halfband_stages = sdr_modem_estimate_halfband_stages(sample_rate, bandwidth);
   if (halfband_stages == 0) {
     return 0;
   }
 
   *decimated_sample_rate = sample_rate >> halfband_stages;
-  float cutoff = modem_halfband_cutoff(bandwidth, *decimated_sample_rate);
+  float cutoff = sdr_modem_halfband_cutoff(bandwidth, *decimated_sample_rate);
   int code = halfband_decim_create(halfband_stages, cutoff, MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_input_buffer_length, halfband);
   if (code != 0) {
     return code;
@@ -162,11 +162,11 @@ int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settin
   result->modem_type = modem_type;
 
   uint32_t bandwidth;
-  ERROR_CHECK(modem_get_bandwidth(modem_type, settings, &bandwidth));
+  ERROR_CHECK(sdr_modem_get_bandwidth(modem_type, settings, &bandwidth));
   uint64_t sample_rate;
-  ERROR_CHECK(modem_get_sample_date(modem_type, settings, &sample_rate));
+  ERROR_CHECK(sdr_modem_get_sample_date(modem_type, settings, &sample_rate));
   uint32_t decimated_buffer_length = buffer_size;
-  ERROR_CHECK(modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length));
+  ERROR_CHECK(sdr_modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length));
 
   int code = 0;
   switch (modem_type) {
@@ -212,9 +212,9 @@ int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settin
 
   if (result->halfband != NULL) {
     // mirror of the rx decimation: same number of stages and the same cutoff
-    unsigned int halfband_stages = modem_estimate_halfband_stages(sample_rate, bandwidth);
+    unsigned int halfband_stages = sdr_modem_estimate_halfband_stages(sample_rate, bandwidth);
     uint32_t max_modulation_buffer_length = (uint32_t) result->max_modulation_buffer_length(result->modem);
-    ERROR_CHECK(halfband_interp_create(halfband_stages, modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx));
+    ERROR_CHECK(halfband_interp_create(halfband_stages, sdr_modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx));
   }
 
   if (freq_offset_file != NULL) {
@@ -232,7 +232,7 @@ int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settin
   return 0;
 }
 
-static int modem_reopen_debug_file(FILE **file, const char *path, const char *name) {
+static int sdr_modem_reopen_debug_file(FILE **file, const char *path, const char *name) {
   if (*file != NULL) {
     fclose(*file);
     *file = NULL;
@@ -252,14 +252,14 @@ int sdr_modem_set_debug_freq_offset_file(const char *debug_freq_offset_file, sdr
   if (modem == NULL) {
     return 0;
   }
-  return modem_reopen_debug_file(&modem->debug_freq_offset_file, debug_freq_offset_file, "freq offset");
+  return sdr_modem_reopen_debug_file(&modem->debug_freq_offset_file, debug_freq_offset_file, "freq offset");
 }
 
 int sdr_modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem *modem) {
   if (modem == NULL) {
     return 0;
   }
-  int code = modem_reopen_debug_file(&modem->debug_baseband_file, debug_baseband_file, "baseband");
+  int code = sdr_modem_reopen_debug_file(&modem->debug_baseband_file, debug_baseband_file, "baseband");
   if (code == 0 && debug_baseband_file != NULL) {
     fprintf(stdout, "baseband sample rate: %"PRIu64"\n", modem->baseband_sample_rate);
   }
