@@ -19,7 +19,7 @@ struct sdr_server_client_t {
     size_t output_len;
 };
 
-int sdr_server_client_create_inner(uint32_t id, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_server_client **client) {
+int sdr_server_client_create_inner(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_server_client **client) {
     struct sdr_server_client_t *result = malloc(sizeof(struct sdr_server_client_t));
     if (result == NULL) {
         return -ENOMEM;
@@ -43,7 +43,7 @@ int sdr_server_client_create_inner(uint32_t id, char *addr, int port, int read_t
     result->client_socket = client_socket;
 
     struct timeval tv;
-    tv.tv_sec = read_timeout_seconds;
+    tv.tv_sec = settings->read_timeout_seconds;
     tv.tv_usec = 0;
     if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
         close(client_socket);
@@ -54,8 +54,8 @@ int sdr_server_client_create_inner(uint32_t id, char *addr, int port, int read_t
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(addr);
-    address.sin_port = htons(port);
+    address.sin_addr.s_addr = inet_addr(settings->addr);
+    address.sin_port = htons(settings->port);
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
         close(client_socket);
@@ -69,18 +69,18 @@ int sdr_server_client_create_inner(uint32_t id, char *addr, int port, int read_t
     return 0;
 }
 
-int sdr_server_client_create(uint32_t id, struct sdr_rx *rx, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_server_client_create(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
     sdr_server_client *client = NULL;
-    int code = sdr_server_client_create_inner(id, addr, port, read_timeout_seconds, max_output_buffer_length, &client);
+    int code = sdr_server_client_create_inner(id, settings, max_output_buffer_length, &client);
     if (code != 0) {
         return code;
     }
 
     struct sdr_server_request req;
-    req.center_freq = rx->rx_center_freq;
-    req.band_freq = rx->rx_center_freq;
+    req.center_freq = settings->frequency;
+    req.band_freq = settings->frequency;
     req.destination = SDR_SERVER_REQUEST_DESTINATION_SOCKET;
-    req.sampling_rate = rx->rx_sample_rate;
+    req.sampling_rate = settings->sample_rate;
     struct sdr_server_response *response = NULL;
     code = sdr_server_client_request(req, &response, client);
     if (code != 0) {

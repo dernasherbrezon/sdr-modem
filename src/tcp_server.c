@@ -308,8 +308,11 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
     //this will allow demodulating different modes using the same data
     struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
     if (closest == NULL) {
+      sdr_server_settings settings = server->app_config->sdr_server;
+      settings.frequency = rx->rx_center_freq;
+      settings.sample_rate = rx->rx_sample_rate;
       sdr_device *rx_device = NULL;
-      code = sdr_server_client_create(tcp_worker->id, rx, server->app_config->sdr_server_address, server->app_config->sdr_server_port, server->app_config->read_timeout_seconds, server->app_config->buffer_size, &rx_device);
+      code = sdr_server_client_create(tcp_worker->id, &settings, server->app_config->buffer_size, &rx_device);
       if (code != 0) {
         free(rx);
         return -RESPONSE_DETAILS_INTERNAL_ERROR;

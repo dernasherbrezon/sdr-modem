@@ -106,7 +106,7 @@ void init_server_with_plutosdr_support(size_t expected_tx_len) {
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
-  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server.addr, config->sdr_server.port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 }
 
@@ -235,7 +235,7 @@ void test_invalid_requests() {
   config->read_timeout_seconds = 2;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
-  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server.addr, config->sdr_server.port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   reconnect_client();
@@ -317,7 +317,7 @@ void test_unable_to_connect_to_sdr_server() {
   int code = app_config_create(3, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   // non-existing port
-  config->sdr_server_port = 9999;
+  config->sdr_server.port = 9999;
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
@@ -335,7 +335,7 @@ void test_multiple_clients() {
   TEST_ASSERT_EQUAL_INT(0, code);
   code = tcp_server_create(config, &server);
   TEST_ASSERT_EQUAL_INT(0, code);
-  code = sdr_server_mock_create(config->sdr_server_address, config->sdr_server_port, &mock_response_success, config->buffer_size, &mock_server);
+  code = sdr_server_mock_create(config->sdr_server.addr, config->sdr_server.port, &mock_response_success, config->buffer_size, &mock_server);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   uint32_t batch_size = 256;

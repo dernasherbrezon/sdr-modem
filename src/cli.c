@@ -28,11 +28,10 @@ struct cli_t {
 
 static int cli_create_sdr(app_config *config, struct cli_t *result) {
   if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
-    struct sdr_rx rx = {
-      .rx_center_freq = config->frequency,
-      .rx_sample_rate = config->sample_rate
-    };
-    int code = sdr_server_client_create(1, &rx, config->sdr_server_address, config->sdr_server_port, config->read_timeout_seconds, config->buffer_size, &result->device);
+    sdr_server_settings settings = config->sdr_server;
+    settings.frequency = config->frequency;
+    settings.sample_rate = config->sample_rate;
+    int code = sdr_server_client_create(1, &settings, config->buffer_size, &result->device);
     if (code != 0) {
       return -1;
     }

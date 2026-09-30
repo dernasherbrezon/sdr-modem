@@ -232,6 +232,30 @@ static void app_config_load_psk_pm_from_file(config_t *libconfig, app_config *re
   }
 }
 
+// frequency and sample_rate are not loaded here: they are shared with other sdr types and modems,
+// so they are taken from the generic "frequency" and "sample_rate" settings at the time of use
+static int app_config_load_sdr_server_from_file(config_t *libconfig, app_config *result) {
+  sdr_server_settings *settings = &result->sdr_server;
+  const config_setting_t *setting;
+
+  setting = config_lookup(libconfig, "sdr_server_address");
+  if (setting != NULL) {
+    int code = app_config_replace_str(config_setting_get_string(setting), &settings->addr);
+    if (code != 0) {
+      return code;
+    }
+  }
+  setting = config_lookup(libconfig, "sdr_server_port");
+  if (setting != NULL) {
+    settings->port = config_setting_get_int(setting);
+  }
+  setting = config_lookup(libconfig, "sdr_server_read_timeout_seconds");
+  if (setting != NULL) {
+    settings->read_timeout_seconds = config_setting_get_int(setting);
+  }
+  return 0;
+}
+
 static int app_config_load_from_file(config_t *libconfig, const char *path, app_config *result) {
   fprintf(stdout, "loading configuration from: %s\n", path);
 
@@ -278,18 +302,9 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     result->sdr_type = app_config_convert_sdr_type(config_setting_get_string(setting));
   }
 
-  if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
-    setting = config_lookup(libconfig, "sdr_server_address");
-    if (setting != NULL) {
-      code = app_config_replace_str(config_setting_get_string(setting), &result->sdr_server_address);
-      if (code != 0) {
-        return code;
-      }
-    }
-    setting = config_lookup(libconfig, "sdr_server_port");
-    if (setting != NULL) {
-      result->sdr_server_port = config_setting_get_int(setting);
-    }
+  code = app_config_load_sdr_server_from_file(libconfig, result);
+  if (code != 0) {
+    return code;
   }
   if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     setting = config_lookup(libconfig, "plutosdr_gain");
@@ -374,6 +389,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_SDR_TYPE,
     OPT_SDR_SERVER_ADDRESS,
     OPT_SDR_SERVER_PORT,
+    OPT_SDR_SERVER_READ_TIMEOUT_SECONDS,
     OPT_PLUTOSDR_GAIN,
     OPT_PLUTOSDR_TIMEOUT_MILLIS,
     OPT_FILE,
@@ -422,6 +438,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"sdr_type", required_argument, NULL, OPT_SDR_TYPE},
     {"sdr_server_address", required_argument, NULL, OPT_SDR_SERVER_ADDRESS},
     {"sdr_server_port", required_argument, NULL, OPT_SDR_SERVER_PORT},
+    {"sdr_server_read_timeout_seconds", required_argument, NULL, OPT_SDR_SERVER_READ_TIMEOUT_SECONDS},
     {"plutosdr_gain", required_argument, NULL, OPT_PLUTOSDR_GAIN},
     {"plutosdr_timeout_millis", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MILLIS},
     {"file", required_argument, NULL, OPT_FILE},
@@ -494,14 +511,17 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         result->sdr_type = app_config_convert_sdr_type(optarg);
         break;
       case OPT_SDR_SERVER_ADDRESS: {
-        int code = app_config_replace_str(optarg, &result->sdr_server_address);
+        int code = app_config_replace_str(optarg, &result->sdr_server.addr);
         if (code != 0) {
           return code;
         }
         break;
       }
       case OPT_SDR_SERVER_PORT:
-        result->sdr_server_port = atoi(optarg);
+        result->sdr_server.port = atoi(optarg);
+        break;
+      case OPT_SDR_SERVER_READ_TIMEOUT_SECONDS:
+        result->sdr_server.read_timeout_seconds = atoi(optarg);
         break;
       case OPT_PLUTOSDR_GAIN:
         result->plutosdr_gain = atof(optarg);
@@ -732,14 +752,25 @@ static int app_config_validate_and_log(app_config *result) {
       fprintf(stderr, "<3>sdr-server cannot tx. invalid sdr_type parameter\n");
       return -1;
     }
-    if (result->sdr_server_address == NULL) {
-      result->sdr_server_address = strdup("127.0.0.1");
+    if (result->sdr_server.addr == NULL) {
+      result->sdr_server.addr = strdup("127.0.0.1");
+      if (result->sdr_server.addr == NULL) {
+        return -ENOMEM;
+      }
     }
-    if (result->sdr_server_port == 0) {
-      result->sdr_server_port = 8090;
+    if (result->sdr_server.port == 0) {
+      result->sdr_server.port = 8090;
+    }
+    if (result->sdr_server.read_timeout_seconds < 0) {
+      fprintf(stderr, "<3>sdr_server read timeout should be positive: %d\n", result->sdr_server.read_timeout_seconds);
+      return -1;
+    }
+    if (result->sdr_server.read_timeout_seconds == 0) {
+      result->sdr_server.read_timeout_seconds = result->read_timeout_seconds;
     }
     fprintf(stdout, "sdr: sdr_server\n");
-    fprintf(stdout, "sdr_server connection: %s:%d\n", result->sdr_server_address, result->sdr_server_port);
+    fprintf(stdout, "sdr_server connection: %s:%d\n", result->sdr_server.addr, result->sdr_server.port);
+    fprintf(stdout, "sdr_server read timeout %ds\n", result->sdr_server.read_timeout_seconds);
   } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     fprintf(stdout, "sdr: plutosdr\n");
     fprintf(stdout, "plutosdr_gain: %f\n", result->plutosdr_gain);
@@ -883,8 +914,8 @@ void app_config_destroy(app_config *config) {
   if (config->bind_address != NULL) {
     free(config->bind_address);
   }
-  if (config->sdr_server_address != NULL) {
-    free(config->sdr_server_address);
+  if (config->sdr_server.addr != NULL) {
+    free(config->sdr_server.addr);
   }
   if (config->freq_offset_file != NULL) {
     free(config->freq_offset_file);

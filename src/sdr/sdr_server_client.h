@@ -8,7 +8,15 @@
 
 typedef struct sdr_server_client_t sdr_server_client;
 
-int sdr_server_client_create(uint32_t id, struct sdr_rx *rx, char *addr, int port, int read_timeout_seconds, uint32_t max_output_buffer_length, sdr_device **result);
+typedef struct {
+  char *addr;               // sdr-server hostname or ip address
+  int port;                 // sdr-server port
+  int read_timeout_seconds; // socket read timeout
+  uint64_t frequency;       // center frequency to request from sdr-server, in Hz
+  uint64_t sample_rate;     // sample rate to request from sdr-server, in Hz
+} sdr_server_settings;
+
+int sdr_server_client_create(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);
 
 int sdr_server_client_read_stream(float complex **output, size_t *output_len, void *plugin);
 

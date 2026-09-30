@@ -9,6 +9,7 @@
 #include "dsp/psk_pm_modem.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/file_source.h"
+#include "sdr/sdr_server_client.h"
 
 typedef enum {
   // returned when a sdr type name cannot be parsed
@@ -40,8 +41,7 @@ typedef struct {
 
   sdr_device_type sdr_type;
 
-  char *sdr_server_address;
-  int sdr_server_port;
+  sdr_server_settings sdr_server;
 
   char *file;
   file_source_format file_format;
