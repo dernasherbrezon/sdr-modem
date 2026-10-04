@@ -466,9 +466,26 @@ ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
     return 0;
 }
 
+// rx and tx share the same baseband clock, so their sampling rates can differ only by an integer ratio of 1, 2 or 4
+static int plutosdr_validate_sampling_frequencies(uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency) {
+    if (rx_sampling_frequency == 0 || tx_sampling_frequency == 0) {
+        return 0;
+    }
+    uint64_t max = rx_sampling_frequency > tx_sampling_frequency ? rx_sampling_frequency : tx_sampling_frequency;
+    uint64_t min = rx_sampling_frequency > tx_sampling_frequency ? tx_sampling_frequency : rx_sampling_frequency;
+    if (max % min != 0 || (max / min != 1 && max / min != 2 && max / min != 4)) {
+        fprintf(stderr, "incompatible sampling frequencies: rx %" PRIu64 ", tx %" PRIu64 ". they must be equal or differ by a factor of 2 or 4\n", rx_sampling_frequency, tx_sampling_frequency);
+        return -1;
+    }
+    return 0;
+}
+
 int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
     if (settings == NULL || (settings->rx_sampling_frequency == 0 && settings->tx_sampling_frequency == 0)) {
         fprintf(stderr, "configuration is missing\n");
+        return -1;
+    }
+    if (plutosdr_validate_sampling_frequencies(settings->rx_sampling_frequency, settings->tx_sampling_frequency) != 0) {
         return -1;
     }
     struct plutosdr_t *pluto = malloc(sizeof(struct plutosdr_t));

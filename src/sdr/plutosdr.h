@@ -24,7 +24,7 @@ typedef struct {
   double rx_hardwaregain;        // used only if rx_gain_control_mode is IIO_GAIN_MODE_MANUAL
   uint64_t tx_sampling_frequency;      // baseband sample rate in Hz. 0 if tx is not used
   uint64_t tx_frequency;      // local oscillator frequency in Hz
-  double tx_hardwaregain;        // gain control mode is not applicable to TX: hardwaregain is always set manually
+  double tx_hardwaregain;        // TX attenuation
   unsigned int timeout_ms;      // timeout for all iio operations
 } plutosdr_settings;
 

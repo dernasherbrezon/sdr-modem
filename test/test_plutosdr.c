@@ -269,6 +269,19 @@ void test_invalid_rx_config() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
+void test_incompatible_sampling_frequencies() {
+  plutosdr_settings settings = create_settings(true, true);
+  settings.tx_sampling_frequency = 96000;
+  int code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
+  TEST_ASSERT_EQUAL_INT(-1, code);
+
+  // not an integer ratio
+  settings = create_settings(true, true);
+  settings.tx_sampling_frequency = settings.rx_sampling_frequency * 3 / 2;
+  code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
+  TEST_ASSERT_EQUAL_INT(-1, code);
+}
+
 void tearDown() {
   if (sdr != NULL) {
     sdr->destroy(sdr->plugin);
@@ -305,6 +318,7 @@ int main(void) {
   RUN_TEST(test_invalid_info_list);
   RUN_TEST(test_invalid_ctx);
   RUN_TEST(test_invalid_settimeout);
+  RUN_TEST(test_incompatible_sampling_frequencies);
   RUN_TEST(test_unable_create_buffer);
   RUN_TEST(test_invalid_find_channel);
   RUN_TEST(test_invalid_find_device);
