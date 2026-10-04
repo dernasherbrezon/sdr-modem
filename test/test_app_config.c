@@ -36,8 +36,8 @@ void test_pluto_enabled() {
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(SDR_TYPE_PLUTOSDR, config->sdr_type);
   TEST_ASSERT(config->iio != NULL);
-  TEST_ASSERT(fabsl(10.0 - config->plutosdr_gain) < 0.001);
-  TEST_ASSERT_EQUAL_INT(20000, config->plutosdr_timeout_millis);
+  TEST_ASSERT(fabsl(10.0 - config->plutosdr_hardwaregain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(20000, config->plutosdr_timeout_ms);
 }
 
 void test_success() {
@@ -51,8 +51,8 @@ void test_success() {
   TEST_ASSERT_EQUAL_INT(SDR_TYPE_SDR_SERVER, config->sdr_type);
   TEST_ASSERT_EQUAL_INT(64, config->queue_size);
   TEST_ASSERT(config->iio == NULL);
-  TEST_ASSERT(fabsl(0.0 - config->plutosdr_gain) < 0.001);
-  TEST_ASSERT_EQUAL_INT(0, config->plutosdr_timeout_millis);
+  TEST_ASSERT(fabsl(0.0 - config->plutosdr_hardwaregain) < 0.001);
+  TEST_ASSERT_EQUAL_INT(0, config->plutosdr_timeout_ms);
   TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->sdr_server.addr);
   TEST_ASSERT_EQUAL_INT(8090, config->sdr_server.port);
   TEST_ASSERT_EQUAL_INT(10, config->sdr_server.read_timeout_seconds);

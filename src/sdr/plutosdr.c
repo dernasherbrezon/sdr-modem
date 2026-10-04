@@ -280,8 +280,8 @@ static struct iio_channel *plutosdr_set_sample_rate(struct iio_context *ctx, enu
     return chn;
 }
 
-static int plutosdr_configure_rx_channel(struct iio_context *ctx, bool rx_only, uint64_t sample_rate, uint64_t center_freq, uint8_t gain_control_mode, double manual_gain, const char *channel_name, plutosdr *iio) {
-    if (rx_only) {
+static int plutosdr_configure_rx_channel(struct iio_context *ctx, bool tx_powerdown, uint64_t sample_rate, uint64_t center_freq, uint8_t gain_control_mode, double manual_gain, const char *channel_name, plutosdr *iio) {
+    if (tx_powerdown) {
         // completely disabling TX when doing RX only will significantly improve sensitivity
         // details: https://wiki.analog.com/university/tools/pluto/hacking/listening_to_yourself
         struct iio_channel *lo_channel = plutosdr_find_lo_channel(ctx, TX, iio);
@@ -349,16 +349,16 @@ int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int
     return 0;
 }
 
-int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sample_rate, uint64_t tx_sample_rate, plutosdr *pluto) {
+int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency, plutosdr *pluto) {
     int rx_decimation = 0;
     int16_t *rx_fir_filter_taps = NULL;
-    int code = plutosdr_select_fir_filter_config(rx_sample_rate, &rx_decimation, &rx_fir_filter_taps);
+    int code = plutosdr_select_fir_filter_config(rx_sampling_frequency, &rx_decimation, &rx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
     int tx_decimation = 0;
     int16_t *tx_fir_filter_taps = NULL;
-    code = plutosdr_select_fir_filter_config(tx_sample_rate, &tx_decimation, &tx_fir_filter_taps);
+    code = plutosdr_select_fir_filter_config(tx_sampling_frequency, &tx_decimation, &tx_fir_filter_taps);
     if (code < 0) {
         return code;
     }
@@ -467,7 +467,7 @@ ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
 }
 
 int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
-    if (settings == NULL || (settings->rx_sample_rate == 0 && settings->tx_sample_rate == 0)) {
+    if (settings == NULL || (settings->rx_sampling_frequency == 0 && settings->tx_sampling_frequency == 0)) {
         fprintf(stderr, "configuration is missing\n");
         return -1;
     }
@@ -497,7 +497,7 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
         return -1;
     }
 
-    code = plutosdr_setup_fir_filter(global_iio_ctx, settings->rx_sample_rate, settings->tx_sample_rate, pluto);
+    code = plutosdr_setup_fir_filter(global_iio_ctx, settings->rx_sampling_frequency, settings->tx_sampling_frequency, pluto);
     if (code < 0) {
         plutosdr_destroy(pluto);
         return -1;
@@ -507,7 +507,7 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
     //used for incoming argument validation
     pluto->output_len = max_input_buffer_length;
 
-    if (settings->tx_sample_rate != 0) {
+    if (settings->tx_sampling_frequency != 0) {
         pluto->tx = plutosdr_find_device(global_iio_ctx, TX, pluto);
         if (pluto->tx == NULL) {
             fprintf(stderr, "unable to find tx result\n");
@@ -521,7 +521,7 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
             return -1;
         }
 
-        code = plutosdr_configure_tx_channel(global_iio_ctx, settings->tx_sample_rate, settings->tx_center_freq, settings->tx_manual_gain, "voltage0", pluto);
+        code = plutosdr_configure_tx_channel(global_iio_ctx, settings->tx_sampling_frequency, settings->tx_frequency, settings->tx_hardwaregain, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -548,14 +548,14 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
         }
     }
 
-    if (settings->rx_sample_rate != 0) {
+    if (settings->rx_sampling_frequency != 0) {
         pluto->rx = plutosdr_find_device(global_iio_ctx, RX, pluto);
         if (pluto->rx == NULL) {
             fprintf(stderr, "unable to find rx result\n");
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_rx_channel(global_iio_ctx, settings->rx_only, settings->rx_sample_rate, settings->rx_center_freq, settings->rx_gain_control_mode, settings->rx_manual_gain, "voltage0", pluto);
+        code = plutosdr_configure_rx_channel(global_iio_ctx, settings->tx_powerdown, settings->rx_sampling_frequency, settings->rx_frequency, settings->rx_gain_control_mode, settings->rx_hardwaregain, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;

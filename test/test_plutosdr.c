@@ -74,14 +74,14 @@ plutosdr_settings create_settings(bool rx, bool tx) {
   plutosdr_settings settings = {0};
   settings.timeout_ms = 10000;
   if (rx) {
-    settings.rx_sample_rate = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
-    settings.rx_center_freq = 434236000;
+    settings.rx_sampling_frequency = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
+    settings.rx_frequency = 434236000;
     settings.rx_gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
   }
   if (tx) {
     float baud_rate = 9600;
-    settings.tx_sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
-    settings.tx_center_freq = 434236000;
+    settings.tx_sampling_frequency = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
+    settings.tx_frequency = 434236000;
   }
   return settings;
 }
@@ -264,7 +264,7 @@ void test_invalid_rx_config() {
   TEST_ASSERT_EQUAL_INT(-1, code);
 
   settings = create_settings(true, false);
-  settings.rx_sample_rate = 100000;
+  settings.rx_sampling_frequency = 100000;
   code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }

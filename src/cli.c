@@ -37,22 +37,22 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
     }
   } else if (config->sdr_type == SDR_TYPE_PLUTOSDR) {
     plutosdr_settings settings = {
-        .timeout_ms = config->plutosdr_timeout_millis
+        .timeout_ms = config->plutosdr_timeout_ms
     };
     int code = 0;
     if (config->direction == DIRECTION_RX) {
       // cli works in a single direction. tx can be safely disabled
-      settings.rx_only = true;
-      settings.rx_sample_rate = config->sample_rate;
-      settings.rx_center_freq = config->frequency;
+      settings.tx_powerdown = true;
+      settings.rx_sampling_frequency = config->sample_rate;
+      settings.rx_frequency = config->frequency;
       settings.rx_gain_control_mode = IIO_GAIN_MODE_MANUAL;
-      settings.rx_manual_gain = config->plutosdr_gain;
+      settings.rx_hardwaregain = config->plutosdr_hardwaregain;
       code = plutosdr_create(1, &settings, config->buffer_size, config->iio, &result->device);
     } else {
-      settings.rx_only = false;
-      settings.tx_sample_rate = config->sample_rate;
-      settings.tx_center_freq = config->frequency;
-      settings.tx_manual_gain = config->plutosdr_gain;
+      settings.tx_powerdown = false;
+      settings.tx_sampling_frequency = config->sample_rate;
+      settings.tx_frequency = config->frequency;
+      settings.tx_hardwaregain = config->plutosdr_hardwaregain;
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
       code = plutosdr_create(1, &settings, max_modulation_buffer_length, config->iio, &result->device);
     }

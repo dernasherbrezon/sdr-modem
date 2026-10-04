@@ -276,11 +276,11 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
   }
   if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     plutosdr_settings settings = {
-        .rx_only = false,
-        .tx_sample_rate = req->sample_rate,
-        .tx_center_freq = req->frequency,
-        .tx_manual_gain = server->app_config->plutosdr_gain,
-        .timeout_ms = server->app_config->plutosdr_timeout_millis
+        .tx_powerdown = false,
+        .tx_sampling_frequency = req->sample_rate,
+        .tx_frequency = req->frequency,
+        .tx_hardwaregain = server->app_config->plutosdr_hardwaregain,
+        .timeout_ms = server->app_config->plutosdr_timeout_ms
     };
     int code = plutosdr_create(id, &settings, server->app_config->buffer_size, server->app_config->iio, output);
     if (code != 0) {
@@ -335,12 +335,12 @@ int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct
     }
     plutosdr_settings settings = {
         // tx can be requested later by another client. disable it only if not in use yet
-        .rx_only = !server->tx_initialized,
-        .rx_sample_rate = rx->rx_sample_rate,
-        .rx_center_freq = rx->rx_center_freq,
+        .tx_powerdown = !server->tx_initialized,
+        .rx_sampling_frequency = rx->rx_sample_rate,
+        .rx_frequency = rx->rx_center_freq,
         .rx_gain_control_mode = IIO_GAIN_MODE_MANUAL,
-        .rx_manual_gain = server->app_config->plutosdr_gain,
-        .timeout_ms = server->app_config->plutosdr_timeout_millis
+        .rx_hardwaregain = server->app_config->plutosdr_hardwaregain,
+        .timeout_ms = server->app_config->plutosdr_timeout_ms
     };
     sdr_device *rx_device = NULL;
     code = plutosdr_create(tcp_worker->id, &settings, server->app_config->buffer_size, server->app_config->iio, &rx_device);

@@ -338,13 +338,13 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     return code;
   }
   if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
-    setting = config_lookup(libconfig, "plutosdr_gain");
+    setting = config_lookup(libconfig, "plutosdr_hardwaregain");
     if (setting != NULL) {
-      result->plutosdr_gain = config_setting_get_float(setting);
+      result->plutosdr_hardwaregain = config_setting_get_float(setting);
     }
-    setting = config_lookup(libconfig, "plutosdr_timeout_millis");
+    setting = config_lookup(libconfig, "plutosdr_timeout_ms");
     if (setting != NULL) {
-      result->plutosdr_timeout_millis = config_setting_get_int(setting);
+      result->plutosdr_timeout_ms = config_setting_get_int(setting);
     }
   }
   code = app_config_load_sdr_file_from_file(libconfig, result);
@@ -419,8 +419,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_SDR_SERVER_ADDRESS,
     OPT_SDR_SERVER_PORT,
     OPT_SDR_SERVER_READ_TIMEOUT_SECONDS,
-    OPT_PLUTOSDR_GAIN,
-    OPT_PLUTOSDR_TIMEOUT_MILLIS,
+    OPT_PLUTOSDR_HARDWAREGAIN,
+    OPT_PLUTOSDR_TIMEOUT_MS,
     OPT_RX_FILE,
     OPT_RX_FILE_FORMAT,
     OPT_TX_FILE,
@@ -470,8 +470,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"sdr_server_address", required_argument, NULL, OPT_SDR_SERVER_ADDRESS},
     {"sdr_server_port", required_argument, NULL, OPT_SDR_SERVER_PORT},
     {"sdr_server_read_timeout_seconds", required_argument, NULL, OPT_SDR_SERVER_READ_TIMEOUT_SECONDS},
-    {"plutosdr_gain", required_argument, NULL, OPT_PLUTOSDR_GAIN},
-    {"plutosdr_timeout_millis", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MILLIS},
+    {"plutosdr_hardwaregain", required_argument, NULL, OPT_PLUTOSDR_HARDWAREGAIN},
+    {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
     {"tx_file", required_argument, NULL, OPT_TX_FILE},
@@ -556,11 +556,11 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_SDR_SERVER_READ_TIMEOUT_SECONDS:
         result->sdr_server.read_timeout_seconds = atoi(optarg);
         break;
-      case OPT_PLUTOSDR_GAIN:
-        result->plutosdr_gain = atof(optarg);
+      case OPT_PLUTOSDR_HARDWAREGAIN:
+        result->plutosdr_hardwaregain = atof(optarg);
         break;
-      case OPT_PLUTOSDR_TIMEOUT_MILLIS:
-        result->plutosdr_timeout_millis = (unsigned int) atoi(optarg);
+      case OPT_PLUTOSDR_TIMEOUT_MS:
+        result->plutosdr_timeout_ms = (unsigned int) atoi(optarg);
         break;
       case OPT_RX_FILE: {
         int code = app_config_replace_str(optarg, &result->sdr_file.rx_file);
@@ -833,11 +833,11 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stdout, "sdr_server read timeout %ds\n", result->sdr_server.read_timeout_seconds);
   } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     fprintf(stdout, "sdr: plutosdr\n");
-    fprintf(stdout, "plutosdr_gain: %f\n", result->plutosdr_gain);
-    if (result->plutosdr_timeout_millis == 0) {
-      result->plutosdr_timeout_millis = 10000;
+    fprintf(stdout, "plutosdr_hardwaregain: %f\n", result->plutosdr_hardwaregain);
+    if (result->plutosdr_timeout_ms == 0) {
+      result->plutosdr_timeout_ms = 10000;
     }
-    fprintf(stdout, "plutosdr_timeout_millis: %d\n", result->plutosdr_timeout_millis);
+    fprintf(stdout, "plutosdr_timeout_ms: %d\n", result->plutosdr_timeout_ms);
   } else if (result->sdr_type == SDR_TYPE_FILE) {
     fprintf(stdout, "sdr: file\n");
     if (!is_cli_mode) {

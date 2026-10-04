@@ -45,8 +45,8 @@ typedef struct {
 
   sdr_file_settings sdr_file;
 
-  double plutosdr_gain;
-  unsigned int plutosdr_timeout_millis;
+  double plutosdr_hardwaregain;
+  unsigned int plutosdr_timeout_ms;
   iio_lib *iio;
 
   char *input_file;
