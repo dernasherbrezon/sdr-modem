@@ -279,7 +279,6 @@ int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server 
         .rx_only = false,
         .tx_sample_rate = req->sample_rate,
         .tx_center_freq = req->frequency,
-        .tx_gain_control_mode = IIO_GAIN_MODE_MANUAL,
         .tx_manual_gain = server->app_config->plutosdr_gain,
         .timeout_ms = server->app_config->plutosdr_timeout_millis
     };

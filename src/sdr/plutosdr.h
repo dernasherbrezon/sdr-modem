@@ -14,7 +14,7 @@ typedef struct plutosdr_t plutosdr;
 #define IIO_GAIN_MODE_SLOW_ATTACK 2
 #define IIO_GAIN_MODE_HYBRID 3
 
-// settings are only read during plutosdr_create and can be freed by the caller afterwards
+// settings are only read during plutosdr_create and can be freed by the caller afterward
 typedef struct {
   // completely disable TX when doing RX only. significantly improves RX sensitivity
   bool rx_only;
@@ -24,8 +24,7 @@ typedef struct {
   double rx_manual_gain;        // used only if rx_gain_control_mode is IIO_GAIN_MODE_MANUAL
   uint64_t tx_sample_rate;      // baseband sample rate in Hz. 0 if tx is not used
   uint64_t tx_center_freq;      // local oscillator frequency in Hz
-  uint8_t tx_gain_control_mode; // one of IIO_GAIN_MODE_*
-  double tx_manual_gain;        // used only if tx_gain_control_mode is IIO_GAIN_MODE_MANUAL
+  double tx_manual_gain;        // gain control mode is not applicable to TX: hardwaregain is always set manually
   unsigned int timeout_ms;      // timeout for all iio operations
 } plutosdr_settings;
 

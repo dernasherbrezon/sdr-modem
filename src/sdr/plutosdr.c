@@ -254,69 +254,79 @@ static struct iio_channel *plutosdr_find_streaming_channel(enum iio_direction d,
     return pluto->lib->iio_device_find_channel(dev, plutosdr_format_channel_name("voltage", chid), d == TX);
 }
 
-int plutosdr_configure_streaming_channel(struct iio_context *ctx, bool rx_only, uint64_t sample_rate, uint64_t center_freq, uint8_t gain_control_mode, double manual_gain, enum iio_direction type, const char *channel_name, plutosdr *iio) {
+static int plutosdr_set_center_freq(struct iio_context *ctx, enum iio_direction type, uint64_t center_freq, plutosdr *iio) {
     struct iio_channel *chn = plutosdr_find_lo_channel(ctx, type, iio);
     if (chn == NULL) {
         return -1;
     }
+    if (type == TX) {
+        plutosdr_write_lli(chn, "powerdown", 0, iio);
+    }
+    return plutosdr_write_lli(chn, "frequency", (long long) center_freq, iio);
+}
 
-    if (rx_only && type == RX) {
+// returns the phy channel with the sample rate configured or NULL on error
+static struct iio_channel *plutosdr_set_sample_rate(struct iio_context *ctx, enum iio_direction type, uint64_t sample_rate, const char *channel_name, plutosdr *iio) {
+    struct iio_channel *chn = plutosdr_find_phy_channel(ctx, type, channel_name, iio);
+    if (chn == NULL) {
+        return NULL;
+    }
+    if (plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio) != 0) {
+        return NULL;
+    }
+    if (plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio) != 0) {
+        return NULL;
+    }
+    return chn;
+}
+
+static int plutosdr_configure_rx_channel(struct iio_context *ctx, bool rx_only, uint64_t sample_rate, uint64_t center_freq, uint8_t gain_control_mode, double manual_gain, const char *channel_name, plutosdr *iio) {
+    if (rx_only) {
         // completely disabling TX when doing RX only will significantly improve sensitivity
         // details: https://wiki.analog.com/university/tools/pluto/hacking/listening_to_yourself
-        struct iio_channel *lo_channel = plutosdr_find_lo_channel(global_iio_ctx, TX, iio);
+        struct iio_channel *lo_channel = plutosdr_find_lo_channel(ctx, TX, iio);
         if (lo_channel != NULL) {
             plutosdr_write_lli(lo_channel, "powerdown", 1, iio);
         }
     }
-    if (type == TX) {
-        plutosdr_write_lli(chn, "powerdown", 0, iio);
-    }
-
-    int code = plutosdr_write_lli(chn, "frequency", (long long) center_freq, iio);
+    int code = plutosdr_set_center_freq(ctx, RX, center_freq, iio);
     if (code != 0) {
         return code;
     }
-
-    chn = plutosdr_find_phy_channel(ctx, type, channel_name, iio);
+    struct iio_channel *chn = plutosdr_set_sample_rate(ctx, RX, sample_rate, channel_name, iio);
     if (chn == NULL) {
         return -1;
     }
-    code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio);
-    if (code != 0) {
-        return code;
-    }
-    code = plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio);
-    if (code != 0) {
-        return code;
-    }
     switch (gain_control_mode) {
         case IIO_GAIN_MODE_MANUAL:
-            if (type == RX) {
-                code = plutosdr_write_str(chn, "gain_control_mode", "manual", iio);
-            }
+            code = plutosdr_write_str(chn, "gain_control_mode", "manual", iio);
             if (code == 0) {
                 code = plutosdr_error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", manual_gain), "hardwaregain", iio);
             }
-            break;
+            return code;
         case IIO_GAIN_MODE_FAST_ATTACK:
-            code = plutosdr_write_str(chn, "gain_control_mode", "fast_attack", iio);
-            break;
+            return plutosdr_write_str(chn, "gain_control_mode", "fast_attack", iio);
         case IIO_GAIN_MODE_SLOW_ATTACK:
-            code = plutosdr_write_str(chn, "gain_control_mode", "slow_attack", iio);
-            break;
+            return plutosdr_write_str(chn, "gain_control_mode", "slow_attack", iio);
         case IIO_GAIN_MODE_HYBRID:
-            code = plutosdr_write_str(chn, "gain_control_mode", "hybrid", iio);
-            break;
+            return plutosdr_write_str(chn, "gain_control_mode", "hybrid", iio);
         default:
             fprintf(stderr, "unknown gain mode: %d\n", gain_control_mode);
-            code = -1;
-            break;
+            return -1;
     }
+}
+
+// TX has no gain control mode: only manual hardwaregain (attenuation) is supported
+static int plutosdr_configure_tx_channel(struct iio_context *ctx, uint64_t sample_rate, uint64_t center_freq, double manual_gain, const char *channel_name, plutosdr *iio) {
+    int code = plutosdr_set_center_freq(ctx, TX, center_freq, iio);
     if (code != 0) {
         return code;
     }
-
-    return code;
+    struct iio_channel *chn = plutosdr_set_sample_rate(ctx, TX, sample_rate, channel_name, iio);
+    if (chn == NULL) {
+        return -1;
+    }
+    return plutosdr_error_check(iio->lib->iio_channel_attr_write_double(chn, "hardwaregain", manual_gain), "hardwaregain", iio);
 }
 
 int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
@@ -511,7 +521,7 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
             return -1;
         }
 
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, settings->rx_only, settings->tx_sample_rate, settings->tx_center_freq, settings->tx_gain_control_mode, settings->tx_manual_gain, TX, "voltage0", pluto);
+        code = plutosdr_configure_tx_channel(global_iio_ctx, settings->tx_sample_rate, settings->tx_center_freq, settings->tx_manual_gain, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;
@@ -545,7 +555,7 @@ int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max
             plutosdr_destroy(pluto);
             return -1;
         }
-        code = plutosdr_configure_streaming_channel(global_iio_ctx, settings->rx_only, settings->rx_sample_rate, settings->rx_center_freq, settings->rx_gain_control_mode, settings->rx_manual_gain, RX, "voltage0", pluto);
+        code = plutosdr_configure_rx_channel(global_iio_ctx, settings->rx_only, settings->rx_sample_rate, settings->rx_center_freq, settings->rx_gain_control_mode, settings->rx_manual_gain, "voltage0", pluto);
         if (code < 0) {
             plutosdr_destroy(pluto);
             return -1;

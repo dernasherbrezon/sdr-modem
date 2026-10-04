@@ -52,7 +52,6 @@ static int cli_create_sdr(app_config *config, struct cli_t *result) {
       settings.rx_only = false;
       settings.tx_sample_rate = config->sample_rate;
       settings.tx_center_freq = config->frequency;
-      settings.tx_gain_control_mode = IIO_GAIN_MODE_MANUAL;
       settings.tx_manual_gain = config->plutosdr_gain;
       size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
       code = plutosdr_create(1, &settings, max_modulation_buffer_length, config->iio, &result->device);

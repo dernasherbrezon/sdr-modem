@@ -82,7 +82,6 @@ plutosdr_settings create_settings(bool rx, bool tx) {
     float baud_rate = 9600;
     settings.tx_sample_rate = ((int) (520834.0F / baud_rate) + 1) * baud_rate;
     settings.tx_center_freq = 434236000;
-    settings.tx_gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
   }
   return settings;
 }
