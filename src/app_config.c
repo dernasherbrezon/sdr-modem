@@ -19,6 +19,22 @@ static sdr_device_type app_config_convert_sdr_type(const char *type) {
   return SDR_TYPE_INVALID;
 }
 
+static int app_config_parse_gain_mode(const char *str, iio_gain_mode *result) {
+  if (strcmp(str, "manual") == 0) {
+    *result = IIO_GAIN_MODE_MANUAL;
+  } else if (strcmp(str, "fast_attack") == 0) {
+    *result = IIO_GAIN_MODE_FAST_ATTACK;
+  } else if (strcmp(str, "slow_attack") == 0) {
+    *result = IIO_GAIN_MODE_SLOW_ATTACK;
+  } else if (strcmp(str, "hybrid") == 0) {
+    *result = IIO_GAIN_MODE_HYBRID;
+  } else {
+    fprintf(stderr, "<3>invalid plutosdr_gain_control_mode: %s. expected manual, fast_attack, slow_attack or hybrid\n", str);
+    return -1;
+  }
+  return 0;
+}
+
 static sdr_file_format app_config_convert_file_format(const char *format) {
   if (strcmp(format, "cu8") == 0) {
     return FILE_FORMAT_CU8;
@@ -342,6 +358,17 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     if (setting != NULL) {
       result->plutosdr_hardwaregain = config_setting_get_float(setting);
     }
+    setting = config_lookup(libconfig, "plutosdr_gain_control_mode");
+    if (setting != NULL) {
+      code = app_config_parse_gain_mode(config_setting_get_string(setting), &result->plutosdr_gain_control_mode);
+      if (code != 0) {
+        return code;
+      }
+    }
+    setting = config_lookup(libconfig, "plutosdr_tx_powerdown");
+    if (setting != NULL) {
+      result->plutosdr_tx_powerdown = config_setting_get_bool(setting) ? true : false;
+    }
     setting = config_lookup(libconfig, "plutosdr_timeout_ms");
     if (setting != NULL) {
       result->plutosdr_timeout_ms = config_setting_get_int(setting);
@@ -420,6 +447,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_SDR_SERVER_PORT,
     OPT_SDR_SERVER_READ_TIMEOUT_SECONDS,
     OPT_PLUTOSDR_HARDWAREGAIN,
+    OPT_PLUTOSDR_GAIN_CONTROL_MODE,
+    OPT_PLUTOSDR_TX_POWERDOWN,
     OPT_PLUTOSDR_TIMEOUT_MS,
     OPT_RX_FILE,
     OPT_RX_FILE_FORMAT,
@@ -471,6 +500,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"sdr_server_port", required_argument, NULL, OPT_SDR_SERVER_PORT},
     {"sdr_server_read_timeout_seconds", required_argument, NULL, OPT_SDR_SERVER_READ_TIMEOUT_SECONDS},
     {"plutosdr_hardwaregain", required_argument, NULL, OPT_PLUTOSDR_HARDWAREGAIN},
+    {"plutosdr_gain_control_mode", required_argument, NULL, OPT_PLUTOSDR_GAIN_CONTROL_MODE},
+    {"plutosdr_tx_powerdown", required_argument, NULL, OPT_PLUTOSDR_TX_POWERDOWN},
     {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
@@ -558,6 +589,16 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_PLUTOSDR_HARDWAREGAIN:
         result->plutosdr_hardwaregain = atof(optarg);
+        break;
+      case OPT_PLUTOSDR_GAIN_CONTROL_MODE: {
+        int code = app_config_parse_gain_mode(optarg, &result->plutosdr_gain_control_mode);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
+      case OPT_PLUTOSDR_TX_POWERDOWN:
+        result->plutosdr_tx_powerdown = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
         break;
       case OPT_PLUTOSDR_TIMEOUT_MS:
         result->plutosdr_timeout_ms = (unsigned int) atoi(optarg);
@@ -834,6 +875,8 @@ static int app_config_validate_and_log(app_config *result) {
   } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     fprintf(stdout, "sdr: plutosdr\n");
     fprintf(stdout, "plutosdr_hardwaregain: %f\n", result->plutosdr_hardwaregain);
+    fprintf(stdout, "plutosdr_gain_control_mode: %d\n", result->plutosdr_gain_control_mode);
+    fprintf(stdout, "plutosdr_tx_powerdown: %s\n", result->plutosdr_tx_powerdown ? "true" : "false");
     if (result->plutosdr_timeout_ms == 0) {
       result->plutosdr_timeout_ms = 10000;
     }

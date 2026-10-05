@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "sdr/iio_lib.h"
+#include "sdr/plutosdr.h"
 #include "dsp/gfsk_modem.h"
 #include "dsp/bpsk_modem.h"
 #include "dsp/psk_pm_modem.h"
@@ -28,7 +29,7 @@ typedef enum {
 #define DIRECTION_RX 1
 #define DIRECTION_TX 2
 
-typedef struct {
+typedef struct app_config_t {
   // socket settings
   char *bind_address;
   uint16_t port;
@@ -46,6 +47,9 @@ typedef struct {
   sdr_file_settings sdr_file;
 
   double plutosdr_hardwaregain;
+  iio_gain_mode plutosdr_gain_control_mode;
+  // completely disable TX when doing RX only. significantly improves RX sensitivity
+  bool plutosdr_tx_powerdown;
   unsigned int plutosdr_timeout_ms;
   iio_lib *iio;
 
