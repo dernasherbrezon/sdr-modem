@@ -6,10 +6,7 @@
 #include <string.h>
 
 #include "dsp/sdr_modem.h"
-#include "sdr/sdr_file.h"
-#include "sdr/plutosdr.h"
 #include "sdr/sdr_device.h"
-#include "sdr/sdr_server_client.h"
 
 struct cli_t {
   int direction;
@@ -25,63 +22,6 @@ struct cli_t {
 
   volatile sig_atomic_t do_exit;
 };
-
-static int cli_create_sdr(app_config *config, struct cli_t *result) {
-  if (config->sdr_type == SDR_TYPE_SDR_SERVER) {
-    sdr_server_settings settings = config->sdr_server;
-    settings.frequency = config->frequency;
-    settings.sample_rate = config->sample_rate;
-    int code = sdr_server_client_create(1, &settings, config->buffer_size, &result->device);
-    if (code != 0) {
-      return -1;
-    }
-  } else if (config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    plutosdr_settings settings = {
-        .timeout_ms = config->plutosdr_timeout_ms
-    };
-    int code = 0;
-    if (config->direction == DIRECTION_RX) {
-      // cli works in a single direction. tx can be safely disabled
-      settings.tx_powerdown = true;
-      settings.rx_sampling_frequency = config->sample_rate;
-      settings.rx_frequency = config->frequency;
-      settings.rx_gain_control_mode = IIO_GAIN_MODE_MANUAL;
-      settings.rx_hardwaregain = config->plutosdr_hardwaregain;
-      code = plutosdr_create(1, &settings, config->buffer_size, config->iio, &result->device);
-    } else {
-      settings.tx_powerdown = false;
-      settings.tx_sampling_frequency = config->sample_rate;
-      settings.tx_frequency = config->frequency;
-      settings.tx_hardwaregain = config->plutosdr_hardwaregain;
-      size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = plutosdr_create(1, &settings, max_modulation_buffer_length, config->iio, &result->device);
-    }
-    if (code != 0) {
-      return -1;
-    }
-  } else if (config->sdr_type == SDR_TYPE_FILE) {
-    sdr_file_settings settings = config->sdr_file;
-    settings.frequency = config->frequency;
-    settings.sample_rate = config->sample_rate;
-    int code = 0;
-    // cli works in a single direction. do not open (and truncate) tx_file during rx
-    if (config->direction == DIRECTION_RX) {
-      settings.tx_file = NULL;
-      code = sdr_file_create(1, &settings, config->buffer_size, &result->device);
-    } else {
-      settings.rx_file = NULL;
-      size_t max_modulation_buffer_length = sdr_modem_max_modulation_buffer_length(result->modem);
-      code = sdr_file_create(1, &settings, max_modulation_buffer_length, &result->device);
-    }
-    if (code != 0) {
-      return -1;
-    }
-  } else {
-    fprintf(stderr, "<3>unsupported sdr_type: %d\n", config->sdr_type);
-    return -1;
-  }
-  return 0;
-}
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
   sdr_modem_settings settings;
@@ -145,7 +85,7 @@ int cli_create(app_config *config, cli **output) {
     return -1;
   }
 
-  code = cli_create_sdr(config, result);
+  code = sdr_device_create(config, &result->device);
   if (code != 0) {
     cli_destroy(result);
     return -1;

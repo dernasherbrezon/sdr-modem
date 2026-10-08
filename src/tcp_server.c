@@ -24,25 +24,6 @@
 #include "sdr/plutosdr.h"
 #include "sdr/sdr_server_client.h"
 
-struct tcp_worker {
-  struct ModemRequest *rx_req;
-  struct ModemRequest *tx_req;
-  int client_socket;
-  uint32_t id;
-  atomic_bool is_running;
-
-  pthread_t client_thread;
-  tcp_server *server;
-  sdr_worker *sdr;
-
-  uint32_t buffer_size;
-  uint8_t *buffer;
-  sdr_modem *modem;
-  FILE *tx_dump_file;
-
-  sdr_device *tx_device;
-};
-
 struct tcp_server_t {
   int server_socket;
   volatile sig_atomic_t is_running;
@@ -50,11 +31,13 @@ struct tcp_server_t {
   app_config *app_config;
   uint32_t client_counter;
 
-  linked_list *tcp_workers;
+  bool client_disconnected;
+  int client_socket;
   pthread_mutex_t mutex;
 
-  bool tx_initialized;
-  bool rx_initialized;
+  client_tx_worker *tx_worker;
+  dsp_worker *dsp_worker;
+  sdr_device *sdr;
 };
 
 static void log_client(struct sockaddr_in *address, uint32_t id) {
@@ -77,7 +60,7 @@ static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) 
   return 0;
 }
 
-static int validate_request(const struct ModemRequest *req, uint32_t client_id, const app_config *config) {
+static int validate_request(const struct ModemRequest *req, uint32_t client_id) {
   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
     fprintf(stderr, "<3>[%d] modem settings are missing\n", client_id);
     return -1;
@@ -106,12 +89,12 @@ void tcp_server_write_response_and_close(int client_socket, ResponseStatus statu
   close(client_socket);
 }
 
-void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
+void handle_tx_data(tcp_server *tcp_server, struct message_header *header) {
   TxData *data = NULL;
-  int code = api_utils_read_tx_data(worker->client_socket, header, &data);
+  int code = api_utils_read_tx_data(tcp_server->client_socket, header, &data);
   if (code != 0) {
-    fprintf(stderr, "<3>[%d] unable to read tx request fully\n", worker->id);
-    api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+    fprintf(stderr, "<3>[%d] unable to read tx request fully\n", tcp_server->client_counter);
+    api_utils_write_response(tcp_server->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
     return;
   }
   size_t left = data->data.len;
@@ -132,7 +115,7 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
     if (worker->tx_dump_file != NULL) {
       size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
       if (n_written < output_len) {
-        fprintf(stderr, "<3>[%d] unable to write tx data\n", worker->id);
+        fprintf(stderr, "<3>[%d] unable to write tx data\n", tcp_server->client_counter);
         //ignore full disk
         //continue transmitting
       }
@@ -158,12 +141,11 @@ void handle_tx_data(struct tcp_worker *worker, struct message_header *header) {
   tx_data__free_unpacked(data, NULL);
 }
 
-static void *tcp_worker_callback(void *arg) {
-  struct tcp_worker *worker = (struct tcp_worker *) arg;
-  uint32_t id = worker->id;
+static void *tcp_worker_callback(tcp_server *worker) {
+  uint32_t id = worker->client_counter;
   fprintf(stdout, "[%d] tcp_worker is starting\n", id);
-  while (worker->is_running) {
-    struct message_header header;
+  while (worker->is_running && !worker->client_disconnected) {
+    message_header header;
     int code = api_utils_read_header(worker->client_socket, &header);
     if (code < -1) {
       // read timeout happened. it's ok.
@@ -172,429 +154,92 @@ static void *tcp_worker_callback(void *arg) {
     }
     if (code == -1) {
       fprintf(stdout, "[%d] client disconnected\n", id);
+      worker->client_disconnected = true;
       break;
     }
     if (header.protocol_version != PROTOCOL_VERSION) {
       fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
       continue;
     }
-    if (header.type == TYPE_SHUTDOWN) {
-      fprintf(stdout, "[%d] client requested disconnect\n", id);
-      break;
-    } else if (header.type == TYPE_TX_DATA) {
-      fprintf(stdout, "[%d] received tx request\n", id);
-      handle_tx_data(worker, &header);
-    } else {
-      fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
+    switch (header.type) {
+      case MESSAGE_TYPE_RX_REQUEST:
+      case MESSAGE_TYPE_TX_REQUEST:
+        struct ModemRequest *rx_req = NULL;
+        if (api_utils_read_modem_request(worker->client_socket, &header, &rx_req) != 0) {
+          fprintf(stderr, "<3>[%d] unable to read request fully\n", id);
+          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          break;
+        }
+
+        if (validate_request(rx_req, id) < 0) {
+          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          break;
+        }
+
+        sdr_modem_type modem_type = MODEM_TYPE_NONE;
+        sdr_modem_settings modem_settings;
+        code = api_utils_convert_modem_request(rx_req, &modem_type, &modem_settings);
+        if (code != 0) {
+          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          break;
+        }
+        //FIXME pause sdr, set rx parameters, replace existing modem with the new in dsp_worker
+        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__SUCCESS, id, worker->tx_worker);
+        //FIXME for tx it should be different
+        break;
+      case MESSAGE_TYPE_TX_DATA:
+        fprintf(stdout, "[%d] received tx request\n", id);
+        handle_tx_data(worker, &header);
+        break;
+      case MESSAGE_TYPE_PING:
+        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
+        break;
+      case MESSAGE_TYPE_SHUTDOWN:
+        fprintf(stdout, "[%d] client requested disconnect\n", id);
+        worker->client_disconnected = true;
+        break;
+      default:
+        fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
+        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        break;
     }
   }
-  //terminate dsp_worker if any
-  //terminate sdr_worker if no more dsp_workers there
-  sdr_worker_destroy_by_dsp_worker_id(worker->id, worker->sdr);
-  //terminate tx device if any
-  if (worker->tx_device != NULL) {
-    worker->tx_device->destroy(worker->tx_device->plugin);
-    free(worker->tx_device);
-  }
+
+  //FIXME stop sdr, stop modem
+
   close(worker->client_socket);
 
   worker->is_running = false;
   return (void *) 0;
 }
 
-bool tcp_worker_is_stopped(void *data) {
-  struct tcp_worker *worker = (struct tcp_worker *) data;
-  if (worker->is_running) {
-    return false;
-  }
-  return true;
-}
-
-bool tcp_worker_is_txing(void *id, void *data) {
-  struct tcp_worker *worker = (struct tcp_worker *) data;
-  return (worker->tx_device != NULL);
-}
-
-bool tcp_worker_is_rxing(void *id, void *data) {
-  struct tcp_worker *worker = (struct tcp_worker *) data;
-  return (worker->rx_req != NULL);
-}
-
-bool tcp_worker_find_closest(void *id, void *data) {
-  struct tcp_worker *worker = (struct tcp_worker *) data;
-  return sdr_worker_find_closest(id, worker->sdr);
-}
-
-void tcp_worker_destroy(void *data) {
-  if (data == NULL) {
-    return;
-  }
-  struct tcp_worker *worker = (struct tcp_worker *) data;
-  fprintf(stdout, "[%d] tcp_worker is stopping\n", worker->id);
-  worker->is_running = false;
-  if (worker->client_thread != NULL) {
-    pthread_join(worker->client_thread, NULL);
-  }
-  if (worker->rx_req != NULL) {
-    modem_request__free_unpacked(worker->rx_req, NULL);
-  }
-  if (worker->tx_req != NULL) {
-    modem_request__free_unpacked(worker->tx_req, NULL);
-  }
-  if (worker->buffer != NULL) {
-    free(worker->buffer);
-  }
-  if (worker->modem != NULL) {
-    sdr_modem_destroy(worker->modem);
-  }
-  if (worker->tx_dump_file != NULL) {
-    fclose(worker->tx_dump_file);
-  }
-  uint32_t id = worker->id;
-  free(worker);
-  fprintf(stdout, "[%d] tcp_worker stopped\n", id);
-}
-
-void cleanup_terminated_threads(tcp_server *server) {
-  pthread_mutex_lock(&server->mutex);
-  linked_list_destroy_by_selector(&tcp_worker_is_stopped, &server->tcp_workers);
-  void *tx_worker = linked_list_find(NULL, &tcp_worker_is_txing, server->tcp_workers);
-  if (tx_worker == NULL) {
-    server->tx_initialized = false;
-  }
-  void *rx_worker = linked_list_find(NULL, &tcp_worker_is_rxing, server->tcp_workers);
-  if (rx_worker == NULL) {
-    server->rx_initialized = false;
-  }
-  pthread_mutex_unlock(&server->mutex);
-}
-
-int tcp_server_init_tx_device(uint32_t id, struct ModemRequest *req, tcp_server *server, sdr_device **output) {
-  if (server->tx_initialized) {
-    fprintf(stderr, "<3>[%d] tx is being used\n", id);
-    return -RESPONSE_DETAILS_TX_IS_BEING_USED;
-  }
-  if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    plutosdr_settings settings = {
-        .tx_powerdown = false,
-        .tx_sampling_frequency = req->sample_rate,
-        .tx_frequency = req->frequency,
-        .tx_hardwaregain = server->app_config->plutosdr_hardwaregain,
-        .timeout_ms = server->app_config->plutosdr_timeout_ms
-    };
-    int code = plutosdr_create(id, &settings, server->app_config->buffer_size, server->app_config->iio, output);
-    if (code != 0) {
-      fprintf(stderr, "<3>[%d] unable to init pluto tx\n", id);
-      return -RESPONSE_DETAILS_INTERNAL_ERROR;
-    }
-  } else {
-    fprintf(stderr, "<3>[%d] unknown tx sdr %d\n", id, server->app_config->sdr_type);
-    return -RESPONSE_DETAILS_INTERNAL_ERROR;
-  }
-  server->tx_initialized = true;
-  return 0;
-}
-
-int tcp_server_init_rx_device(dsp_worker *dsp_worker, tcp_server *server, struct tcp_worker *tcp_worker) {
-  struct sdr_rx *rx = NULL;
-  int code = tcp_worker_convert(tcp_worker->rx_req, &rx);
-  if (code != 0) {
-    return -RESPONSE_DETAILS_INTERNAL_ERROR;
-  }
-  if (server->app_config->sdr_type == SDR_TYPE_SDR_SERVER) {
-    //re-use sdr connections
-    //this will allow demodulating different modes using the same data
-    struct tcp_worker *closest = linked_list_find(rx, &tcp_worker_find_closest, server->tcp_workers);
-    if (closest == NULL) {
-      sdr_server_settings settings = server->app_config->sdr_server;
-      settings.frequency = rx->rx_center_freq;
-      settings.sample_rate = rx->rx_sample_rate;
-      sdr_device *rx_device = NULL;
-      code = sdr_server_client_create(tcp_worker->id, &settings, server->app_config->buffer_size, &rx_device);
-      if (code != 0) {
-        free(rx);
-        return -RESPONSE_DETAILS_INTERNAL_ERROR;
-      }
-      sdr_worker *sdr = NULL;
-      // take id from the first tcp client
-      code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
-      if (code != 0) {
-        free(rx);
-        return -RESPONSE_DETAILS_INTERNAL_ERROR;
-      }
-      tcp_worker->sdr = sdr;
-    } else {
-      tcp_worker->sdr = closest->sdr;
-      free(rx);
-    }
-  } else if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    if (server->rx_initialized) {
-      free(rx);
-      fprintf(stderr, "<3>[%d] rx is being used\n", tcp_worker->id);
-      return -RESPONSE_DETAILS_RX_IS_BEING_USED;
-    }
-    plutosdr_settings settings = {
-        // tx can be requested later by another client. disable it only if not in use yet
-        .tx_powerdown = !server->tx_initialized,
-        .rx_sampling_frequency = rx->rx_sample_rate,
-        .rx_frequency = rx->rx_center_freq,
-        .rx_gain_control_mode = IIO_GAIN_MODE_MANUAL,
-        .rx_hardwaregain = server->app_config->plutosdr_hardwaregain,
-        .timeout_ms = server->app_config->plutosdr_timeout_ms
-    };
-    sdr_device *rx_device = NULL;
-    code = plutosdr_create(tcp_worker->id, &settings, server->app_config->buffer_size, server->app_config->iio, &rx_device);
-    if (code != 0) {
-      free(rx);
-      fprintf(stderr, "<3>[%d] unable to init pluto rx\n", tcp_worker->id);
-      return -RESPONSE_DETAILS_INTERNAL_ERROR;
-    }
-    sdr_worker *sdr = NULL;
-    code = sdr_worker_create(tcp_worker->id, rx, rx_device, &sdr);
-    if (code != 0) {
-      free(rx);
-      return -RESPONSE_DETAILS_INTERNAL_ERROR;
-    }
-    tcp_worker->sdr = sdr;
-  } else {
-    free(rx);
-    return -1;
-  }
-
-  code = sdr_worker_add_dsp_worker(dsp_worker, tcp_worker->sdr);
-  if (code != 0) {
-    return -RESPONSE_DETAILS_INTERNAL_ERROR;
-  }
-
-  code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
-  if (code != 0) {
-    return -RESPONSE_DETAILS_INTERNAL_ERROR;
-  }
-
-  server->rx_initialized = true;
-  return 0;
-}
-
-void handle_tx_client(int client_socket, struct message_header *header, tcp_server *server) {
-  struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
-  if (tcp_worker == NULL) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    return;
-  }
-  *tcp_worker = (struct tcp_worker){0};
-  tcp_worker->id = server->client_counter;
-  tcp_worker->client_socket = client_socket;
-  tcp_worker->server = server;
-  //explicitly init all rx fields to NULL for tx client
-  tcp_worker->rx_req = NULL;
-  tcp_worker->sdr = NULL;
-
-  tcp_worker->buffer_size = server->app_config->buffer_size;
-  tcp_worker->buffer = malloc(sizeof(uint8_t) * tcp_worker->buffer_size);
-  if (tcp_worker->buffer == NULL) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  if (api_utils_read_modem_request(client_socket, header, &tcp_worker->tx_req) != 0) {
-    fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  if (validate_request(tcp_worker->tx_req, tcp_worker->id, server->app_config) < 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  sdr_modem_type modem_type = MODEM_TYPE_NONE;
-  sdr_modem_settings modem_settings;
-  int code = api_utils_convert_modem_request(tcp_worker->tx_req, &modem_type, &modem_settings);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-  code = sdr_modem_create(modem_type, &modem_settings, server->app_config->buffer_size, NULL, &tcp_worker->modem);
-  if (code != 0) {
-    fprintf(stderr, "<3>[%d] unable to create modem\n", tcp_worker->id);
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-  if (server->app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    pthread_mutex_lock(&server->mutex);
-    code = tcp_server_init_tx_device(tcp_worker->id, tcp_worker->tx_req, server, &tcp_worker->tx_device);
-    pthread_mutex_unlock(&server->mutex);
-    if (code < 0) {
-      tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, -code);
-      tcp_worker_destroy(tcp_worker);
-      return;
-    }
-  }
-
-  tcp_worker->is_running = true;
-
-  pthread_t client_thread;
-  code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-  tcp_worker->client_thread = client_thread;
-
-  code = linked_list_add(tcp_worker, &tcp_worker_destroy, &server->tcp_workers);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-  fprintf(stdout, "[%d] tx freq: %" PRIu64 ", tx sample_rate: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          tcp_worker->tx_req->frequency,
-          tcp_worker->tx_req->sample_rate,
-          api_utils_get_baud_rate(tcp_worker->tx_req));
-}
-
-void handle_rx_client(int client_socket, struct message_header *header, tcp_server *server) {
-  struct tcp_worker *tcp_worker = malloc(sizeof(struct tcp_worker));
-  if (tcp_worker == NULL) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    return;
-  }
-  *tcp_worker = (struct tcp_worker){0};
-  tcp_worker->id = server->client_counter;
-  tcp_worker->client_socket = client_socket;
-  tcp_worker->server = server;
-  //explicitly init all tx fields to NULL for rx client
-  tcp_worker->tx_req = NULL;
-  tcp_worker->modem = NULL;
-  tcp_worker->tx_dump_file = NULL;
-  tcp_worker->tx_device = NULL;
-
-  tcp_worker->buffer_size = 0;
-  tcp_worker->buffer = NULL;
-
-  if (api_utils_read_modem_request(client_socket, header, &tcp_worker->rx_req) != 0) {
-    fprintf(stderr, "<3>[%d] unable to read request fully\n", tcp_worker->id);
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  if (validate_request(tcp_worker->rx_req, tcp_worker->id, server->app_config) < 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  sdr_modem_type modem_type = MODEM_TYPE_NONE;
-  sdr_modem_settings modem_settings;
-  int code = api_utils_convert_modem_request(tcp_worker->rx_req, &modem_type, &modem_settings);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  tcp_worker->is_running = true;
-
-  pthread_t client_thread;
-  code = pthread_create(&client_thread, NULL, &tcp_worker_callback, tcp_worker);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-  tcp_worker->client_thread = client_thread;
-
-  dsp_worker *dsp_worker = NULL;
-  code = dsp_worker_create(tcp_worker->id, tcp_worker->client_socket, server->app_config, modem_type, &modem_settings, &dsp_worker);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-    tcp_worker_destroy(tcp_worker);
-    return;
-  }
-
-  pthread_mutex_lock(&server->mutex);
-  code = tcp_server_init_rx_device(dsp_worker, server, tcp_worker);
-  pthread_mutex_unlock(&server->mutex);
-  if (code != 0) {
-    tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, -code);
-    // this will trigger sdr_worker destroy if any
-    tcp_worker_destroy(tcp_worker);
-    dsp_worker_destroy(dsp_worker);
-    return;
-  }
-
-  api_utils_write_response(tcp_worker->client_socket, RESPONSE_STATUS__SUCCESS, tcp_worker->id);
-  fprintf(stdout, "[%d] rx freq: %" PRIu64 ", rx sample_date: %" PRIu64 ", baud: %d\n", tcp_worker->id,
-          tcp_worker->rx_req->frequency,
-          tcp_worker->rx_req->sample_rate, api_utils_get_baud_rate(tcp_worker->rx_req));
-}
-
 static void *acceptor_worker(void *arg) {
   tcp_server *server = (tcp_server *) arg;
   struct sockaddr_in address;
   while (server->is_running) {
-    int client_socket;
     int addrlen = sizeof(address);
-    if ((client_socket = accept(server->server_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
+    if ((server->client_socket = accept(server->server_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
       break;
     }
 
     struct timeval tv;
     tv.tv_sec = server->app_config->read_timeout_seconds;
     tv.tv_usec = 0;
-    if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
-      close(client_socket);
+    if (setsockopt(server->client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
+      close(server->client_socket);
       perror("setsockopt - SO_RCVTIMEO");
       continue;
     }
 
     // always increment counter to make even error messages traceable
     server->client_counter++;
+    server->client_disconnected = false;
 
-    struct message_header header;
-    if (api_utils_read_header(client_socket, &header) != 0) {
-      fprintf(stderr, "<3>[%d] unable to read request header fully\n", server->client_counter);
-      tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-      continue;
-    }
-    if (header.protocol_version != PROTOCOL_VERSION) {
-      fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", server->client_counter, header.protocol_version);
-      tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-      continue;
-    }
-
-    cleanup_terminated_threads(server);
-
-    switch (header.type) {
-      case TYPE_RX_REQUEST:
-        log_client(&address, server->client_counter);
-        handle_rx_client(client_socket, &header, server);
-        break;
-      case TYPE_TX_REQUEST:
-        log_client(&address, server->client_counter);
-        handle_tx_client(client_socket, &header, server);
-        break;
-      case TYPE_PING:
-        tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
-        break;
-      default:
-        fprintf(stderr, "<3>[%d] unsupported request: %d\n", server->client_counter, header.type);
-        tcp_server_write_response_and_close(client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-        break;
-    }
+    log_client(&address, server->client_counter);
+    // process worked on the acceptor thread
+    // i.e. handle only one client at a time
+    tcp_worker_callback(server);
   }
-
-  linked_list_destroy(server->tcp_workers);
-  server->tcp_workers = NULL;
 
   printf("tcp server stopped\n");
   return (void *) 0;
@@ -607,32 +252,41 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   }
   *result = (struct tcp_server_t){0};
   result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  result->tcp_workers = NULL;
 
   int server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (server_socket == 0) {
-    free(result);
-    perror("socket creation failed");
+    tcp_server_destroy(result);
     return -1;
   }
   result->server_socket = server_socket;
   result->is_running = true;
   result->app_config = config;
-  result->tx_initialized = false;
-  result->rx_initialized = false;
   // start counting from 0
   result->client_counter = -1;
+  int code = sdr_device_create(config, &result->sdr);
+  if (code != 0) {
+    tcp_server_destroy(result);
+    return -1;
+  }
+  code = client_tx_worker_create(config->buffer_size, config->queue_size, &result->tx_worker);
+  if (code != 0) {
+    tcp_server_destroy(result);
+    return -1;
+  }
+  code = dsp_worker_create(1, result->tx_worker, result->sdr, &result->dsp_worker);
+  if (code != 0) {
+    tcp_server_destroy(result);
+    return -1;
+  }
   int opt = 1;
   if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-    free(result);
-    perror("setsockopt - SO_REUSEADDR");
+    tcp_server_destroy(result);
     return -1;
   }
 
 #ifdef SO_REUSEPORT
   if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt))) {
-    free(result);
-    perror("setsockopt - SO_REUSEPORT");
+    tcp_server_destroy(result);
     return -1;
   }
 #endif
@@ -640,27 +294,28 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   struct sockaddr_in address;
   address.sin_family = AF_INET;
   if (inet_pton(AF_INET, config->bind_address, &address.sin_addr) <= 0) {
-    free(result);
+    tcp_server_destroy(result);
     fprintf(stderr, "invalid address: %s\n", config->bind_address);
     return -1;
   }
   address.sin_port = htons(config->port);
 
   if (bind(server_socket, (struct sockaddr *) &address, sizeof(address)) < 0) {
-    free(result);
+    tcp_server_destroy(result);
     perror("bind failed");
     return -1;
   }
   if (listen(server_socket, 3) < 0) {
-    free(result);
+    tcp_server_destroy(result);
     perror("listen failed");
     return -1;
   }
 
   pthread_t acceptor_thread;
-  int code = pthread_create(&acceptor_thread, NULL, &acceptor_worker, result);
+  code = pthread_create(&acceptor_thread, NULL, &acceptor_worker, result);
   if (code != 0) {
-    free(result);
+    //FIXME this and above won't destroy allocated threads and memory
+    tcp_server_destroy(result);
     return -1;
   }
   result->acceptor_thread = acceptor_thread;
@@ -671,6 +326,15 @@ int tcp_server_create(app_config *config, tcp_server **server) {
 
 void tcp_server_join_thread(tcp_server *server) {
   pthread_join(server->acceptor_thread, NULL);
+  if (server->dsp_worker != NULL) {
+    dsp_worker_destroy(server->dsp_worker);
+  }
+  if (server->tx_worker != NULL) {
+    client_tx_worker_destroy(server->tx_worker);
+  }
+  if (server->sdr != NULL) {
+    sdr_device_destroy(server->sdr);
+  }
   free(server);
 }
 

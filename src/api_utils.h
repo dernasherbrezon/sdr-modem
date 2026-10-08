@@ -6,13 +6,11 @@
 #include "api.pb-c.h"
 #include "dsp/sdr_modem.h"
 
-int api_utils_read_header(int socket, struct message_header *header);
+int api_utils_read_header(int socket, message_header *header);
 
-int api_utils_read_modem_request(int socket, const struct message_header *header, struct ModemRequest **request);
+int api_utils_read_modem_request(int socket, const message_header *header, struct ModemRequest **request);
 
-int api_utils_read_tx_data(int socket, const struct message_header *header, struct TxData **request);
-
-int api_utils_write_response(int socket, ResponseStatus status, uint32_t details);
+int api_utils_read_tx_data(int socket, const message_header *header, struct TxData **request);
 
 // generic accessor for the field common to every modem type (gfsk/bpsk/dpsk/sdpsk/oqpsk/psk_pm).
 // returns 0 if req->modem_settings_case is MODEM_REQUEST__MODEM_SETTINGS__NOT_SET or unrecognized.

@@ -8,15 +8,15 @@
 
 uint32_t MAX_MESSAGE_LENGTH = 32 * 1024; // kilobyte
 
-int api_utils_read_header(int socket, struct message_header *header) {
-    int code = tcp_utils_read_data(header, sizeof(struct message_header), socket);
+int api_utils_read_header(int socket, message_header *header) {
+    int code = tcp_utils_read_data(header, sizeof(message_header), socket);
     if (code == 0) {
         header->message_length = ntohl(header->message_length);
     }
     return code;
 }
 
-int api_utils_read_tx_data(int socket, const struct message_header *header, struct TxData **request) {
+int api_utils_read_tx_data(int socket, const message_header *header, struct TxData **request) {
     if (header->message_length > MAX_MESSAGE_LENGTH) {
         return -1;
     }
@@ -38,7 +38,7 @@ int api_utils_read_tx_data(int socket, const struct message_header *header, stru
     return 0;
 }
 
-int api_utils_read_modem_request(int socket, const struct message_header *header, struct ModemRequest **request) {
+int api_utils_read_modem_request(int socket, const message_header *header, struct ModemRequest **request) {
     if (header->message_length > MAX_MESSAGE_LENGTH) {
         return -1;
     }
@@ -57,34 +57,6 @@ int api_utils_read_modem_request(int socket, const struct message_header *header
     }
     *request = result;
     return 0;
-}
-
-int api_utils_write_response(int socket, ResponseStatus status, uint32_t details) {
-    Response response = RESPONSE__INIT;
-    response.status = status;
-    response.details = details;
-
-    size_t len = response__get_packed_size(&response);
-    if (len > UINT32_MAX) {
-        return -1;
-    }
-
-    struct message_header header;
-    header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_RESPONSE;
-    header.message_length = htonl((uint32_t) len);
-
-    size_t buffer_len = sizeof(struct message_header) + sizeof(uint8_t) * len;
-    uint8_t *buffer = malloc(buffer_len);
-    if (buffer == NULL) {
-        return -ENOMEM;
-    }
-    memcpy(buffer, &header, sizeof(struct message_header));
-    response__pack(&response, buffer + sizeof(struct message_header));
-
-    int code = tcp_utils_write_data(buffer, buffer_len, socket);
-    free(buffer);
-    return code;
 }
 
 uint32_t api_utils_get_baud_rate(const struct ModemRequest *req) {
