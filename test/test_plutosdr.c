@@ -76,7 +76,7 @@ plutosdr_settings create_settings(bool rx, bool tx) {
   if (rx) {
     settings.rx_sampling_frequency = 528000; // (uint32_t) ((double) 25000000 / 12 + 1);
     settings.rx_frequency = 434236000;
-    settings.rx_gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
+    settings.gain_control_mode = IIO_GAIN_MODE_SLOW_ATTACK;
   }
   if (tx) {
     float baud_rate = 9600;
@@ -259,7 +259,7 @@ void test_invalid_rx_config() {
 
   plutosdr_settings settings = create_settings(true, false);
   //unknown mode
-  settings.rx_gain_control_mode = 255;
+  settings.gain_control_mode = 255;
   int code = plutosdr_create(1, &settings, 2000000, lib, &sdr);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
