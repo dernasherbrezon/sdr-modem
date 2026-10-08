@@ -5,19 +5,13 @@
 #include <complex.h>
 
 #include "app_config.h"
-#include "dsp/sdr_modem.h"
+#include "client_tx_worker.h"
+#include "sdr/sdr_device.h"
 
 typedef struct dsp_worker_t dsp_worker;
 
+int dsp_worker_create(uint32_t id, client_tx_worker *tx_worker, sdr_device *rx_device, dsp_worker **result);
+
 void dsp_worker_destroy(void *data);
-
-bool dsp_worker_find_by_id(void *id, void *data);
-
-void dsp_worker_shutdown(void *arg, void *data);
-
-void dsp_worker_put(float complex *output, size_t output_len, dsp_worker *worker);
-
-// modem_type is one of MODEM_TYPE_* and selects the populated member of settings
-int dsp_worker_create(uint32_t id, int client_socket, app_config *config, sdr_modem_type modem_type, const sdr_modem_settings *settings, dsp_worker **result);
 
 #endif //SDR_MODEM_DSP_WORKER_H
