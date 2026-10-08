@@ -22,7 +22,7 @@ void queue_take(queue_message *message, queue *queue);
 
 void queue_complete(queue *queue);
 
-void interrupt_waiting_the_data(queue *queue);
+void queue_interrupt(queue *queue);
 
 void destroy_queue(queue *queue);
 

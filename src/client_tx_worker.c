@@ -162,7 +162,7 @@ void client_tx_worker_destroy(client_tx_worker *worker) {
     return;
   }
   if (worker->queue != NULL) {
-    interrupt_waiting_the_data(worker->queue);
+    queue_interrupt(worker->queue);
   }
   if (worker->thread != NULL) {
     // wait until thread terminates and only then destroy remaining objects

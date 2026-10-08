@@ -219,7 +219,7 @@ void queue_complete(queue *queue) {
   pthread_mutex_unlock(&queue->mutex);
 }
 
-void interrupt_waiting_the_data(queue *queue) {
+void queue_interrupt(queue *queue) {
   if (queue == NULL) {
     return;
   }

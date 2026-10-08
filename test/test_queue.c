@@ -48,13 +48,13 @@ void test_terminated_only_after_fully_processed() {
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   queue_put(buffer, sizeof(buffer), queue_obj);
 
-  interrupt_waiting_the_data(queue_obj);
+  queue_interrupt(queue_obj);
 
   take_from_buffer_and_assert(buffer, sizeof(buffer));
   take_from_buffer_and_assert(NULL, 0);
 
   //no-op
-  interrupt_waiting_the_data(NULL);
+  queue_interrupt(NULL);
 }
 
 void test_put_take() {
@@ -90,7 +90,7 @@ void test_putskipped() {
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   TEST_ASSERT_EQUAL_INT(queue_put(buffer, sizeof(buffer), queue_obj), 0);
 
-  interrupt_waiting_the_data(queue_obj);
+  queue_interrupt(queue_obj);
 
   // any put ignored after queue terminated
   TEST_ASSERT_EQUAL_INT(queue_put(buffer, sizeof(buffer), queue_obj), -1);
