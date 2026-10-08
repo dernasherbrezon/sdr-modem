@@ -17,7 +17,7 @@ void take_from_buffer_and_assert(const float *expected, size_t expected_len) {
   TEST_ASSERT(result != NULL);
   TEST_ASSERT_EQUAL_size_t(expected_len, len);
   assert_complex_array(expected, expected_len / sizeof(float complex), (float complex *) result, len / sizeof(float complex));
-  complete_buffer_processing(queue_obj);
+  queue_complete(queue_obj);
 }
 
 void test_invalid_arguments() {
