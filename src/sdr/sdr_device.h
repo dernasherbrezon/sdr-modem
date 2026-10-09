@@ -4,7 +4,6 @@
 #include <complex.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "../app_config.h"
 
 typedef struct sdr_device_t sdr_device;
 
@@ -31,9 +30,5 @@ struct sdr_device_t {
 
   void (*stop_rx)(void *plugin);
 };
-
-int sdr_device_create(app_config *app_config, sdr_device **device);
-
-void sdr_device_destroy(sdr_device *device);
 
 #endif //SDR_MODEM_SDR_DEVICE_H

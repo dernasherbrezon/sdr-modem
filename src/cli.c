@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "dsp/sdr_modem.h"
-#include "sdr/sdr_device.h"
+#include "sdr_utils.h"
 
 struct cli_t {
   int direction;

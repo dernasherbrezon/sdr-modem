@@ -1,6 +1,6 @@
-#include "sdr_device.h"
+#include "sdr_utils.h"
 
-#include "plutosdr.h"
+#include "./sdr/plutosdr.h"
 
 int sdr_device_create(app_config *app_config, sdr_device **device) {
   if (app_config->sdr_type == SDR_TYPE_SDR_SERVER) {
@@ -16,9 +16,9 @@ int sdr_device_create(app_config *app_config, sdr_device **device) {
     // }
   } else if (app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     plutosdr_settings settings = {
-      .tx_powerdown = app_config->plutosdr_tx_powerdown,
-      .gain_control_mode = app_config->plutosdr_gain_control_mode,
-      .timeout_ms = app_config->plutosdr_timeout_ms
+      .tx_powerdown = app_config->plutosdr.tx_powerdown,
+      .gain_control_mode = app_config->plutosdr.gain_control_mode,
+      .timeout_ms = app_config->plutosdr.timeout_ms
     };
     sdr_device *pluto = NULL;
     int code = plutosdr_create(1, &settings, app_config->buffer_size, app_config->iio, &pluto);

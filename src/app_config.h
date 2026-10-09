@@ -46,11 +46,8 @@ typedef struct app_config_t {
 
   sdr_file_settings sdr_file;
 
-  double plutosdr_hardwaregain;
-  iio_gain_mode plutosdr_gain_control_mode;
-  // completely disable TX when doing RX only. significantly improves RX sensitivity
-  bool plutosdr_tx_powerdown;
-  unsigned int plutosdr_timeout_ms;
+  plutosdr_settings plutosdr;
+
   iio_lib *iio;
 
   char *input_file;
@@ -60,6 +57,7 @@ typedef struct app_config_t {
   int framing;
   uint64_t frequency;
   uint64_t sample_rate;
+  float gain;
   // settings of each modem type are kept separately, the active one is selected by "modem"
   gfsk_modem_settings gfsk;
   // bpsk, dpsk and sdpsk share the same settings. psk.type is derived from "modem"

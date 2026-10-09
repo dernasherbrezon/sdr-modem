@@ -15,14 +15,12 @@
 #include "api.h"
 #include "api.pb-c.h"
 #include "tcp_server.h"
-#include "linked_list.h"
 #include "api_utils.h"
 #include "dsp_worker.h"
-#include "sdr_worker.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
-#include "sdr/sdr_server_client.h"
+#include "sdr_utils.h"
 
 struct tcp_server_t {
   int server_socket;
@@ -44,20 +42,6 @@ static void log_client(struct sockaddr_in *address, uint32_t id) {
   char str[INET_ADDRSTRLEN];
   const char *ptr = inet_ntop(AF_INET, &address->sin_addr, str, sizeof(str));
   printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
-}
-
-static int tcp_worker_convert(struct ModemRequest *req, struct sdr_rx **result) {
-  struct sdr_rx *rx = malloc(sizeof(struct sdr_rx));
-  if (rx == NULL) {
-    return -ENOMEM;
-  }
-  if (req->modem_settings_case != MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
-    rx->rx_sample_rate = req->sample_rate;
-    rx->rx_center_freq = req->frequency;
-  }
-
-  *result = rx;
-  return 0;
 }
 
 static int validate_request(const struct ModemRequest *req, uint32_t client_id) {
@@ -84,62 +68,57 @@ static int validate_request(const struct ModemRequest *req, uint32_t client_id) 
   return 0;
 }
 
-void tcp_server_write_response_and_close(int client_socket, ResponseStatus status, uint32_t details) {
-  api_utils_write_response(client_socket, status, details);
-  close(client_socket);
-}
-
-void handle_tx_data(tcp_server *tcp_server, struct message_header *header) {
-  TxData *data = NULL;
-  int code = api_utils_read_tx_data(tcp_server->client_socket, header, &data);
-  if (code != 0) {
-    fprintf(stderr, "<3>[%d] unable to read tx request fully\n", tcp_server->client_counter);
-    api_utils_write_response(tcp_server->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-    return;
-  }
-  size_t left = data->data.len;
-  uint32_t processed = 0;
-  while (left > 0) {
-    uint32_t batch;
-    if (left < worker->buffer_size) {
-      batch = (uint32_t) left;
-    } else {
-      batch = worker->buffer_size;
-    }
-    float complex *output = NULL;
-    size_t output_len = 0;
-    if (worker->modem != NULL) {
-      sdr_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->modem);
-    }
-
-    if (worker->tx_dump_file != NULL) {
-      size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
-      if (n_written < output_len) {
-        fprintf(stderr, "<3>[%d] unable to write tx data\n", tcp_server->client_counter);
-        //ignore full disk
-        //continue transmitting
-      }
-    }
-
-    if (worker->tx_device != NULL) {
-      code = worker->tx_device->sdr_process_tx(output, output_len, worker->tx_device->plugin);
-      if (code != 0) {
-        fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
-        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-        break;
-      }
-    }
-
-    left -= batch;
-    processed += batch;
-  }
-
-  if (left == 0) {
-    fprintf(stdout, "[%d] successfully sent %zu bytes\n", worker->id, data->data.len);
-    api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
-  }
-  tx_data__free_unpacked(data, NULL);
-}
+// void handle_tx_data(tcp_server *tcp_server, struct message_header *header) {
+//   TxData *data = NULL;
+//   int code = api_utils_read_tx_data(tcp_server->client_socket, header, &data);
+//   if (code != 0) {
+//     fprintf(stderr, "<3>[%d] unable to read tx request fully\n", tcp_server->client_counter);
+//     api_utils_write_response(tcp_server->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+//     return;
+//   }
+//   size_t left = data->data.len;
+//   uint32_t processed = 0;
+//   while (left > 0) {
+//     uint32_t batch;
+//     if (left < worker->buffer_size) {
+//       batch = (uint32_t) left;
+//     } else {
+//       batch = worker->buffer_size;
+//     }
+//     float complex *output = NULL;
+//     size_t output_len = 0;
+//     if (worker->modem != NULL) {
+//       sdr_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->modem);
+//     }
+//
+//     if (worker->tx_dump_file != NULL) {
+//       size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
+//       if (n_written < output_len) {
+//         fprintf(stderr, "<3>[%d] unable to write tx data\n", tcp_server->client_counter);
+//         //ignore full disk
+//         //continue transmitting
+//       }
+//     }
+//
+//     if (worker->tx_device != NULL) {
+//       code = worker->tx_device->sdr_process_tx(output, output_len, worker->tx_device->plugin);
+//       if (code != 0) {
+//         fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
+//         api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
+//         break;
+//       }
+//     }
+//
+//     left -= batch;
+//     processed += batch;
+//   }
+//
+//   if (left == 0) {
+//     fprintf(stdout, "[%d] successfully sent %zu bytes\n", worker->id, data->data.len);
+//     api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
+//   }
+//   tx_data__free_unpacked(data, NULL);
+// }
 
 static void *tcp_worker_callback(tcp_server *worker) {
   uint32_t id = worker->client_counter;
@@ -189,10 +168,11 @@ static void *tcp_worker_callback(tcp_server *worker) {
         break;
       case MESSAGE_TYPE_TX_DATA:
         fprintf(stdout, "[%d] received tx request\n", id);
-        handle_tx_data(worker, &header);
+        //FIXME
+        // handle_tx_data(worker, &header);
         break;
       case MESSAGE_TYPE_PING:
-        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
+        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
         break;
       case MESSAGE_TYPE_SHUTDOWN:
         fprintf(stdout, "[%d] client requested disconnect\n", id);
@@ -200,7 +180,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
         break;
       default:
         fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
-        api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
+        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
     }
   }
@@ -236,6 +216,8 @@ static void *acceptor_worker(void *arg) {
     server->client_disconnected = false;
 
     log_client(&address, server->client_counter);
+
+    client_tx_worker_send_new(server->client_socket, server->tx_worker);
     // process worked on the acceptor thread
     // i.e. handle only one client at a time
     tcp_worker_callback(server);

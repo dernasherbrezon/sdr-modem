@@ -17,10 +17,10 @@ struct sdr_modem_client_t {
     size_t output_len;
 };
 
-int sdr_modem_client_write_request(struct message_header *header, struct ModemRequest *req, sdr_modem_client *client) {
+int sdr_modem_client_write_request(message_header *header, struct ModemRequest *req, sdr_modem_client *client) {
     size_t len = modem_request__get_packed_size(req);
     header->message_length = htonl(len);
-    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
+    int code = tcp_utils_write_data((uint8_t *) header, sizeof(message_header), client->client_socket);
     if (code != 0) {
         return code;
     }
@@ -35,14 +35,14 @@ int sdr_modem_client_write_request(struct message_header *header, struct ModemRe
     return code;
 }
 
-int sdr_modem_client_write_tx_raw(struct message_header *header, struct TxData *req, uint32_t req_len, sdr_modem_client *client) {
+int sdr_modem_client_write_tx_raw(message_header *header, struct TxData *req, uint32_t req_len, sdr_modem_client *client) {
     if (req->data.len < req_len) {
         fprintf(stderr, "cannot simulate more data than actually allocated\n");
         return -1;
     }
     size_t len = tx_data__get_packed_size(req);
     header->message_length = htonl(len);
-    int code = tcp_utils_write_data((uint8_t *) header, sizeof(struct message_header), client->client_socket);
+    int code = tcp_utils_write_data((uint8_t *) header, sizeof(message_header), client->client_socket);
     if (code != 0) {
         return code;
     }
@@ -58,7 +58,7 @@ int sdr_modem_client_write_tx_raw(struct message_header *header, struct TxData *
     return code;
 }
 
-int sdr_modem_client_write_tx(struct message_header *header, struct TxData *req, sdr_modem_client *client) {
+int sdr_modem_client_write_tx(message_header *header, struct TxData *req, sdr_modem_client *client) {
     return sdr_modem_client_write_tx_raw(header, req, req->data.len, client);
 }
 
@@ -66,8 +66,8 @@ int sdr_modem_client_write_raw(uint8_t *buffer, size_t buffer_len, sdr_modem_cli
     return tcp_utils_write_data(buffer, buffer_len, client->client_socket);
 }
 
-int sdr_modem_client_read_response(struct message_header **response_header, struct Response **resp, sdr_modem_client *client) {
-    struct message_header *header = malloc(sizeof(struct message_header));
+int sdr_modem_client_read_response(message_header **response_header, struct Response **resp, sdr_modem_client *client) {
+    message_header *header = malloc(sizeof(message_header));
     if (header == NULL) {
         return -ENOMEM;
     }
@@ -172,16 +172,16 @@ void sdr_modem_client_destroy(sdr_modem_client *client) {
 }
 
 void sdr_modem_client_destroy_gracefully(sdr_modem_client *client) {
-    struct message_header header;
+    message_header header;
     header.protocol_version = PROTOCOL_VERSION;
-    header.type = TYPE_SHUTDOWN;
+    header.type = MESSAGE_TYPE_SHUTDOWN;
     header.message_length = 0;
-    int code = tcp_utils_write_data((uint8_t *) &header, sizeof(struct message_header), client->client_socket);
+    int code = tcp_utils_write_data((uint8_t *) &header, sizeof(message_header), client->client_socket);
     if (code != 0) {
         printf("invalid response while sending shutdown: %d\n", code);
     } else {
         while (true) {
-            code = tcp_utils_read_data(&header, sizeof(struct message_header), client->client_socket);
+            code = tcp_utils_read_data(&header, sizeof(message_header), client->client_socket);
             if (code < -1) {
                 // read timeout happened. it's ok.
                 // client already sent all information we need

@@ -11,6 +11,8 @@ typedef enum {
   FAILURE
 } response_status;
 
+void client_tx_worker_send_new(int client_socket, client_tx_worker *worker);
+
 void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t buffer_len, client_tx_worker *worker);
 
 void client_tx_worker_send_response(uint32_t request_id, response_status type, uint32_t details, client_tx_worker *worker);

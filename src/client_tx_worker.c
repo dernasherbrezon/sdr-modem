@@ -22,13 +22,24 @@ struct client_tx_worker_t {
 
 typedef enum {
   CLIENT_TX_SOFT_BITS = 0,
-  CLIENT_TX_RESPONSE
+  CLIENT_TX_RESPONSE,
+  CLIENT_TX_NEW_CLIENT
 } client_tx_message_type;
 
 typedef struct {
   response_status status;
   uint32_t details;
 } client_tx_response;
+
+void client_tx_worker_send_new(int client_socket, client_tx_worker *worker) {
+  queue_message message = {
+    .type = CLIENT_TX_NEW_CLIENT,
+    .request_id = 0,
+    .buffer_len = sizeof(int),
+    .buffer = &client_socket
+  };
+  queue_put(&message, worker->queue);
+}
 
 void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t buffer_len, client_tx_worker *worker) {
   queue_message message = {
@@ -111,6 +122,9 @@ static void *client_tx_worker_callback(void *arg) {
         tcp_utils_write_data(message.buffer, header.message_length, worker->client_socket);
         response__pack(&response, worker->buffer);
         tcp_utils_write_data(worker->buffer, header.message_length, worker->client_socket);
+        break;
+      case CLIENT_TX_NEW_CLIENT:
+        worker->client_socket = *worker->buffer;
         break;
       default:
         fprintf(stderr, "unknown message type: %d\n", message.type);

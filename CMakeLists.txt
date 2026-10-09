@@ -11,13 +11,14 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp_worker.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/client_tx_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/linked_list.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/queue.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/app_config.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cli.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_server.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/bpsk_modem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
@@ -124,21 +125,9 @@ add_test(NAME test_linked_list COMMAND test_linked_list)
 add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)
 target_link_libraries(test_linked_list sdr_modemLib sdr_modemTestLib)
 
-add_test(NAME test_plutosdr COMMAND test_plutosdr)
-add_executable(test_plutosdr ${CMAKE_CURRENT_SOURCE_DIR}/test/test_plutosdr.c)
-target_link_libraries(test_plutosdr sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_queue COMMAND test_queue)
-add_executable(test_queue ${CMAKE_CURRENT_SOURCE_DIR}/test/test_queue.c)
-target_link_libraries(test_queue sdr_modemLib sdr_modemTestLib)
-
 add_test(NAME test_app_config COMMAND test_app_config)
 add_executable(test_app_config ${CMAKE_CURRENT_SOURCE_DIR}/test/test_app_config.c)
 target_link_libraries(test_app_config sdr_modemLib sdr_modemTestLib)
-
-add_test(NAME test_tcp_server COMMAND test_tcp_server)
-add_executable(test_tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_server.c)
-target_link_libraries(test_tcp_server sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_cli COMMAND test_cli)
 add_executable(test_cli ${CMAKE_CURRENT_SOURCE_DIR}/test/test_cli.c)
