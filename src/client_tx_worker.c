@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/errno.h>
 #include <pthread.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 struct client_tx_worker_t {
   queue *queue;
   pthread_t thread;
+  bool thread_started;
 
   uint8_t *header_buffer;
   size_t header_buffer_len;
@@ -175,6 +177,7 @@ int client_tx_worker_create(uint32_t buffer_size, uint16_t queue_size, client_tx
     client_tx_worker_destroy(result);
     return code;
   }
+  result->thread_started = true;
 
   *worker = result;
   return 0;
@@ -187,7 +190,7 @@ void client_tx_worker_destroy(client_tx_worker *worker) {
   if (worker->queue != NULL) {
     queue_interrupt(worker->queue);
   }
-  if (worker->thread != NULL) {
+  if (worker->thread_started) {
     // wait until thread terminates and only then destroy remaining objects
     pthread_join(worker->thread, NULL);
   }

@@ -1,5 +1,6 @@
 #include "dsp_worker.h"
 #include <stdio.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <errno.h>
 #include "dsp/sdr_modem.h"
@@ -15,6 +16,7 @@ struct dsp_worker_t {
   sdr_modem *modem;
 
   pthread_t dsp_thread;
+  bool dsp_thread_started;
 };
 
 static void *dsp_worker_callback(void *arg) {
@@ -70,6 +72,7 @@ int dsp_worker_create(uint32_t id, client_tx_worker *tx_worker, sdr_device *rx_d
     return -1;
   }
   result->dsp_thread = dsp_thread;
+  result->dsp_thread_started = true;
 
   *worker = result;
   return 0;
@@ -84,7 +87,7 @@ void dsp_worker_destroy(void *data) {
   if (worker->rx_device != NULL) {
     worker->rx_device->stop_rx(worker->rx_device->plugin);
   }
-  if (worker->dsp_thread != NULL) {
+  if (worker->dsp_thread_started) {
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);
   }
