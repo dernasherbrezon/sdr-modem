@@ -14,7 +14,7 @@
 
 #include "api.h"
 #include "tcp_server.h"
-#include "dsp_worker.h"
+#include "sdr_rx_worker.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
@@ -33,7 +33,7 @@ struct tcp_server_t {
   pthread_mutex_t mutex;
 
   client_tx_worker *tx_worker;
-  dsp_worker *dsp_worker;
+  sdr_rx_worker *sdr_rx_worker;
   sdr_device *sdr;
 
   uint8_t *buffer;
@@ -166,7 +166,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
         //   break;
         // }
 
-        //FIXME pause sdr, set rx parameters, replace existing modem with the new in dsp_worker
+        //FIXME pause sdr, set rx parameters, replace existing modem with the new in sdr_rx_worker
         client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, id, worker->tx_worker);
         //FIXME for tx it should be different
         break;
@@ -265,7 +265,7 @@ int tcp_server_create(app_config *config, tcp_server **server) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = dsp_worker_create(1, result->tx_worker, result->sdr, &result->dsp_worker);
+  code = sdr_rx_worker_create(1, result->tx_worker, result->sdr, &result->sdr_rx_worker);
   if (code != 0) {
     tcp_server_destroy(result);
     return -1;
@@ -318,8 +318,8 @@ int tcp_server_create(app_config *config, tcp_server **server) {
 
 void tcp_server_join_thread(tcp_server *server) {
   pthread_join(server->acceptor_thread, NULL);
-  if (server->dsp_worker != NULL) {
-    dsp_worker_destroy(server->dsp_worker);
+  if (server->sdr_rx_worker != NULL) {
+    sdr_rx_worker_destroy(server->sdr_rx_worker);
   }
   if (server->tx_worker != NULL) {
     client_tx_worker_destroy(server->tx_worker);

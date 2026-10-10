@@ -1,4 +1,4 @@
-#include "dsp_worker.h"
+#include "sdr_rx_worker.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <pthread.h>
@@ -7,7 +7,7 @@
 #include <complex.h>
 #include "tcp_utils.h"
 
-struct dsp_worker_t {
+struct sdr_rx_worker_t {
   uint32_t id;
   int client_socket;
 
@@ -19,10 +19,10 @@ struct dsp_worker_t {
   bool dsp_thread_started;
 };
 
-static void *dsp_worker_callback(void *arg) {
-  dsp_worker *worker = (dsp_worker *) arg;
+static void *sdr_rx_worker_callback(void *arg) {
+  sdr_rx_worker *worker = (sdr_rx_worker *) arg;
   uint32_t id = worker->id;
-  fprintf(stdout, "[%d] dsp_worker is starting\n", id);
+  fprintf(stdout, "[%d] sdr_rx_worker is starting\n", id);
   float complex *output = NULL;
   size_t output_len = 0;
   uint32_t request_id = 0;
@@ -49,26 +49,26 @@ static void *dsp_worker_callback(void *arg) {
     client_tx_worker_send_soft_bits(request_id, demod_output, demod_output_len, worker->tx_worker);
     request_id++;
   }
-  printf("[%d] dsp_worker stopped\n", worker->id);
+  printf("[%d] sdr_rx_worker stopped\n", worker->id);
   return (void *) 0;
 }
 
-int dsp_worker_create(uint32_t id, client_tx_worker *tx_worker, sdr_device *rx_device, dsp_worker **worker) {
-  struct dsp_worker_t *result = malloc(sizeof(struct dsp_worker_t));
+int sdr_rx_worker_create(uint32_t id, client_tx_worker *tx_worker, sdr_device *rx_device, sdr_rx_worker **worker) {
+  struct sdr_rx_worker_t *result = malloc(sizeof(struct sdr_rx_worker_t));
   if (result == NULL) {
     return -ENOMEM;
   }
   // init all fields with 0 so that destroy_* method would work
-  *result = (struct dsp_worker_t){0};
+  *result = (struct sdr_rx_worker_t){0};
   result->id = id;
   result->rx_device = rx_device;
   result->tx_worker = tx_worker;
 
   // start processing
   pthread_t dsp_thread;
-  int code = pthread_create(&dsp_thread, NULL, &dsp_worker_callback, result);
+  int code = pthread_create(&dsp_thread, NULL, &sdr_rx_worker_callback, result);
   if (code != 0) {
-    dsp_worker_destroy(result);
+    sdr_rx_worker_destroy(result);
     return -1;
   }
   result->dsp_thread = dsp_thread;
@@ -78,12 +78,12 @@ int dsp_worker_create(uint32_t id, client_tx_worker *tx_worker, sdr_device *rx_d
   return 0;
 }
 
-void dsp_worker_destroy(void *data) {
+void sdr_rx_worker_destroy(void *data) {
   if (data == NULL) {
     return;
   }
-  dsp_worker *worker = (dsp_worker *) data;
-  fprintf(stdout, "[%d] dsp_worker is stopping\n", worker->id);
+  sdr_rx_worker *worker = (sdr_rx_worker *) data;
+  fprintf(stdout, "[%d] sdr_rx_worker is stopping\n", worker->id);
   if (worker->rx_device != NULL) {
     worker->rx_device->stop_rx(worker->rx_device->plugin);
   }
