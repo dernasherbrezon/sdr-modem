@@ -118,6 +118,10 @@ add_test(NAME test_linked_list COMMAND test_linked_list)
 add_executable(test_linked_list ${CMAKE_CURRENT_SOURCE_DIR}/test/test_linked_list.c)
 target_link_libraries(test_linked_list sdr_modemLib sdr_modemTestLib)
 
+add_test(NAME test_queue COMMAND test_queue)
+add_executable(test_queue ${CMAKE_CURRENT_SOURCE_DIR}/test/test_queue.c)
+target_link_libraries(test_queue sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS_INIT})
+
 add_test(NAME test_app_config COMMAND test_app_config)
 add_executable(test_app_config ${CMAKE_CURRENT_SOURCE_DIR}/test/test_app_config.c)
 target_link_libraries(test_app_config sdr_modemLib sdr_modemTestLib)
