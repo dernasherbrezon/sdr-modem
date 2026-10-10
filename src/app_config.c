@@ -339,6 +339,11 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     result->queue_size = config_setting_get_int(setting);
   }
 
+  setting = config_lookup(libconfig, "max_frame_size");
+  if (setting != NULL) {
+    result->max_frame_size = (uint32_t) config_setting_get_int(setting);
+  }
+
   setting = config_lookup(libconfig, "direction");
   if (setting != NULL) {
     result->direction = app_config_convert_direction(config_setting_get_string(setting));
@@ -441,6 +446,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_BUFFER_SIZE,
     OPT_READ_TIMEOUT_SECONDS,
     OPT_QUEUE_SIZE,
+    OPT_MAX_FRAME_SIZE,
     OPT_DIRECTION,
     OPT_SDR_TYPE,
     OPT_SDR_SERVER_ADDRESS,
@@ -493,6 +499,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"buffer_size", required_argument, NULL, OPT_BUFFER_SIZE},
     {"read_timeout_seconds", required_argument, NULL, OPT_READ_TIMEOUT_SECONDS},
     {"queue_size", required_argument, NULL, OPT_QUEUE_SIZE},
+    {"max_frame_size", required_argument, NULL, OPT_MAX_FRAME_SIZE},
     {"direction", required_argument, NULL, OPT_DIRECTION},
     {"sdr_type", required_argument, NULL, OPT_SDR_TYPE},
     {"sdr_server_address", required_argument, NULL, OPT_SDR_SERVER_ADDRESS},
@@ -565,6 +572,9 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       }
       case OPT_QUEUE_SIZE:
         result->queue_size = (uint16_t) atoi(optarg);
+        break;
+      case OPT_MAX_FRAME_SIZE:
+        result->max_frame_size = (uint32_t) strtoul(optarg, NULL, 10);
         break;
       case OPT_DIRECTION:
         result->direction = app_config_convert_direction(optarg);
@@ -829,6 +839,7 @@ static int app_config_validate_and_log(app_config *result) {
     result->queue_size = 64;
   }
   fprintf(stdout, "queue_size: %d\n", result->queue_size);
+  fprintf(stdout, "max_frame_size: %u\n", result->max_frame_size);
 
   bool is_cli_mode = (result->bind_address == NULL);
   if (is_cli_mode) {

@@ -37,6 +37,8 @@ typedef struct app_config_t {
 
   uint32_t buffer_size;
   uint16_t queue_size;
+  // maximum size of a single frame when sending data and control buffers
+  uint32_t max_frame_size;
 
   int direction;
 
