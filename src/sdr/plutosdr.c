@@ -49,6 +49,7 @@ struct plutosdr_t {
 
   float complex *output;
   size_t max_input_buffer_length;
+  size_t max_tx_input_buffer_length;
 
   iio_lib *lib;
   atomic_bool rx_is_running;
@@ -75,8 +76,8 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
   while (left > 0) {
     char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
     size_t batch;
-    if (left > iio->max_input_buffer_length / 2) {
-      batch = iio->max_input_buffer_length / 2;
+    if (left > iio->max_tx_input_buffer_length / 2) {
+      batch = iio->max_tx_input_buffer_length / 2;
     } else {
       batch = left;
     }
@@ -417,6 +418,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   *pluto = (struct plutosdr_t){0};
   pluto->lib = lib;
   pluto->max_input_buffer_length = max_input_buffer_length;
+  pluto->max_tx_input_buffer_length = max_input_buffer_length;
 
   pthread_mutex_lock(&global_iio_mutex);
   ssize_t code = plutosdr_init_global_ctx(pluto->lib);
@@ -530,7 +532,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
     plutosdr_destroy(pluto);
     return -1;
   }
-  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_input_buffer_length, false);
+  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
   if (pluto->tx_buffer == NULL) {
     perror("unable to create tx buffer");
     plutosdr_destroy(pluto);
@@ -548,6 +550,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   result->destroy = plutosdr_destroy;
   result->set_rx_parameters = plutosdr_set_rx_parameters;
   result->set_tx_parameters = plutosdr_set_tx_parameters;
+  result->set_max_tx_input_buffer = plutosdr_set_max_tx_input_buffer;
   result->start_rx = plutosdr_start_rx;
   result->stop_rx = plutosdr_stop_rx;
 
@@ -571,6 +574,24 @@ int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) {
       return code;
     }
   }
+  return 0;
+}
+
+int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
+  plutosdr *pluto = (plutosdr *) plugin;
+  if (pluto->tx == NULL) {
+    return -1;
+  }
+  struct iio_buffer *tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, max_input_len, false);
+  if (tx_buffer == NULL) {
+    perror("unable to create tx buffer");
+    return -1;
+  }
+  if (pluto->tx_buffer != NULL) {
+    pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
+  }
+  pluto->tx_buffer = tx_buffer;
+  pluto->max_tx_input_buffer_length = max_input_len;
   return 0;
 }
 

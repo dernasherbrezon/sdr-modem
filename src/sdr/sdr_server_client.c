@@ -103,6 +103,7 @@ int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_o
     result->destroy = sdr_server_client_destroy;
     result->sdr_process_rx = sdr_server_client_read_stream;
     result->sdr_process_tx = NULL;
+    result->set_max_tx_input_buffer = NULL;
     result->stop_rx = sdr_server_client_stop;
 
     *output = result;

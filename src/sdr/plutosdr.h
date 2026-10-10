@@ -34,6 +34,8 @@ int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin);
 
 int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin);
 
+int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin);
+
 void plutosdr_destroy(void *plugin);
 
 #endif //SDR_MODEM_PLUTOSDR_H

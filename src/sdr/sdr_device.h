@@ -26,6 +26,11 @@ struct sdr_device_t {
 
   int (*set_tx_parameters)(sdr_channel_config *config, void *plugin);
 
+  // resize the tx buffer so that sdr_process_tx can accept up to max_input_len samples.
+  // modulated signal is interpolated up to the sdr sample rate and can be much larger than
+  // the modem input buffer. call it after the sample rate is known
+  int (*set_max_tx_input_buffer)(size_t max_input_len, void *plugin);
+
   void (*start_rx)(void *plugin);
 
   void (*stop_rx)(void *plugin);

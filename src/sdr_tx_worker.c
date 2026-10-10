@@ -69,6 +69,14 @@ static void *sdr_tx_worker_callback(void *arg) {
         }
         code = worker->sdr->set_tx_parameters(&settings.sdr_settings, worker->sdr->plugin);
         if (code != 0) {
+          sdr_modem_destroy(new_modem);
+          client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          break;
+        }
+        // modulated signal depends on the sample rate and can be much larger than the modem input
+        code = worker->sdr->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(new_modem), worker->sdr->plugin);
+        if (code != 0) {
+          sdr_modem_destroy(new_modem);
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }

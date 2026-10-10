@@ -117,6 +117,12 @@ int cli_create(app_config *config, cli **output) {
       cli_destroy(result);
       return -1;
     }
+    code = result->device->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(result->modem), result->device->plugin);
+    if (code != 0) {
+      fprintf(stderr, "<3>unable to set max tx input buffer\n");
+      cli_destroy(result);
+      return -1;
+    }
     result->input_file = fopen(config->input_file, "rb");
     if (result->input_file == NULL) {
       fprintf(stderr, "<3>unable to open file %s: %s\n", config->input_file, strerror(errno));
@@ -165,7 +171,7 @@ int cli_process(cli *cli) {
       sdr_modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->modem);
       int code = cli->device->sdr_process_tx(output, output_len, cli->device->plugin);
       if (code != 0) {
-        break;
+        return -1;
       }
     }
   }

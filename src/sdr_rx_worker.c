@@ -76,6 +76,7 @@ static void *sdr_rx_worker_callback(void *arg) {
           }
           code = worker->sdr->set_rx_parameters(&settings.sdr_settings, worker->sdr->plugin);
           if (code != 0) {
+            sdr_modem_destroy(new_modem);
             client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
             break;
           }
