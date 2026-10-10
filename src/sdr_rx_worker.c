@@ -20,7 +20,7 @@ struct sdr_rx_worker_t {
 
   queue *queue;
   client_tx_worker *tx_worker;
-  sdr_device *rx_device;
+  sdr_device *sdr;
   sdr_modem *modem;
 
   pthread_t dsp_thread;
@@ -35,7 +35,7 @@ static void *sdr_rx_worker_callback(void *arg) {
   size_t output_len = 0;
   uint32_t request_id = 0;
   while (true) {
-    int code = worker->rx_device->sdr_process_rx(&output, &output_len, worker->rx_device->plugin);
+    int code = worker->sdr->sdr_process_rx(&output, &output_len, worker->sdr->plugin);
     if (code < -1) {
       // read timeout happened. it's ok.
       continue;
@@ -62,24 +62,26 @@ static void *sdr_rx_worker_callback(void *arg) {
     if (message.buffer != NULL) {
       switch (message.type) {
         case SDR_RX_COMM_PARAMETERS: {
-          sdr_modem_settings settings;
-          code = api_decode_sdr_modem_settings(message.buffer, message.buffer_len, &settings);
+          comm_settings settings;
+          code = api_decode_comm_settings(message.buffer, message.buffer_len, &settings);
           if (code != 0) {
             client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
             break;
           }
-
           sdr_modem *new_modem = NULL;
-          code = sdr_modem_create(&settings, worker->buffer_size, NULL, &new_modem);
+          code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
           if (code != 0) {
             client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
             break;
           }
-
+          code = worker->sdr->set_rx_parameters(&settings.sdr_settings, worker->sdr->plugin);
+          if (code != 0) {
+            client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+            break;
+          }
           if (worker->modem != NULL) {
             sdr_modem_destroy(worker->modem);
           }
-
           worker->modem = new_modem;
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
@@ -114,7 +116,7 @@ int sdr_rx_worker_create(uint32_t id, uint32_t buffer_size, client_tx_worker *tx
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_rx_worker_t){0};
   result->id = id;
-  result->rx_device = rx_device;
+  result->sdr = rx_device;
   result->tx_worker = tx_worker;
   result->buffer_size = buffer_size;
 
@@ -138,17 +140,17 @@ void sdr_rx_worker_destroy(void *data) {
   }
   sdr_rx_worker *worker = (sdr_rx_worker *) data;
   fprintf(stdout, "[%d] sdr_rx_worker is stopping\n", worker->id);
-  if (worker->rx_device != NULL) {
-    worker->rx_device->stop_rx(worker->rx_device->plugin);
+  if (worker->sdr != NULL) {
+    worker->sdr->stop_rx(worker->sdr->plugin);
   }
   if (worker->dsp_thread_started) {
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);
   }
   //destroy the rx device
-  if (worker->rx_device != NULL) {
-    worker->rx_device->destroy(worker->rx_device->plugin);
-    free(worker->rx_device);
+  if (worker->sdr != NULL) {
+    worker->sdr->destroy(worker->sdr->plugin);
+    free(worker->sdr);
   }
   // cleanup everything only when thread terminates
   if (worker->modem != NULL) {

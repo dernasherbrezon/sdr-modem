@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "dsp/sdr_modem.h"
+#include "sdr/sdr_device.h"
 
 #define PROTOCOL_VERSION 0
 
@@ -52,11 +53,16 @@ typedef struct {
   int8_t *data;
 } soft_bits;
 
+typedef struct {
+  sdr_channel_config sdr_settings;
+  sdr_modem_settings modem_settings;
+} comm_settings;
+
 int api_decode_message_header(const uint8_t *buffer, size_t buffer_len, message_header *header);
 
 int api_encode_message_header(const message_header *header, uint8_t *buffer, size_t buffer_len, size_t *written);
 
-int api_decode_sdr_modem_settings(const uint8_t *buffer, size_t buffer_len, sdr_modem_settings *settings);
+int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_settings *settings);
 
 int api_encode_response(const response *resp, uint8_t *buffer, size_t buffer_len, size_t *written);
 

@@ -54,24 +54,29 @@ static void *sdr_tx_worker_callback(void *arg) {
         break;
       }
       case SDR_TX_COMM_PARAMETERS: {
-        sdr_modem_settings settings;
-        code = api_decode_sdr_modem_settings(message.buffer, message.buffer_len, &settings);
+        comm_settings settings;
+        code = api_decode_comm_settings(message.buffer, message.buffer_len, &settings);
         if (code != 0) {
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
 
         sdr_modem *new_modem = NULL;
-        code = sdr_modem_create(&settings, worker->buffer_size, NULL, &new_modem);
+        code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
+        if (code != 0) {
+          client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          break;
+        }
+        code = worker->sdr->set_tx_parameters(&settings.sdr_settings, worker->sdr->plugin);
         if (code != 0) {
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
 
+        //switch to the new modem only when sdr and modem successfully updated
         if (worker->modem != NULL) {
           sdr_modem_destroy(worker->modem);
         }
-
         worker->modem = new_modem;
         client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;

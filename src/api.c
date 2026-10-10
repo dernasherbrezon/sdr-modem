@@ -76,19 +76,29 @@ int api_encode_soft_bits(const soft_bits *bits, uint8_t *buffer, size_t buffer_l
   return 0;
 }
 
-// sdr_modem_settings payload (big-endian): modem_type(1) | modem-specific fields, in struct declaration order.
+// comm_settings payload (big-endian): sdr_channel_config | sdr_modem_settings
+// sdr_channel_config: frequency(8) | sample_rate(8) | gain(4)
+// sdr_modem_settings: modem_type(1) | modem-specific fields, in struct declaration order.
 // floats are IEEE 754 binary32. psk.type is not transmitted: it is derived from modem_type.
+#define API_SDR_SIZE (8 + 8 + 4)
 #define API_GFSK_SIZE (8 + 4 + 8 + 4 + 4 + 1 + 8 + 4)
 #define API_PSK_SIZE (8 + 4 + 4 + 4 + 1 + 4 + 1)
 #define API_PSK_PM_SIZE (8 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 1 + 4)
 
-int api_decode_sdr_modem_settings(const uint8_t *buffer, size_t buffer_len, sdr_modem_settings *settings) {
-  if (buffer == NULL || settings == NULL || buffer_len < 1) {
+int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_settings *settings) {
+  if (buffer == NULL || settings == NULL || buffer_len < API_SDR_SIZE + 1) {
     return -1;
   }
-  uint8_t modem_type = buffer[0];
-  const uint8_t *p = buffer + 1;
-  size_t payload_len = buffer_len - 1;
+  comm_settings decoded;
+  memset(&decoded, 0, sizeof(decoded));
+  decoded.sdr_settings.frequency = read_u64(buffer);
+  decoded.sdr_settings.sample_rate = read_u64(buffer + 8);
+  decoded.sdr_settings.gain = read_f32(buffer + 16);
+
+  const uint8_t *modem_buffer = buffer + API_SDR_SIZE;
+  uint8_t modem_type = modem_buffer[0];
+  const uint8_t *p = modem_buffer + 1;
+  size_t payload_len = buffer_len - API_SDR_SIZE - 1;
   sdr_modem_settings result;
   memset(&result, 0, sizeof(result));
   result.modem_type = modem_type;
@@ -145,6 +155,7 @@ int api_decode_sdr_modem_settings(const uint8_t *buffer, size_t buffer_len, sdr_
     default:
       return -1;
   }
-  *settings = result;
+  decoded.modem_settings = result;
+  *settings = decoded;
   return 0;
 }
