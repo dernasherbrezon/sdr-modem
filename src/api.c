@@ -49,6 +49,9 @@ int api_encode_message_header(const message_header *header, uint8_t *buffer, siz
   return 0;
 }
 
+// rx start and rx stop messages have empty payload (message_length = 0).
+// the answer is a response with the same request_id
+
 // response payload: status(1) | details(1)
 
 int api_encode_response(const response *resp, uint8_t *buffer, size_t buffer_len, size_t *written) {

@@ -10,8 +10,12 @@
 #include "tcp_utils.h"
 #include "log.h"
 
+#define SDR_RX_MESSAGE_QUEUE_SIZE 8
+
 typedef enum {
-  SDR_RX_COMM_PARAMETERS = 0
+  SDR_RX_COMM_PARAMETERS = 0,
+  SDR_RX_START = 1,
+  SDR_RX_STOP = 2
 } sdr_rx_message_type;
 
 struct sdr_rx_worker_t {
@@ -24,9 +28,63 @@ struct sdr_rx_worker_t {
   sdr_device *sdr;
   sdr_modem *modem;
 
+  // accessed only from the dsp thread
+  bool rx_enabled;
+
   pthread_t dsp_thread;
   bool dsp_thread_started;
 };
+
+static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_worker *worker) {
+  switch (message->type) {
+    case SDR_RX_COMM_PARAMETERS: {
+      comm_settings settings;
+      int code = api_decode_comm_settings(message->buffer, message->buffer_len, &settings);
+      if (code != 0) {
+        client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        break;
+      }
+      sdr_modem *new_modem = NULL;
+      code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
+      if (code != 0) {
+        client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        break;
+      }
+      code = worker->sdr->set_rx_parameters(&settings.sdr_settings, worker->sdr->plugin);
+      if (code != 0) {
+        sdr_modem_destroy(new_modem);
+        client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        break;
+      }
+      if (worker->modem != NULL) {
+        sdr_modem_destroy(worker->modem);
+      }
+      worker->modem = new_modem;
+      client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+      break;
+    }
+    case SDR_RX_START: {
+      if (!worker->rx_enabled) {
+        worker->sdr->start_rx(worker->sdr->plugin);
+        worker->rx_enabled = true;
+      }
+      client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+      break;
+    }
+    case SDR_RX_STOP: {
+      if (worker->rx_enabled) {
+        worker->sdr->stop_rx(worker->sdr->plugin);
+        worker->rx_enabled = false;
+      }
+      client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+      break;
+    }
+    default: {
+      LOG_ERROR("unknown message type: %d", message->type);
+      break;
+    }
+  }
+}
 
 static void *sdr_rx_worker_callback(void *arg) {
   sdr_rx_worker *worker = (sdr_rx_worker *) arg;
@@ -36,6 +94,25 @@ static void *sdr_rx_worker_callback(void *arg) {
   size_t output_len = 0;
   uint32_t request_id = 0;
   while (true) {
+    queue_message message;
+    if (worker->rx_enabled) {
+      queue_peak(&message, worker->queue);
+    } else {
+      // rx is off: nothing to do except waiting for the next command
+      queue_take(&message, worker->queue);
+      if (message.buffer == NULL) {
+        // queue interrupted
+        break;
+      }
+    }
+    if (message.buffer != NULL) {
+      sdr_rx_worker_handle_message(&message, worker);
+      queue_complete(worker->queue);
+    }
+    if (!worker->rx_enabled) {
+      continue;
+    }
+
     int code = worker->sdr->sdr_process_rx(&output, &output_len, worker->sdr->plugin);
     if (code < -1) {
       // read timeout happened. it's ok.
@@ -57,47 +134,28 @@ static void *sdr_rx_worker_callback(void *arg) {
 
     client_tx_worker_send_soft_bits(request_id, demod_output, demod_output_len, worker->tx_worker);
     request_id++;
-
-    queue_message message;
-    queue_peak(&message, worker->queue);
-    if (message.buffer != NULL) {
-      switch (message.type) {
-        case SDR_RX_COMM_PARAMETERS: {
-          comm_settings settings;
-          code = api_decode_comm_settings(message.buffer, message.buffer_len, &settings);
-          if (code != 0) {
-            client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-            break;
-          }
-          sdr_modem *new_modem = NULL;
-          code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
-          if (code != 0) {
-            client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-            break;
-          }
-          code = worker->sdr->set_rx_parameters(&settings.sdr_settings, worker->sdr->plugin);
-          if (code != 0) {
-            sdr_modem_destroy(new_modem);
-            client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-            break;
-          }
-          if (worker->modem != NULL) {
-            sdr_modem_destroy(worker->modem);
-          }
-          worker->modem = new_modem;
-          client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-          break;
-        }
-        default: {
-          LOG_ERROR("unknown message type: %d", message.type);
-          break;
-        }
-      }
-      queue_complete(worker->queue);
-    }
   }
   LOG_DEBUG("[%d] sdr_rx_worker stopped", worker->id);
   return (void *) 0;
+}
+
+static void sdr_rx_worker_put_empty(sdr_rx_message_type type, uint32_t request_id, sdr_rx_worker *worker) {
+  uint8_t empty = 0;
+  queue_message message = {
+    .type = type,
+    .request_id = request_id,
+    .buffer_len = 0,
+    .buffer = &empty
+  };
+  queue_put(&message, worker->queue);
+}
+
+void sdr_rx_worker_start(uint32_t request_id, sdr_rx_worker *worker) {
+  sdr_rx_worker_put_empty(SDR_RX_START, request_id, worker);
+}
+
+void sdr_rx_worker_stop(uint32_t request_id, sdr_rx_worker *worker) {
+  sdr_rx_worker_put_empty(SDR_RX_STOP, request_id, worker);
 }
 
 void sdr_rx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, size_t buffer_len, sdr_rx_worker *worker) {
@@ -122,9 +180,15 @@ int sdr_rx_worker_create(uint32_t id, uint32_t buffer_size, client_tx_worker *tx
   result->tx_worker = tx_worker;
   result->buffer_size = buffer_size;
 
+  int code = create_queue(buffer_size, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
+  if (code != 0) {
+    sdr_rx_worker_destroy(result);
+    return -1;
+  }
+
   // start processing
   pthread_t dsp_thread;
-  int code = pthread_create(&dsp_thread, NULL, &sdr_rx_worker_callback, result);
+  code = pthread_create(&dsp_thread, NULL, &sdr_rx_worker_callback, result);
   if (code != 0) {
     sdr_rx_worker_destroy(result);
     return -1;
@@ -145,6 +209,9 @@ void sdr_rx_worker_destroy(void *data) {
   if (worker->sdr != NULL) {
     worker->sdr->stop_rx(worker->sdr->plugin);
   }
+  if (worker->queue != NULL) {
+    queue_interrupt(worker->queue);
+  }
   if (worker->dsp_thread_started) {
     // wait until thread terminates and only then destroy the worker
     pthread_join(worker->dsp_thread, NULL);
@@ -157,6 +224,9 @@ void sdr_rx_worker_destroy(void *data) {
   // cleanup everything only when thread terminates
   if (worker->modem != NULL) {
     sdr_modem_destroy(worker->modem);
+  }
+  if (worker->queue != NULL) {
+    destroy_queue(worker->queue);
   }
   free(worker);
 }

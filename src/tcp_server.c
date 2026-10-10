@@ -116,6 +116,14 @@ static void *tcp_worker_callback(tcp_server *worker) {
         sdr_tx_worker_send(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
         break;
       }
+      case MESSAGE_TYPE_RX_START: {
+        sdr_rx_worker_start(header.request_id, worker->sdr_rx_worker);
+        break;
+      }
+      case MESSAGE_TYPE_RX_STOP: {
+        sdr_rx_worker_stop(header.request_id, worker->sdr_rx_worker);
+        break;
+      }
       case MESSAGE_TYPE_PING: {
         client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
         break;
@@ -134,7 +142,8 @@ static void *tcp_worker_callback(tcp_server *worker) {
     }
   }
 
-  //FIXME stop sdr, stop modem
+  // do not leave sdr running without a client
+  sdr_rx_worker_stop(0, worker->sdr_rx_worker);
 
   close(worker->client_socket);
 

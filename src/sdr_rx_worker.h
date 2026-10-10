@@ -14,6 +14,10 @@ int sdr_rx_worker_create(uint32_t id, uint32_t buffer_size, client_tx_worker *tx
 
 void sdr_rx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, size_t buffer_len, sdr_rx_worker *worker);
 
+void sdr_rx_worker_start(uint32_t request_id, sdr_rx_worker *worker);
+
+void sdr_rx_worker_stop(uint32_t request_id, sdr_rx_worker *worker);
+
 void sdr_rx_worker_destroy(void *data);
 
 #endif //SDR_MODEM_SDR_RX_WORKER_H
