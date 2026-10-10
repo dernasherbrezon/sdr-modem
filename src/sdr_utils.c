@@ -15,20 +15,19 @@ int sdr_device_create(app_config *app_config, sdr_device **device) {
     //   return -1;
     // }
   } else if (app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
-    plutosdr_settings settings = {
-      .tx_powerdown = app_config->plutosdr.tx_powerdown,
-      .gain_control_mode = app_config->plutosdr.gain_control_mode,
-      .timeout_ms = app_config->plutosdr.timeout_ms
-    };
     sdr_device *pluto = NULL;
-    int code = plutosdr_create(&settings, app_config->buffer_size, app_config->iio, &pluto);
+    int code = plutosdr_create(&app_config->plutosdr, app_config->buffer_size, app_config->iio, &pluto);
     if (code != 0) {
       return code;
     }
     *device = pluto;
   } else if (app_config->sdr_type == SDR_TYPE_FILE) {
-    //FIXME
-    // int code = sdr_file_create()
+    sdr_device *file = NULL;
+    int code = sdr_file_create(&app_config->sdr_file, app_config->buffer_size, &file);
+    if (code != 0) {
+      return code;
+    }
+    *device = file;
   } else {
     return -1;
   }

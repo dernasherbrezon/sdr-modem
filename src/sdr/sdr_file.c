@@ -34,10 +34,6 @@ static bool has_gz_suffix(const char *filename) {
   return len > 3 && strcmp(filename + len - 3, ".gz") == 0;
 }
 
-static bool is_valid_file_format(sdr_file_format format) {
-  return format == FILE_FORMAT_CU8 || format == FILE_FORMAT_CF32 || format == FILE_FORMAT_CS16;
-}
-
 static void cu8_to_cf32(const uint8_t *raw, float complex *out, size_t nsamples) {
   for (size_t i = 0; i < nsamples; i++) {
     float re = ((float) raw[2 * i] - 127.5f) / 127.5f;
@@ -93,28 +89,20 @@ void sdr_file_stop(void *plugin) {
 }
 
 int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
-  const char *rx_filename = settings->rx_file;
-  sdr_file_format rx_format = settings->rx_file_format;
-  const char *tx_filename = settings->tx_file;
-  sdr_file_format tx_format = settings->tx_file_format;
-  if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
-    fprintf(stderr, "<3>unsupported file format\n");
-    return -1;
-  }
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
     return -ENOMEM;
   }
   *device = (struct file_device_t){0};
-  device->rx_format = rx_format;
-  device->tx_format = tx_format;
+  device->rx_format = settings->rx_file_format;
+  device->tx_format = settings->tx_file_format;
   device->temp_len = max_output_buffer_length;
   device->temp = malloc(sizeof(float complex) * device->temp_len);
   if (device->temp == NULL) {
     sdr_file_destroy(device);
     return -ENOMEM;
   }
-  if (rx_format == FILE_FORMAT_CU8 || tx_format == FILE_FORMAT_CU8 || rx_format == FILE_FORMAT_CS16 || tx_format == FILE_FORMAT_CS16) {
+  if (settings->rx_file_format == FILE_FORMAT_CU8 || settings->tx_file_format == FILE_FORMAT_CU8 || settings->rx_file_format == FILE_FORMAT_CS16 || settings->tx_file_format == FILE_FORMAT_CS16) {
     //sized for the widest raw sample format (cs16: 2 * int16_t per complex sample)
     device->raw_temp = malloc(2 * sizeof(int16_t) * device->temp_len);
     if (device->raw_temp == NULL) {
@@ -123,40 +111,40 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
     }
   }
 
-  if (rx_filename != NULL) {
-    if (strcmp(rx_filename, "-") == 0) {
+  if (settings->rx_file != NULL) {
+    if (strcmp(settings->rx_file, "-") == 0) {
       device->rx_file = stdin;
-    } else if (has_gz_suffix(rx_filename)) {
-      device->rx_gz = gzopen(rx_filename, "rb");
+    } else if (has_gz_suffix(settings->rx_file)) {
+      device->rx_gz = gzopen(settings->rx_file, "rb");
       if (device->rx_gz == NULL) {
-        fprintf(stderr, "<3>unable to open file for input: %s\n", rx_filename);
+        fprintf(stderr, "<3>unable to open file for input: %s\n", settings->rx_file);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
-      device->rx_file = fopen(rx_filename, "rb");
+      device->rx_file = fopen(settings->rx_file, "rb");
       if (device->rx_file == NULL) {
-        fprintf(stderr, "<3>unable to open file for input: %s\n", rx_filename);
+        fprintf(stderr, "<3>unable to open file for input: %s\n", settings->rx_file);
         sdr_file_destroy(device);
         return -1;
       }
     }
   }
 
-  if (tx_filename != NULL) {
-    if (strcmp(tx_filename, "-") == 0) {
+  if (settings->tx_file != NULL) {
+    if (strcmp(settings->tx_file, "-") == 0) {
       device->tx_file = stdout;
-    } else if (has_gz_suffix(tx_filename)) {
-      device->tx_gz = gzopen(tx_filename, "wb");
+    } else if (has_gz_suffix(settings->tx_file)) {
+      device->tx_gz = gzopen(settings->tx_file, "wb");
       if (device->tx_gz == NULL) {
-        fprintf(stderr, "<3>unable to open file for output: %s\n", tx_filename);
+        fprintf(stderr, "<3>unable to open file for output: %s\n", settings->tx_file);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
-      device->tx_file = fopen(tx_filename, "wb");
+      device->tx_file = fopen(settings->tx_file, "wb");
       if (device->tx_file == NULL) {
-        fprintf(stderr, "<3>unable to open file for output: %s\n", tx_filename);
+        fprintf(stderr, "<3>unable to open file for output: %s\n", settings->tx_file);
         sdr_file_destroy(device);
         return -1;
       }

@@ -23,8 +23,6 @@ typedef struct {
   sdr_file_format rx_file_format; // format of the i/q samples in rx_file
   char *tx_file;                     // file to write i/q samples to
   sdr_file_format tx_file_format; // format of the i/q samples in tx_file
-  uint64_t frequency;                // center frequency of the recording, in Hz
-  uint64_t sample_rate;              // sample rate of the recording, in Hz
 } sdr_file_settings;
 
 int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);

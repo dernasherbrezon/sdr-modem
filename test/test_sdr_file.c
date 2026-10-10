@@ -11,10 +11,10 @@ char gz_filename[4096];
 
 void test_rx_invalid_arguments() {
   int max_output_buffer_length = 2000;
-  int code = sdr_file_create(&(sdr_file_settings){.rx_file = (char *) "/non-existing-file", .rx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, max_output_buffer_length, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.rx_file = (char *) "/non-existing-file", .rx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, max_output_buffer_length, &device);
+  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -25,10 +25,10 @@ void test_rx_invalid_arguments() {
 
 void test_tx_invalid_arguments() {
   int max_output_buffer_length = 2000;
-  int code = sdr_file_create(&(sdr_file_settings){.tx_file = (char *) "/", .tx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, max_output_buffer_length, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.tx_file = (char *) "/", .tx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(-1, code);
 
-  code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, max_output_buffer_length, &device);
+  code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -42,7 +42,7 @@ void test_tx_invalid_arguments() {
 }
 
 void test_success() {
-  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, 2000, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CF32}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -53,7 +53,7 @@ void test_success() {
   free(device);
   device = NULL;
 
-  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, 2000, &device);
+  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CF32}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
   complex float *output = NULL;
   size_t output_len = 0;
@@ -62,7 +62,7 @@ void test_success() {
 }
 
 void test_gz_success() {
-  int code = sdr_file_create(&(sdr_file_settings){.tx_file = gz_filename, .tx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, 2000, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.tx_file = gz_filename, .tx_file_format = FILE_FORMAT_CF32}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -73,7 +73,7 @@ void test_gz_success() {
   free(device);
   device = NULL;
 
-  code = sdr_file_create(&(sdr_file_settings){.rx_file = gz_filename, .rx_file_format = FILE_FORMAT_CF32, .sample_rate = 48000}, 2000, &device);
+  code = sdr_file_create(&(sdr_file_settings){.rx_file = gz_filename, .rx_file_format = FILE_FORMAT_CF32}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
   complex float *output = NULL;
   size_t output_len = 0;
@@ -82,7 +82,7 @@ void test_gz_success() {
 }
 
 void test_cu8_success() {
-  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CU8, .sample_rate = 48000}, 2000, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CU8}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {-1.0f, -0.5f, 0.0f, 0.25f, 0.5f, -0.75f, 1.0f, 0.1f, -0.1f, 0.9f};
@@ -93,7 +93,7 @@ void test_cu8_success() {
   free(device);
   device = NULL;
 
-  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CU8, .sample_rate = 48000}, 2000, &device);
+  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CU8}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
   complex float *output = NULL;
   size_t output_len = 0;
@@ -106,7 +106,7 @@ void test_cu8_success() {
 }
 
 void test_cs16_success() {
-  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CS16, .sample_rate = 48000}, 2000, &device);
+  int code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CS16}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
   const float buffer[10] = {-1.0f, -0.5f, 0.0f, 0.25f, 0.5f, -0.75f, 1.0f, 0.1f, -0.1f, 0.9f};
@@ -117,7 +117,7 @@ void test_cs16_success() {
   free(device);
   device = NULL;
 
-  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CS16, .sample_rate = 48000}, 2000, &device);
+  code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CS16}, 2000, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
   complex float *output = NULL;
   size_t output_len = 0;
