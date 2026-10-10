@@ -32,6 +32,14 @@ Sample configuration with reasonable defaults:
 
 [https://github.com/dernasherbrezon/sdr-modem/blob/main/src/resources/config.conf](https://github.com/dernasherbrezon/sdr-modem/blob/main/src/resources/config.conf)
 
+## Logging
+
+Use `log_level` (`error`, `warn`, `info`, `debug`; default `info`) in the config file or `--log_level` on the command line. Under systemd every line is tagged with its priority, so errors can be filtered with:
+
+```
+journalctl -u sdr-modem -p err
+```
+
 ## Dependencies
 
 sdr-modem depends on several libraries:

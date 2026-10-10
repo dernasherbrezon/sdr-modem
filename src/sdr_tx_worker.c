@@ -6,6 +6,7 @@
 
 #include "api.h"
 #include "dsp/sdr_modem.h"
+#include "log.h"
 
 typedef enum {
   SDR_TX_FRAME = 0,
@@ -90,7 +91,7 @@ static void *sdr_tx_worker_callback(void *arg) {
         break;
       }
       default: {
-        fprintf(stderr, "unknown message type: %d\n", message.type);
+        LOG_ERROR("unknown message type: %d", message.type);
         break;
       }
     }

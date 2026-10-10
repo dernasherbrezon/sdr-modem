@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include "../log.h"
 
 #define FIR_BUF_SIZE    8192
 
@@ -67,7 +68,7 @@ enum iio_direction {
 int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
   plutosdr *iio = (plutosdr *) plugin;
   if (iio->tx_buffer == NULL) {
-    fprintf(stderr, "tx was not initialized\n");
+    LOG_ERROR("tx was not initialized");
     return -1;
   }
 
@@ -118,7 +119,7 @@ int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin
     return -1;
   }
   if (iio->rx_buffer == NULL) {
-    fprintf(stderr, "rx was not initialized\n");
+    LOG_ERROR("rx was not initialized");
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -134,7 +135,7 @@ int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin
   char *p_start = (char *) iio->lib->iio_buffer_first(iio->rx_buffer, iio->rx0_i);
   size_t num_points = (p_end - p_start) / sizeof(int16_t);
   if (num_points / 2 > iio->max_input_buffer_length) {
-    fprintf(stderr, "<3>input buffer %zu is more than max: %zu\n", num_points / 2, iio->max_input_buffer_length);
+    LOG_ERROR("input buffer %zu is more than max: %zu", num_points / 2, iio->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -206,7 +207,7 @@ static struct iio_channel *plutosdr_find_phy_channel(struct iio_context *ctx, en
 static int plutosdr_error_check(int v, const char *what, plutosdr *iio) {
   if (v < 0) {
     iio->lib->iio_strerror(-v, plutosdr_tmpstr, plutosdr_tmpstr_len);
-    fprintf(stderr, "unable to write value for \"%s\": %s\n", what, plutosdr_tmpstr);
+    LOG_ERROR("unable to write value for \"%s\": %s", what, plutosdr_tmpstr);
     return v;
   }
   return 0;
@@ -244,7 +245,7 @@ static int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimati
   }
 
   if (sample_rate < MIN_FIR_FILTER) {
-    fprintf(stderr, "sampling freq is too low: %" PRIu64 "\n", sample_rate);
+    LOG_ERROR("sampling freq is too low: %" PRIu64, sample_rate);
     return -1;
   } else if (sample_rate < MIN_FIR_FILTER_2) {
     *decimation = 4;
@@ -341,28 +342,28 @@ static ssize_t plutosdr_init_global_ctx(iio_lib *lib) {
   }
   struct iio_scan_context *scan_ctx = lib->iio_create_scan_context(NULL, 0);
   if (scan_ctx == NULL) {
-    perror("unable to scan");
+    LOG_ERROR("unable to scan: %s", strerror(errno));
     return -1;
   }
   struct iio_context_info **info = NULL;
   ssize_t code = lib->iio_scan_context_get_info_list(scan_ctx, &info);
   if (code < 0) {
-    fprintf(stderr, "unable to scan contexts: %zd\n", code);
+    LOG_ERROR("unable to scan contexts: %zd", code);
     lib->iio_scan_context_destroy(scan_ctx);
     return -1;
   }
   if (code == 0) {
-    fprintf(stderr, "no sdr contexts found\n");
+    LOG_ERROR("no sdr contexts found");
     lib->iio_scan_context_destroy(scan_ctx);
     return -1;
   }
   const char *uri = lib->iio_context_info_get_uri(info[0]);
-  fprintf(stdout, "plutosdr ctx initialized from context uri: %s\n", uri);
+  LOG_INFO("plutosdr ctx initialized from context uri: %s", uri);
   global_iio_ctx = lib->iio_create_context_from_uri(uri);
   lib->iio_context_info_list_free(info);
   lib->iio_scan_context_destroy(scan_ctx);
   if (global_iio_ctx == NULL) {
-    fprintf(stderr, "unable to init context: %s", strerror(errno));
+    LOG_ERROR("unable to init context: %s", strerror(errno));
     return -1;
   }
   return 0;
@@ -376,7 +377,7 @@ static int plutosdr_validate_sampling_frequencies(uint64_t rx_sampling_frequency
   uint64_t max = rx_sampling_frequency > tx_sampling_frequency ? rx_sampling_frequency : tx_sampling_frequency;
   uint64_t min = rx_sampling_frequency > tx_sampling_frequency ? tx_sampling_frequency : rx_sampling_frequency;
   if (max % min != 0 || (max / min != 1 && max / min != 2 && max / min != 4)) {
-    fprintf(stderr, "incompatible sampling frequencies: rx %" PRIu64 ", tx %" PRIu64 ". they must be equal or differ by a factor of 2 or 4\n", rx_sampling_frequency, tx_sampling_frequency);
+    LOG_ERROR("incompatible sampling frequencies: rx %" PRIu64 ", tx %" PRIu64 ". they must be equal or differ by a factor of 2 or 4", rx_sampling_frequency, tx_sampling_frequency);
     return -1;
   }
   return 0;
@@ -393,7 +394,7 @@ static const char *plutosdr_convert_gain_mode(iio_gain_mode mode) {
     case IIO_GAIN_MODE_HYBRID:
       return "hybrid";
     default:
-      fprintf(stderr, "unknown gain mode: %d\n", mode);
+      LOG_ERROR("unknown gain mode: %d", mode);
       return NULL;
   }
 }
@@ -433,7 +434,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
 
   code = pluto->lib->iio_context_set_timeout(global_iio_ctx, settings->timeout_ms);
   if (code < 0) {
-    fprintf(stderr, "unable to setup timeout: %zd\n", code);
+    LOG_ERROR("unable to setup timeout: %zd", code);
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -445,31 +446,31 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   }
   pluto->rx = pluto->lib->iio_context_find_device(global_iio_ctx, "cf-ad9361-lpc");
   if (pluto->rx == NULL) {
-    fprintf(stderr, "unable to find rx result\n");
+    LOG_ERROR("unable to find rx result");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->rx0_chn = plutosdr_find_phy_channel(global_iio_ctx, RX, pluto);
   if (pluto->rx0_chn == NULL) {
-    fprintf(stderr, "can't find RX channel: voltage0\n");
+    LOG_ERROR("can't find RX channel: voltage0");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->rx0_lo = pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(global_iio_ctx, "ad9361-phy"), "altvoltage0", true);
   if (pluto->rx0_lo == NULL) {
-    fprintf(stderr, "can't find RX lo\n");
+    LOG_ERROR("can't find RX lo");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->rx0_i = pluto->lib->iio_device_find_channel(pluto->rx, "voltage0", false);
   if (pluto->rx0_i == NULL) {
-    fprintf(stderr, "unable to find rx I channel\n");
+    LOG_ERROR("unable to find rx I channel");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->rx0_q = pluto->lib->iio_device_find_channel(pluto->rx, "voltage1", false);
   if (pluto->rx0_q == NULL) {
-    fprintf(stderr, "unable to find rx Q channel\n");
+    LOG_ERROR("unable to find rx Q channel");
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -481,7 +482,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   pluto->gain_control_mode = settings->gain_control_mode;
   pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, pluto->max_input_buffer_length, false);
   if (pluto->rx_buffer == NULL) {
-    perror("unable to create rx buffer");
+    LOG_ERROR("unable to create rx buffer: %s", strerror(errno));
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -494,7 +495,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   // TX chain //////////////////////////////
   pluto->tx = pluto->lib->iio_context_find_device(global_iio_ctx, "cf-ad9361-dds-core-lpc");
   if (pluto->tx == NULL) {
-    fprintf(stderr, "unable to find tx device\n");
+    LOG_ERROR("unable to find tx device");
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -505,13 +506,13 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   }
   pluto->tx0_chn = plutosdr_find_phy_channel(global_iio_ctx, TX, pluto);
   if (pluto->tx0_chn == NULL) {
-    fprintf(stderr, "can't find TX channel: voltage0\n");
+    LOG_ERROR("can't find TX channel: voltage0");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->tx0_lo = pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(global_iio_ctx, "ad9361-phy"), "altvoltage1", true);
   if (pluto->tx0_lo == NULL) {
-    fprintf(stderr, "can't find TX lo\n");
+    LOG_ERROR("can't find TX lo");
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -522,19 +523,19 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   }
   pluto->tx0_i = pluto->lib->iio_device_find_channel(pluto->tx, "voltage0", true);
   if (pluto->tx0_i == NULL) {
-    fprintf(stderr, "unable to find tx I channel\n");
+    LOG_ERROR("unable to find tx I channel");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->tx0_q = pluto->lib->iio_device_find_channel(pluto->tx, "voltage1", true);
   if (pluto->tx0_q == NULL) {
-    fprintf(stderr, "unable to find tx Q channel\n");
+    LOG_ERROR("unable to find tx Q channel");
     plutosdr_destroy(pluto);
     return -1;
   }
   pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
   if (pluto->tx_buffer == NULL) {
-    perror("unable to create tx buffer");
+    LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -584,7 +585,7 @@ int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
   }
   struct iio_buffer *tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, max_input_len, false);
   if (tx_buffer == NULL) {
-    perror("unable to create tx buffer");
+    LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
     return -1;
   }
   if (pluto->tx_buffer != NULL) {
@@ -650,7 +651,7 @@ void plutosdr_destroy(void *plugin) {
     if (global_iio_ctx_usages <= 0) {
       pluto->lib->iio_context_destroy(global_iio_ctx);
       global_iio_ctx = NULL;
-      fprintf(stdout, "plutosdr ctx de-initialized\n");
+      LOG_INFO("plutosdr ctx de-initialized");
     }
   }
   pthread_mutex_unlock(&global_iio_mutex);

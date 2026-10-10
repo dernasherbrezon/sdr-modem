@@ -6,6 +6,7 @@
 #include <math.h>
 #include <liquid/liquid.h>
 #include <zlib.h>
+#include "../log.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -147,14 +148,14 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
     } else if (has_gz_suffix(settings->rx_file)) {
       device->rx_gz = gzopen(settings->rx_file, "rb");
       if (device->rx_gz == NULL) {
-        fprintf(stderr, "<3>unable to open file for input: %s\n", settings->rx_file);
+        LOG_ERROR("unable to open file for input: %s", settings->rx_file);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->rx_file = fopen(settings->rx_file, "rb");
       if (device->rx_file == NULL) {
-        fprintf(stderr, "<3>unable to open file for input: %s\n", settings->rx_file);
+        LOG_ERROR("unable to open file for input: %s", settings->rx_file);
         sdr_file_destroy(device);
         return -1;
       }
@@ -167,14 +168,14 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
     } else if (has_gz_suffix(settings->tx_file)) {
       device->tx_gz = gzopen(settings->tx_file, "wb");
       if (device->tx_gz == NULL) {
-        fprintf(stderr, "<3>unable to open file for output: %s\n", settings->tx_file);
+        LOG_ERROR("unable to open file for output: %s", settings->tx_file);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->tx_file = fopen(settings->tx_file, "wb");
       if (device->tx_file == NULL) {
-        fprintf(stderr, "<3>unable to open file for output: %s\n", settings->tx_file);
+        LOG_ERROR("unable to open file for output: %s", settings->tx_file);
         sdr_file_destroy(device);
         return -1;
       }
@@ -231,7 +232,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
       return -1;
     }
   } else {
-    fprintf(stderr, "<3>rx file was not initialized\n");
+    LOG_ERROR("rx file was not initialized");
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -249,7 +250,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
 int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   file_device *device = (file_device *) plugin;
   if (input_len > device->tx_temp_len) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, device->tx_temp_len);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, device->tx_temp_len);
     return -1;
   }
   const void *write_buf;
@@ -272,7 +273,7 @@ int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   } else if (device->tx_file != NULL) {
     fwrite(write_buf, bytes_per_sample, input_len, device->tx_file);
   } else {
-    fprintf(stderr, "<3>tx file was not initialized\n");
+    LOG_ERROR("tx file was not initialized");
     return -1;
   }
   return 0;

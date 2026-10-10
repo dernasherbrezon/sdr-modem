@@ -5,6 +5,7 @@
 #include <string.h>
 #include <math.h>
 #include <liquid/liquid.h>
+#include "../log.h"
 
 // once the threshold is crossed, the peak is searched for this many symbols further. the training
 // sequence repeats every 4 symbols, so its sidelobes can cross the threshold before the real peak
@@ -128,11 +129,11 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
 
 int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, uint64_t syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
   if (sps < 2 || sps % 2 != 0) {
-    fprintf(stderr, "<3>gfsk correlator: samples per symbol must be even and at least 2: %u\n", sps);
+    LOG_ERROR("gfsk correlator: samples per symbol must be even and at least 2: %u", sps);
     return -EINVAL;
   }
   if (syncword_bits == 0) {
-    fprintf(stderr, "<3>gfsk correlator: syncword must not be empty\n");
+    LOG_ERROR("gfsk correlator: syncword must not be empty");
     return -EINVAL;
   }
   struct gfsk_correlator_t *result = malloc(sizeof(struct gfsk_correlator_t));
@@ -253,7 +254,7 @@ static void gfsk_correlator_output_symbol(gfsk_correlator *correlator, size_t *n
 
 void gfsk_correlator_process(const float *input, size_t input_len, int8_t **output, size_t *output_len, gfsk_correlator *correlator) {
   if (input_len > correlator->max_input_buffer_length) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, correlator->max_input_buffer_length);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, correlator->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return;

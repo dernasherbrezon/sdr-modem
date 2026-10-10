@@ -21,6 +21,7 @@
 #include "sdr/plutosdr.h"
 #include "sdr_utils.h"
 #include "tcp_utils.h"
+#include "log.h"
 
 struct tcp_server_t {
   int server_socket;
@@ -45,12 +46,12 @@ struct tcp_server_t {
 static void log_client(struct sockaddr_in *address, uint32_t id) {
   char str[INET_ADDRSTRLEN];
   const char *ptr = inet_ntop(AF_INET, &address->sin_addr, str, sizeof(str));
-  printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
+  LOG_INFO("[%d] accepted new client from %s:%d", id, ptr, ntohs(address->sin_port));
 }
 
 static void *tcp_worker_callback(tcp_server *worker) {
   uint32_t id = worker->client_counter;
-  fprintf(stdout, "[%d] tcp_worker is starting\n", id);
+  LOG_DEBUG("[%d] tcp_worker is starting", id);
   while (worker->is_running && !worker->client_disconnected) {
     int code = tcp_utils_read_data(worker->buffer, API_HEADER_SIZE, worker->client_socket);
     if (code < -1) {
@@ -59,7 +60,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
       continue;
     }
     if (code == -1) {
-      fprintf(stdout, "[%d] client disconnected\n", id);
+      LOG_INFO("[%d] client disconnected", id);
       client_tx_worker_send_new(-1, worker->tx_worker);
       worker->client_disconnected = true;
       break;
@@ -71,12 +72,12 @@ static void *tcp_worker_callback(tcp_server *worker) {
       continue;
     }
     if (header.protocol_version != PROTOCOL_VERSION) {
-      fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
+      LOG_ERROR("[%d] unsupported protocol: %d", id, header.protocol_version);
       client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
       continue;
     }
     if (header.message_length > worker->buffer_length) {
-      fprintf(stderr, "message length %"PRIu32" is bigger than allowed %zu\n", header.message_length, worker->buffer_length);
+      LOG_ERROR("message length %"PRIu32" is bigger than allowed %zu", header.message_length, worker->buffer_length);
       client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
       continue;
     }
@@ -107,7 +108,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
       }
       case MESSAGE_TYPE_TX_FRAME: {
         if (header.message_length > worker->app_config->max_frame_size) {
-          fprintf(stderr, "frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, worker->app_config->max_frame_size);
+          LOG_ERROR("frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, worker->app_config->max_frame_size);
           break;
         }
         // frame must be read fully before passing to sdr
@@ -120,13 +121,13 @@ static void *tcp_worker_callback(tcp_server *worker) {
         break;
       }
       case MESSAGE_TYPE_SHUTDOWN: {
-        fprintf(stdout, "[%d] client requested disconnect\n", id);
+        LOG_INFO("[%d] client requested disconnect", id);
         client_tx_worker_send_new(-1, worker->tx_worker);
         worker->client_disconnected = true;
         break;
       }
       default: {
-        fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
+        LOG_ERROR("[%d] unsupported request: %d", id, header.type);
         client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
       }
@@ -155,7 +156,7 @@ static void *acceptor_worker(void *arg) {
     tv.tv_usec = 0;
     if (setsockopt(server->client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
       close(server->client_socket);
-      perror("setsockopt - SO_RCVTIMEO");
+      LOG_ERROR("setsockopt - SO_RCVTIMEO: %s", strerror(errno));
       continue;
     }
 
@@ -171,7 +172,7 @@ static void *acceptor_worker(void *arg) {
     tcp_worker_callback(server);
   }
 
-  printf("tcp server stopped\n");
+  LOG_INFO("tcp server stopped");
   return (void *) 0;
 }
 
@@ -236,19 +237,19 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   address.sin_family = AF_INET;
   if (inet_pton(AF_INET, config->bind_address, &address.sin_addr) <= 0) {
     tcp_server_destroy(result);
-    fprintf(stderr, "invalid address: %s\n", config->bind_address);
+    LOG_ERROR("invalid address: %s", config->bind_address);
     return -1;
   }
   address.sin_port = htons(config->port);
 
   if (bind(server_socket, (struct sockaddr *) &address, sizeof(address)) < 0) {
     tcp_server_destroy(result);
-    perror("bind failed");
+    LOG_ERROR("bind failed: %s", strerror(errno));
     return -1;
   }
   if (listen(server_socket, 3) < 0) {
     tcp_server_destroy(result);
-    perror("listen failed");
+    LOG_ERROR("listen failed: %s", strerror(errno));
     return -1;
   }
 
@@ -289,7 +290,7 @@ void tcp_server_destroy(tcp_server *server) {
   if (server == NULL) {
     return;
   }
-  fprintf(stdout, "tcp server is stopping\n");
+  LOG_INFO("tcp server is stopping");
   server->is_running = false;
   // close is not enough to exit from the blocking "accept" method
   // execute shutdown first

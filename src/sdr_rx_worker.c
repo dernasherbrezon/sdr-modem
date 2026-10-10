@@ -8,6 +8,7 @@
 
 #include "queue.h"
 #include "tcp_utils.h"
+#include "log.h"
 
 typedef enum {
   SDR_RX_COMM_PARAMETERS = 0
@@ -30,7 +31,7 @@ struct sdr_rx_worker_t {
 static void *sdr_rx_worker_callback(void *arg) {
   sdr_rx_worker *worker = (sdr_rx_worker *) arg;
   uint32_t id = worker->id;
-  fprintf(stdout, "[%d] sdr_rx_worker is starting\n", id);
+  LOG_DEBUG("[%d] sdr_rx_worker is starting", id);
   float complex *output = NULL;
   size_t output_len = 0;
   uint32_t request_id = 0;
@@ -88,14 +89,14 @@ static void *sdr_rx_worker_callback(void *arg) {
           break;
         }
         default: {
-          fprintf(stderr, "unknown message type: %d\n", message.type);
+          LOG_ERROR("unknown message type: %d", message.type);
           break;
         }
       }
       queue_complete(worker->queue);
     }
   }
-  printf("[%d] sdr_rx_worker stopped\n", worker->id);
+  LOG_DEBUG("[%d] sdr_rx_worker stopped", worker->id);
   return (void *) 0;
 }
 
@@ -140,7 +141,7 @@ void sdr_rx_worker_destroy(void *data) {
     return;
   }
   sdr_rx_worker *worker = (sdr_rx_worker *) data;
-  fprintf(stdout, "[%d] sdr_rx_worker is stopping\n", worker->id);
+  LOG_DEBUG("[%d] sdr_rx_worker is stopping", worker->id);
   if (worker->sdr != NULL) {
     worker->sdr->stop_rx(worker->sdr->plugin);
   }

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <liquid/liquid.h>
+#include "../log.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -39,7 +40,7 @@ struct freq_offset_t {
 static int freq_offset_load_file(const char *file_path, struct freq_offset_entry **entries, size_t *entries_len) {
   FILE *file = fopen(file_path, "r");
   if (file == NULL) {
-    fprintf(stderr, "<3>unable to open freq offset file: %s\n", file_path);
+    LOG_ERROR("unable to open freq offset file: %s", file_path);
     return -1;
   }
 
@@ -71,7 +72,7 @@ static int freq_offset_load_file(const char *file_path, struct freq_offset_entry
   fclose(file);
 
   if (len == 0) {
-    fprintf(stderr, "<3>freq offset file is empty or malformed: %s\n", file_path);
+    LOG_ERROR("freq offset file is empty or malformed: %s", file_path);
     free(result);
     return -EINVAL;
   }
@@ -115,7 +116,7 @@ int freq_offset_create(const char *file_path, uint64_t sample_rate, size_t max_i
       idx++;
     }
     if (idx == result->entries_len - 1 && result->entries[idx].timestamp < now) {
-      fprintf(stderr, "<3>freq offset file %s has no entries applicable to the current time\n", file_path);
+      LOG_ERROR("freq offset file %s has no entries applicable to the current time", file_path);
       freq_offset_destroy(result);
       return -EINVAL;
     }
@@ -177,7 +178,7 @@ static void freq_offset_advance(freq_offset *fo) {
 
 void freq_offset_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len, freq_offset *fo) {
   if (input_len > fo->output_len) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, fo->output_len);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, fo->output_len);
     *output = NULL;
     *output_len = 0;
     return;

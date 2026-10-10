@@ -11,6 +11,7 @@
 #include "queue.h"
 #include "tcp_utils.h"
 #include <stdio.h>
+#include "log.h"
 
 struct client_tx_worker_t {
   queue *queue;
@@ -143,7 +144,7 @@ static void *client_tx_worker_callback(void *arg) {
         break;
       }
       default: {
-        fprintf(stderr, "unknown message type: %d\n", message.type);
+        LOG_ERROR("unknown message type: %d", message.type);
         break;
       }
     }

@@ -10,6 +10,7 @@
 
 #include "../tcp_utils.h"
 #include "sdr_server_client.h"
+#include "../log.h"
 
 struct sdr_server_client_t {
     int client_socket;
@@ -34,7 +35,7 @@ int sdr_server_client_create_inner(const sdr_server_settings *settings, uint32_t
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
-        fprintf(stderr, "<3>socket creation to sdr server failed: %d\n", client_socket);
+        LOG_ERROR("socket creation to sdr server failed: %d", client_socket);
         sdr_server_client_destroy(result);
         return -1;
     }
@@ -45,7 +46,7 @@ int sdr_server_client_create_inner(const sdr_server_settings *settings, uint32_t
     tv.tv_usec = 0;
     if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv)) {
         close(client_socket);
-        perror("setsockopt - SO_RCVTIMEO");
+        LOG_ERROR("setsockopt - SO_RCVTIMEO: %s", strerror(errno));
         sdr_server_client_destroy(result);
         return -1;
     }
@@ -57,11 +58,11 @@ int sdr_server_client_create_inner(const sdr_server_settings *settings, uint32_t
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
         close(client_socket);
-        fprintf(stderr, "<3>connection with sdr server failed: %d\n", code);
+        LOG_ERROR("connection with sdr server failed: %d", code);
         sdr_server_client_destroy(result);
         return -1;
     }
-    fprintf(stdout, "connected to sdr server..\n");
+    LOG_INFO("connected to sdr server..");
 
     *client = result;
     return 0;
@@ -82,12 +83,12 @@ int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_o
     struct sdr_server_response *response = NULL;
     code = sdr_server_client_request(req, &response, client);
     if (code != 0) {
-        fprintf(stderr, "<3>unable to send request to sdr server\n");
+        LOG_ERROR("unable to send request to sdr server");
         sdr_server_client_destroy(client);
         return code;
     }
     if (response->status != SDR_SERVER_RESPONSE_STATUS_SUCCESS) {
-        fprintf(stderr, "<3>request to sdr server rejected: %d\n", response->details);
+        LOG_ERROR("request to sdr server rejected: %d", response->details);
         sdr_server_client_destroy(client);
         free(response);
         return -1;
@@ -121,12 +122,12 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
         return code;
     }
     if (header->protocol_version != SDR_SERVER_PROTOCOL_VERSION) {
-        fprintf(stderr, "<3>unsupported protocol version: %d\n", header->protocol_version);
+        LOG_ERROR("unsupported protocol version: %d", header->protocol_version);
         free(header);
         return -1;
     }
     if (header->type != SDR_SERVER_TYPE_RESPONSE) {
-        fprintf(stderr, "<3>unsupported message type: %d\n", header->type);
+        LOG_ERROR("unsupported message type: %d", header->type);
         free(header);
         return -1;
     }
@@ -206,7 +207,7 @@ void sdr_server_client_stop(void *plugin) {
             break;
         }
     }
-    fprintf(stdout, "disconnected from sdr server..\n");
+    LOG_INFO("disconnected from sdr server..");
     close(client->client_socket);
 }
 

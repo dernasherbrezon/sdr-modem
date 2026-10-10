@@ -2,11 +2,12 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <errno.h>
+#include "../log.h"
 
 void *iio_lib_dlsym(void *handle, const char *symbol) {
     void *result = dlsym(handle, symbol);
     if (result == NULL) {
-        fprintf(stderr, "unable to load function %s: %s\n", symbol, dlerror());
+        LOG_ERROR("unable to load function %s: %s", symbol, dlerror());
     }
     return result;
 }
@@ -24,7 +25,7 @@ int iio_lib_create(iio_lib **lib) {
     void *handle = dlopen("libiio.so", RTLD_LAZY);
 #endif
     if (!handle) {
-        fprintf(stderr, "unable to load libiio: %s\n", dlerror());
+        LOG_ERROR("unable to load libiio: %s", dlerror());
         iio_lib_destroy(result);
         return -1;
     }

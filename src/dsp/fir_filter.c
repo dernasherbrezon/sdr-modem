@@ -4,6 +4,7 @@
 #include <string.h>
 #include <complex.h>
 #include <stdio.h>
+#include "../log.h"
 
 int fir_filter_create(uint8_t decimation, float *taps, size_t taps_len,
                       size_t max_input_buffer_length, size_t num_bytes, fir_filter **filter) {
@@ -106,7 +107,7 @@ void fir_filter_process_complex(const float complex *input, size_t input_len, fl
 
 void fir_filter_process(const void *input, size_t input_len, void **output, size_t *output_len, fir_filter *filter) {
     if (input_len > filter->max_input_buffer_length) {
-        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, filter->max_input_buffer_length);
+        LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, filter->max_input_buffer_length);
         *output = NULL;
         *output_len = 0;
         return;

@@ -34,6 +34,7 @@ typedef struct app_config_t {
   char *bind_address;
   uint16_t port;
   int read_timeout_seconds;
+  int log_level;
 
   uint32_t buffer_size;
   uint16_t queue_size;

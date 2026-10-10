@@ -6,6 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include <liquid/liquid.h>
+#include "../log.h"
 
 // internal samples per symbol of both chains. cpfskmod requires an even number, and the correlator
 // template is built at this rate, so it is fixed: input at any other rate is resampled
@@ -180,19 +181,19 @@ static int gfsk_modem_create_correlator(const gfsk_modem_settings *settings, siz
 
 int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_buffer_length, gfsk_modem **modem) {
   if (settings->baud_rate == 0 || settings->deviation == 0) {
-    fprintf(stderr, "<3>gfsk modem: baud_rate and deviation must not be 0\n");
+    LOG_ERROR("gfsk modem: baud_rate and deviation must not be 0");
     return -EINVAL;
   }
   if (settings->bt <= 0.0f || settings->bt > 1.0f) {
-    fprintf(stderr, "<3>gfsk modem: bt must be in (0, 1]: %f\n", settings->bt);
+    LOG_ERROR("gfsk modem: bt must be in (0, 1]: %f", settings->bt);
     return -EINVAL;
   }
   if (settings->syncword_bits > sizeof(settings->syncword) * 8) {
-    fprintf(stderr, "<3>gfsk modem: syncword_bits must not be more than %zu: %u\n", sizeof(settings->syncword) * 8, settings->syncword_bits);
+    LOG_ERROR("gfsk modem: syncword_bits must not be more than %zu: %u", sizeof(settings->syncword) * 8, settings->syncword_bits);
     return -EINVAL;
   }
   if ((double) settings->sample_rate / (double) settings->baud_rate < 2.0) {
-    fprintf(stderr, "<3>gfsk modem: samples per symbol must be at least 2; check sample_rate/baud_rate\n");
+    LOG_ERROR("gfsk modem: samples per symbol must be at least 2; check sample_rate/baud_rate");
     return -EINVAL;
   }
   uint64_t internal_sample_rate = (uint64_t) GFSK_MODEM_SPS * (uint64_t) settings->baud_rate;
@@ -311,7 +312,7 @@ size_t gfsk_modem_max_modulation_buffer_length(void *modem) {
 void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   gfsk_modem *demod = (gfsk_modem *) modem;
   if (input_len > demod->max_input_buffer_length) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->max_input_buffer_length);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, demod->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return;
@@ -371,7 +372,7 @@ void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
 void gfsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem) {
   gfsk_modem *mod = (gfsk_modem *) modem;
   if (input_len * 8 > mod->max_modulation_input_bits) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, mod->max_modulation_input_bits / 8);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, mod->max_modulation_input_bits / 8);
     *output = NULL;
     *output_len = 0;
     return;

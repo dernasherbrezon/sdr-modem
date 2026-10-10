@@ -6,6 +6,7 @@
 #include "app_config.h"
 #include "tcp_server.h"
 #include "cli.h"
+#include "log.h"
 
 static tcp_server *server = NULL;
 static cli *cli_runner = NULL;
@@ -30,7 +31,7 @@ int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
 
   if (app_config->bind_address == NULL) {
-    fprintf(stdout, "starting in the cli mode\n");
+    LOG_INFO("starting in the cli mode");
     code = cli_create(app_config, &cli_runner);
     if (code != 0) {
       app_config_destroy(app_config);

@@ -7,6 +7,7 @@
 #include "app_config.h"
 
 #include <getopt.h>
+#include "log.h"
 
 static sdr_device_type app_config_convert_sdr_type(const char *type) {
   if (strcmp(type, "sdr-server") == 0) {
@@ -29,7 +30,7 @@ static int app_config_parse_gain_mode(const char *str, iio_gain_mode *result) {
   } else if (strcmp(str, "hybrid") == 0) {
     *result = IIO_GAIN_MODE_HYBRID;
   } else {
-    fprintf(stderr, "<3>invalid plutosdr_gain_control_mode: %s. expected manual, fast_attack, slow_attack or hybrid\n", str);
+    LOG_ERROR("invalid plutosdr_gain_control_mode: %s. expected manual, fast_attack, slow_attack or hybrid", str);
     return -1;
   }
   return 0;
@@ -102,14 +103,14 @@ static int app_config_parse_syncword(const char *hex, gfsk_modem_settings *setti
   }
   size_t hex_len = strlen(hex);
   if (hex_len == 0 || hex_len > sizeof(uint64_t) * 2) {
-    fprintf(stderr, "<3>invalid syncword. expected 1-%zu hex digits: %s\n", sizeof(uint64_t) * 2, hex);
+    LOG_ERROR("invalid syncword. expected 1-%zu hex digits: %s", sizeof(uint64_t) * 2, hex);
     return -EINVAL;
   }
   uint64_t syncword = 0;
   for (size_t i = 0; i < hex_len; i++) {
     int nibble = app_config_hex_to_nibble(hex[i]);
     if (nibble < 0) {
-      fprintf(stderr, "<3>invalid syncword. expected hex digits: %s\n", hex);
+      LOG_ERROR("invalid syncword. expected hex digits: %s", hex);
       return -EINVAL;
     }
     syncword = (syncword << 4) | (uint64_t) nibble;
@@ -297,11 +298,11 @@ static int app_config_load_sdr_file_from_file(config_t *libconfig, app_config *r
 }
 
 static int app_config_load_from_file(config_t *libconfig, const char *path, app_config *result) {
-  fprintf(stdout, "loading configuration from: %s\n", path);
+  LOG_INFO("loading configuration from: %s", path);
 
   int code = config_read_file(libconfig, path);
   if (code == CONFIG_FALSE) {
-    fprintf(stderr, "<3>unable to read configuration: %s\n", config_error_text(libconfig));
+    LOG_ERROR("unable to read configuration: %s", config_error_text(libconfig));
     return -1;
   }
 
@@ -315,6 +316,13 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     code = app_config_replace_str(config_setting_get_string(setting), &result->bind_address);
     if (code != 0) {
       return code;
+    }
+  }
+  setting = config_lookup(libconfig, "log_level");
+  if (setting != NULL) {
+    if (log_parse_level(config_setting_get_string(setting), &result->log_level) != 0) {
+      LOG_ERROR("invalid log_level: %s. expected error, warn, info or debug", config_setting_get_string(setting));
+      return -1;
     }
   }
   setting = config_lookup(libconfig, "port");
@@ -430,6 +438,7 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
 static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   enum {
     OPT_BIND_ADDRESS = 1000,
+    OPT_LOG_LEVEL,
     OPT_PORT,
     OPT_BUFFER_SIZE,
     OPT_READ_TIMEOUT_SECONDS,
@@ -482,6 +491,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   };
   static struct option long_options[] = {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
+    {"log_level", required_argument, NULL, OPT_LOG_LEVEL},
     {"port", required_argument, NULL, OPT_PORT},
     {"buffer_size", required_argument, NULL, OPT_BUFFER_SIZE},
     {"read_timeout_seconds", required_argument, NULL, OPT_READ_TIMEOUT_SECONDS},
@@ -539,6 +549,12 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
   int opt;
   while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
     switch (opt) {
+      case OPT_LOG_LEVEL:
+        if (log_parse_level(optarg, &result->log_level) != 0) {
+          LOG_ERROR("invalid log_level: %s. expected error, warn, info or debug", optarg);
+          return -1;
+        }
+        break;
       case OPT_BIND_ADDRESS: {
         int code = app_config_replace_str(optarg, &result->bind_address);
         if (code != 0) {
@@ -787,59 +803,63 @@ static int app_config_validate_file(const char *name, const char *file, sdr_file
   if (file == NULL) {
     return 0;
   }
-  fprintf(stdout, "%s: %s\n", name, file);
+  LOG_INFO("%s: %s", name, file);
   if (*format == FILE_FORMAT_GUESS) {
     *format = app_config_guess_file_format(file);
   }
   if (*format == FILE_FORMAT_INVALID) {
-    fprintf(stderr, "<3>invalid or unable to guess %s_format\n", name);
+    LOG_ERROR("invalid or unable to guess %s_format", name);
     return -1;
   }
-  fprintf(stdout, "%s_format: %s\n", name, *format == FILE_FORMAT_CU8 ? "cu8" : (*format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
+  LOG_INFO("%s_format: %s", name, *format == FILE_FORMAT_CU8 ? "cu8" : (*format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
   return 0;
 }
 
 static int app_config_validate_and_log(app_config *result) {
+  if (result->log_level == 0) {
+    result->log_level = LOG_LEVEL_INFO;
+  }
+  log_set_level(result->log_level);
   if (result->buffer_size == 0) {
     result->buffer_size = 262144;
   }
-  fprintf(stdout, "buffer size: %d\n", result->buffer_size);
+  LOG_INFO("buffer size: %d", result->buffer_size);
   if (result->port == 0) {
     result->port = 8091;
   }
   if (result->bind_address != NULL) {
-    fprintf(stdout, "start listening on %s:%d\n", result->bind_address, result->port);
+    LOG_INFO("start listening on %s:%d", result->bind_address, result->port);
   }
   if (result->read_timeout_seconds < 0) {
-    fprintf(stderr, "<3>read timeout should be positive: %d\n", result->read_timeout_seconds);
+    LOG_ERROR("read timeout should be positive: %d", result->read_timeout_seconds);
     return -1;
   }
   if (result->read_timeout_seconds == 0) {
     result->read_timeout_seconds = 5;
   }
-  fprintf(stdout, "read timeout %ds\n", result->read_timeout_seconds);
+  LOG_INFO("read timeout %ds", result->read_timeout_seconds);
   if (result->queue_size == 0) {
     result->queue_size = 64;
   }
-  fprintf(stdout, "queue_size: %d\n", result->queue_size);
-  fprintf(stdout, "max_frame_size: %u\n", result->max_frame_size);
+  LOG_INFO("queue_size: %d", result->queue_size);
+  LOG_INFO("max_frame_size: %u", result->max_frame_size);
 
   bool is_cli_mode = (result->bind_address == NULL);
   if (is_cli_mode) {
     if (result->direction < 0) {
-      fprintf(stderr, "<3>invalid direction\n");
+      LOG_ERROR("invalid direction");
       return -1;
     }
     if (result->direction == 0) {
-      fprintf(stderr, "<3>direction is required in cli mode. use --direction rx|tx\n");
+      LOG_ERROR("direction is required in cli mode. use --direction rx|tx");
       return -1;
     }
-    fprintf(stdout, "direction: %s\n", result->direction == DIRECTION_RX ? "rx" : "tx");
+    LOG_INFO("direction: %s", result->direction == DIRECTION_RX ? "rx" : "tx");
   }
 
   if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
     if (is_cli_mode && result->direction == DIRECTION_TX) {
-      fprintf(stderr, "<3>sdr-server cannot tx. invalid sdr_type parameter\n");
+      LOG_ERROR("sdr-server cannot tx. invalid sdr_type parameter");
       return -1;
     }
     if (result->sdr_server.addr == NULL) {
@@ -852,35 +872,35 @@ static int app_config_validate_and_log(app_config *result) {
       result->sdr_server.port = 8090;
     }
     if (result->sdr_server.read_timeout_seconds < 0) {
-      fprintf(stderr, "<3>sdr_server read timeout should be positive: %d\n", result->sdr_server.read_timeout_seconds);
+      LOG_ERROR("sdr_server read timeout should be positive: %d", result->sdr_server.read_timeout_seconds);
       return -1;
     }
     if (result->sdr_server.read_timeout_seconds == 0) {
       result->sdr_server.read_timeout_seconds = result->read_timeout_seconds;
     }
-    fprintf(stdout, "sdr: sdr_server\n");
-    fprintf(stdout, "sdr_server connection: %s:%d\n", result->sdr_server.addr, result->sdr_server.port);
-    fprintf(stdout, "sdr_server read timeout %ds\n", result->sdr_server.read_timeout_seconds);
+    LOG_INFO("sdr: sdr_server");
+    LOG_INFO("sdr_server connection: %s:%d", result->sdr_server.addr, result->sdr_server.port);
+    LOG_INFO("sdr_server read timeout %ds", result->sdr_server.read_timeout_seconds);
   } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
-    fprintf(stdout, "sdr: plutosdr\n");
-    fprintf(stdout, "plutosdr_gain_control_mode: %d\n", result->plutosdr.gain_control_mode);
-    fprintf(stdout, "plutosdr_tx_powerdown: %s\n", result->plutosdr.tx_powerdown ? "true" : "false");
+    LOG_INFO("sdr: plutosdr");
+    LOG_INFO("plutosdr_gain_control_mode: %d", result->plutosdr.gain_control_mode);
+    LOG_INFO("plutosdr_tx_powerdown: %s", result->plutosdr.tx_powerdown ? "true" : "false");
     if (result->plutosdr.timeout_ms == 0) {
       result->plutosdr.timeout_ms = 10000;
     }
-    fprintf(stdout, "plutosdr_timeout_ms: %d\n", result->plutosdr.timeout_ms);
+    LOG_INFO("plutosdr_timeout_ms: %d", result->plutosdr.timeout_ms);
   } else if (result->sdr_type == SDR_TYPE_FILE) {
-    fprintf(stdout, "sdr: file\n");
+    LOG_INFO("sdr: file");
     if (!is_cli_mode) {
-      fprintf(stderr, "<3>sdr_type=file is not supported in the server mode\n");
+      LOG_ERROR("sdr_type=file is not supported in the server mode");
       return -1;
     }
     if (result->direction == DIRECTION_RX && result->sdr_file.rx_file == NULL) {
-      fprintf(stderr, "<3>rx_file parameter is missing\n");
+      LOG_ERROR("rx_file parameter is missing");
       return -1;
     }
     if (result->direction == DIRECTION_TX && result->sdr_file.tx_file == NULL) {
-      fprintf(stderr, "<3>tx_file parameter is missing\n");
+      LOG_ERROR("tx_file parameter is missing");
       return -1;
     }
     if (app_config_validate_file("rx_file", result->sdr_file.rx_file, &result->sdr_file.rx_file_format) != 0) {
@@ -890,21 +910,21 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
   } else {
-    fprintf(stderr, "<3>invalid sdr_type: %d\n", result->sdr_type);
+    LOG_ERROR("invalid sdr_type: %d", result->sdr_type);
     return -1;
   }
 
   if (is_cli_mode && result->direction == DIRECTION_RX && result->output_file == NULL) {
-    fprintf(stderr, "<3>rx is enabled, but the output file is missing\n");
+    LOG_ERROR("rx is enabled, but the output file is missing");
     return -1;
   }
   if (is_cli_mode && result->direction == DIRECTION_TX && result->input_file == NULL) {
-    fprintf(stderr, "<3>tx is enabled, but the input file is missing\n");
+    LOG_ERROR("tx is enabled, but the input file is missing");
     return -1;
   }
 
   if (is_cli_mode && result->modem == MODEM_TYPE_INVALID) {
-    fprintf(stderr, "<3>invalid modem\n");
+    LOG_ERROR("invalid modem");
     return -1;
   }
   switch (result->modem) {
@@ -925,7 +945,7 @@ static int app_config_validate_and_log(app_config *result) {
   app_config_apply_psk_pm_defaults(&result->psk_pm);
 
   if (result->gfsk.syncword_bits != 0) {
-    fprintf(stdout, "syncword: 0x%0*llX bits: %u\n", (int) (result->gfsk.syncword_bits / 4), (unsigned long long) result->gfsk.syncword, result->gfsk.syncword_bits);
+    LOG_INFO("syncword: 0x%0*llX bits: %u", (int) (result->gfsk.syncword_bits / 4), (unsigned long long) result->gfsk.syncword, result->gfsk.syncword_bits);
   }
   return 0;
 }

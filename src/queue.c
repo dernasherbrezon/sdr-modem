@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "queue.h"
+#include "log.h"
 
 struct queue_node {
   uint8_t type;
@@ -45,11 +46,11 @@ void destroy_nodes(struct queue_node *nodes) {
 
 int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue **queue) {
   if (queue_size == 0) {
-    fprintf(stderr, "<3>invalid queue size: %d\n", queue_size);
+    LOG_ERROR("invalid queue size: %d", queue_size);
     return -1;
   }
   if (buffer_size == 0) {
-    fprintf(stderr, "<3>invalid buffer size: %u\n", buffer_size);
+    LOG_ERROR("invalid buffer size: %u", buffer_size);
     return -1;
   }
   struct queue_t *result = malloc(sizeof(struct queue_t));
@@ -103,7 +104,7 @@ int queue_put(const queue_message *message, queue *queue) {
     return -1;
   }
   if (message->buffer_len > queue->buffer_size) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %d\n", message->buffer_len, queue->buffer_size);
+    LOG_ERROR("requested buffer %zu is more than max: %d", message->buffer_len, queue->buffer_size);
     return -1;
   }
   pthread_mutex_lock(&queue->mutex);
@@ -127,7 +128,7 @@ int queue_put(const queue_message *message, queue *queue) {
     // queue is full
     // overwrite last node
     to_fill = queue->last_filled_node;
-    fprintf(stderr, "<3>queue is full\n");
+    LOG_WARN("queue is full");
   } else {
     // remove from free nodes pool
     to_fill = queue->first_free_node;

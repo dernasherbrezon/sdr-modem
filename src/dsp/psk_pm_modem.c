@@ -5,6 +5,7 @@
 #include <math.h>
 #include <liquid/liquid.h>
 #include <complex.h>
+#include "../log.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -50,19 +51,19 @@ struct psk_pm_modem_t {
 
 static int psk_pm_modem_validate_settings(const psk_pm_modem_settings *settings) {
   if (settings->subcarrier_frequency == 0) {
-    fprintf(stderr, "<3>psk/pm modem: subcarrier_frequency must not be 0\n");
+    LOG_ERROR("psk/pm modem: subcarrier_frequency must not be 0");
     return -EINVAL;
   }
   if ((uint64_t) settings->subcarrier_frequency * 2 >= settings->sample_rate) {
-    fprintf(stderr, "<3>psk/pm modem: subcarrier_frequency (%u) must be well below sample_rate/2 (%llu)\n", settings->subcarrier_frequency, (unsigned long long) (settings->sample_rate / 2));
+    LOG_ERROR("psk/pm modem: subcarrier_frequency (%u) must be well below sample_rate/2 (%llu)", settings->subcarrier_frequency, (unsigned long long) (settings->sample_rate / 2));
     return -EINVAL;
   }
   if (settings->modulation_index <= 0.0f) {
-    fprintf(stderr, "<3>psk/pm modem: modulation_index must be > 0\n");
+    LOG_ERROR("psk/pm modem: modulation_index must be > 0");
     return -EINVAL;
   }
   if (settings->carrier_pll_bandwidth <= 0.0f) {
-    fprintf(stderr, "<3>psk/pm modem: carrier_pll_bandwidth must be > 0\n");
+    LOG_ERROR("psk/pm modem: carrier_pll_bandwidth must be > 0");
     return -EINVAL;
   }
   return 0;
@@ -138,7 +139,7 @@ size_t psk_pm_modem_max_modulation_buffer_length(void *modem_v) {
 void psk_pm_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *demod_v) {
   psk_pm_modem *demod = demod_v;
   if (input_len > demod->max_input_buffer_length) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->max_input_buffer_length);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, demod->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return;
@@ -208,7 +209,7 @@ int psk_pm_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, ps
   }
   modem->debug_subcarrier_file = fopen(debug_subcarrier_file, "wb");
   if (modem->debug_subcarrier_file == NULL) {
-    fprintf(stderr, "<3>unable to open debug subcarrier file: %s\n", debug_subcarrier_file);
+    LOG_ERROR("unable to open debug subcarrier file: %s", debug_subcarrier_file);
     return -1;
   }
   return 0;

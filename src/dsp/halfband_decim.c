@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <liquid/liquid.h>
+#include "../log.h"
 
 struct halfband_decim_t {
     msresamp2_crcf resampler;
@@ -54,7 +55,7 @@ int halfband_decim_create(unsigned int num_stages, float fc, float stopband_atte
 void halfband_decim_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
                             halfband_decim *filter) {
     if (input_len > filter->max_input_buffer_length) {
-        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, filter->max_input_buffer_length);
+        LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, filter->max_input_buffer_length);
         *output = NULL;
         *output_len = 0;
         return;

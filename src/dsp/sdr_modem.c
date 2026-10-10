@@ -8,6 +8,7 @@
 #include "halfband_decim.h"
 #include "halfband_interp.h"
 #include "psk_pm_modem.h"
+#include "../log.h"
 
 #define ERROR_CHECK(x)           \
     do {                           \
@@ -104,7 +105,7 @@ static int sdr_modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_se
       *bandwidth = 2 * (settings->modem.psk_pm.subcarrier_frequency + (uint32_t) ((1 + settings->modem.psk_pm.rrc_beta) * settings->modem.psk_pm.baud_rate));
       break;
     default:
-      fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
+      LOG_ERROR("unsupported modem type: %d", modem_type);
       return -1;
   }
   return 0;
@@ -124,7 +125,7 @@ static int sdr_modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_
       *sample_rate = settings->modem.psk_pm.sample_rate;
       break;
     default:
-      fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
+      LOG_ERROR("unsupported modem type: %d", modem_type);
       return -1;
   }
   return 0;
@@ -242,7 +243,7 @@ static int sdr_modem_reopen_debug_file(FILE **file, const char *path, const char
   }
   *file = fopen(path, "wb");
   if (*file == NULL) {
-    fprintf(stderr, "<3>unable to open debug %s file: %s\n", name, path);
+    LOG_ERROR("unable to open debug %s file: %s", name, path);
     return -1;
   }
   return 0;
@@ -261,7 +262,7 @@ int sdr_modem_set_debug_baseband_file(const char *debug_baseband_file, sdr_modem
   }
   int code = sdr_modem_reopen_debug_file(&modem->debug_baseband_file, debug_baseband_file, "baseband");
   if (code == 0 && debug_baseband_file != NULL) {
-    fprintf(stdout, "baseband sample rate: %"PRIu64"\n", modem->baseband_sample_rate);
+    LOG_DEBUG("baseband sample rate: %"PRIu64, modem->baseband_sample_rate);
   }
   return code;
 }

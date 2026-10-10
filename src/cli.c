@@ -7,6 +7,7 @@
 
 #include "dsp/sdr_modem.h"
 #include "sdr_utils.h"
+#include "log.h"
 
 struct cli_t {
   int direction;
@@ -42,7 +43,7 @@ static int cli_create_modem(app_config *config, struct cli_t *result) {
       settings.modem.psk_pm.sample_rate = config->sample_rate;
       break;
     default:
-      fprintf(stderr, "<3>unsupported modem type: %d\n", config->modem);
+      LOG_ERROR("unsupported modem type: %d", config->modem);
       return -1;
   }
   int code = sdr_modem_create(&settings, config->buffer_size, config->freq_offset_file, &result->modem);
@@ -100,32 +101,32 @@ int cli_create(app_config *config, cli **output) {
   if (config->direction == DIRECTION_RX) {
     code = result->device->set_rx_parameters(&channel_config, result->device->plugin);
     if (code != 0) {
-      fprintf(stderr, "<3>unable to set rx parameters\n");
+      LOG_ERROR("unable to set rx parameters");
       cli_destroy(result);
       return -1;
     }
     result->output_file = fopen(config->output_file, "wb");
     if (result->output_file == NULL) {
-      fprintf(stderr, "<3>unable to open file %s: %s\n", config->output_file, strerror(errno));
+      LOG_ERROR("unable to open file %s: %s", config->output_file, strerror(errno));
       cli_destroy(result);
       return -1;
     }
   } else {
     code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
     if (code != 0) {
-      fprintf(stderr, "<3>unable to set tx parameters\n");
+      LOG_ERROR("unable to set tx parameters");
       cli_destroy(result);
       return -1;
     }
     code = result->device->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(result->modem), result->device->plugin);
     if (code != 0) {
-      fprintf(stderr, "<3>unable to set max tx input buffer\n");
+      LOG_ERROR("unable to set max tx input buffer");
       cli_destroy(result);
       return -1;
     }
     result->input_file = fopen(config->input_file, "rb");
     if (result->input_file == NULL) {
-      fprintf(stderr, "<3>unable to open file %s: %s\n", config->input_file, strerror(errno));
+      LOG_ERROR("unable to open file %s: %s", config->input_file, strerror(errno));
       cli_destroy(result);
       return -1;
     }

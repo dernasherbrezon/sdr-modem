@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <liquid/liquid.h>
+#include "../log.h"
 
 struct halfband_interp_t {
     msresamp2_crcf resampler;
@@ -43,7 +44,7 @@ int halfband_interp_create(unsigned int num_stages, float fc, float stopband_att
 void halfband_interp_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
                              halfband_interp *filter) {
     if (input_len > filter->max_input_buffer_length) {
-        fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, filter->max_input_buffer_length);
+        LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, filter->max_input_buffer_length);
         *output = NULL;
         *output_len = 0;
         return;

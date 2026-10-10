@@ -5,6 +5,7 @@
 #include <math.h>
 #include <liquid/liquid.h>
 #include <complex.h>
+#include "../log.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -80,7 +81,7 @@ struct bpsk_modem_t {
 
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem) {
   if (settings->baud_rate == 0) {
-    fprintf(stderr, "<3>bpsk modem: baud_rate must not be 0\n");
+    LOG_ERROR("bpsk modem: baud_rate must not be 0");
     return -EINVAL;
   }
   unsigned int input_sps = settings->sample_rate / settings->baud_rate;
@@ -97,7 +98,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     sps = input_sps;
   }
   if (sps < 2) {
-    fprintf(stderr, "<3>bpsk modem: samples per symbol (%u) must be at least 2\n", sps);
+    LOG_ERROR("bpsk modem: samples per symbol (%u) must be at least 2", sps);
     return -EINVAL;
   }
 
@@ -134,7 +135,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   if (settings->bandwidth != 0) {
     float lowpass_fc = (float) settings->bandwidth / (float) internal_sample_rate;
     if (lowpass_fc <= 0.0f || lowpass_fc >= 0.5f) {
-      fprintf(stderr, "<3>bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu\n", settings->bandwidth, (unsigned long long) internal_sample_rate);
+      LOG_ERROR("bpsk modem: lowpass cutoff %uHz is not valid at internal sample rate %llu", settings->bandwidth, (unsigned long long) internal_sample_rate);
       bpsk_modem_destroy(result);
       return -EINVAL;
     }
@@ -264,7 +265,7 @@ int bpsk_modem_set_debug_constellation_file(const char *debug_constellation_file
   }
   FILE *file = fopen(debug_constellation_file, "wb");
   if (file == NULL) {
-    fprintf(stderr, "<3>unable to open debug constellation file: %s\n", debug_constellation_file);
+    LOG_ERROR("unable to open debug constellation file: %s", debug_constellation_file);
     free(buffer);
     return -1;
   }
@@ -282,7 +283,7 @@ size_t bpsk_modem_max_modulation_buffer_length(void *modem_v) {
 void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem) {
   bpsk_modem *demod = modem;
   if (input_len > demod->max_input_buffer_length) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, demod->max_input_buffer_length);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, demod->max_input_buffer_length);
     *output = NULL;
     *output_len = 0;
     return;
@@ -376,7 +377,7 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
 void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
   bpsk_modem *mod = mod_v;
   if (input_len * 8 > mod->max_modulation_input_bits) {
-    fprintf(stderr, "<3>requested buffer %zu is more than max: %zu\n", input_len, mod->max_modulation_input_bits / 8);
+    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, mod->max_modulation_input_bits / 8);
     *output = NULL;
     *output_len = 0;
     return;
