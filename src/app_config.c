@@ -81,13 +81,6 @@ static sdr_modem_type app_config_convert_modem_type(const char *type) {
   return MODEM_TYPE_INVALID;
 }
 
-static int app_config_convert_framing_type(const char *type) {
-  if (strcmp(type, "none") == 0) {
-    return FRAMING_TYPE_NONE;
-  }
-  return -1;
-}
-
 static int app_config_hex_to_nibble(char c) {
   if (c >= '0' && c <= '9') {
     return c - '0';
@@ -399,11 +392,6 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   app_config_load_gfsk_from_file(libconfig, result);
   app_config_load_psk_from_file(libconfig, result);
   app_config_load_psk_pm_from_file(libconfig, result);
-  setting = config_lookup(libconfig, "framing");
-  if (setting != NULL) {
-    result->framing = app_config_convert_framing_type(config_setting_get_string(setting));
-    //ignore framing for now
-  }
   setting = config_lookup(libconfig, "syncword");
   if (setting != NULL) {
     code = app_config_parse_syncword(config_setting_get_string(setting), &result->gfsk);
@@ -463,7 +451,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_INPUT,
     OPT_OUTPUT,
     OPT_MODEM,
-    OPT_FRAMING,
     OPT_SYNCWORD,
     OPT_FREQUENCY,
     OPT_SAMPLE_RATE,
@@ -516,7 +503,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"input", required_argument, NULL, OPT_INPUT},
     {"output", required_argument, NULL, OPT_OUTPUT},
     {"modem", required_argument, NULL, OPT_MODEM},
-    {"framing", required_argument, NULL, OPT_FRAMING},
     {"syncword", required_argument, NULL, OPT_SYNCWORD},
     {"frequency", required_argument, NULL, OPT_FREQUENCY},
     {"sample_rate", required_argument, NULL, OPT_SAMPLE_RATE},
@@ -644,9 +630,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       }
       case OPT_MODEM:
         result->modem = app_config_convert_modem_type(optarg);
-        break;
-      case OPT_FRAMING:
-        result->framing = app_config_convert_framing_type(optarg);
         break;
       case OPT_SYNCWORD: {
         int code = app_config_parse_syncword(optarg, &result->gfsk);
@@ -941,10 +924,6 @@ static int app_config_validate_and_log(app_config *result) {
   app_config_apply_psk_defaults(&result->psk);
   app_config_apply_psk_pm_defaults(&result->psk_pm);
 
-  if (result->framing < 0) {
-    fprintf(stderr, "<3>invalid framing\n");
-    return -1;
-  }
   if (result->gfsk.syncword_bits != 0) {
     fprintf(stdout, "syncword: 0x%0*llX bits: %u\n", (int) (result->gfsk.syncword_bits / 4), (unsigned long long) result->gfsk.syncword, result->gfsk.syncword_bits);
   }

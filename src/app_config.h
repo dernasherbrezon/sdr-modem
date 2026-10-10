@@ -56,7 +56,6 @@ typedef struct app_config_t {
   char *output_file;
 
   sdr_modem_type modem;
-  int framing;
   uint64_t frequency;
   uint64_t sample_rate;
   float gain;
