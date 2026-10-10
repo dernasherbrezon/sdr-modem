@@ -903,7 +903,7 @@ static int app_config_validate_and_log(app_config *result) {
     return -1;
   }
 
-  if (result->modem == MODEM_TYPE_INVALID) {
+  if (is_cli_mode && result->modem == MODEM_TYPE_INVALID) {
     fprintf(stderr, "<3>invalid modem\n");
     return -1;
   }
