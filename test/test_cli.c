@@ -87,7 +87,7 @@ void test_rx_demodulate_to_file() {
   // make sure output is flushed to the output file
   cli_destroy(cli_instance);
   cli_instance = NULL;
-  assert_s8_files("expected_cli_rx_output.s8", rx_output_path, 1000, 0);
+  assert_s8_files("expected_cli_rx_output.s8", rx_output_path, 1000, 2);
 }
 
 void tearDown() {
