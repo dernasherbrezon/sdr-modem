@@ -20,6 +20,10 @@ int queue_put(const queue_message *message, queue *queue);
 
 void queue_take(queue_message *message, queue *queue);
 
+// non-blocking version of queue_take: message->buffer is NULL if nothing is available.
+// If a message is returned, queue_complete must be called after processing
+void queue_peak(queue_message *message, queue *queue);
+
 void queue_complete(queue *queue);
 
 void queue_interrupt(queue *queue);

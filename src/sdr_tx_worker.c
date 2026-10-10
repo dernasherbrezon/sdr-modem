@@ -34,7 +34,6 @@ static void *sdr_tx_worker_callback(void *arg) {
     }
 
     int code = 0;
-    size_t written = 0;
     switch (message.type) {
       case SDR_TX_FRAME: {
         if (worker->modem == NULL) {
@@ -82,6 +81,8 @@ static void *sdr_tx_worker_callback(void *arg) {
         break;
       }
     }
+
+    queue_complete(worker->queue);
   }
   return (void *) 0;
 }
@@ -121,6 +122,16 @@ void sdr_tx_worker_send(uint32_t request_id, uint8_t *frame, size_t frame_len, s
     .request_id = request_id,
     .buffer_len = frame_len,
     .buffer = frame
+  };
+  queue_put(&message, worker->queue);
+}
+
+void sdr_tx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, size_t buffer_len, sdr_tx_worker *worker) {
+  queue_message message = {
+    .type = SDR_TX_COMM_PARAMETERS,
+    .request_id = request_id,
+    .buffer_len = buffer_len,
+    .buffer = buffer
   };
   queue_put(&message, worker->queue);
 }

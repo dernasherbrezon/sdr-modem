@@ -12,6 +12,8 @@ int sdr_tx_worker_create(uint32_t max_frame_size, uint32_t buffer_size, uint16_t
 
 void sdr_tx_worker_send(uint32_t request_id, uint8_t *frame, size_t frame_len, sdr_tx_worker *worker);
 
+void sdr_tx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, size_t buffer_len, sdr_tx_worker *worker);
+
 void sdr_tx_worker_destroy(sdr_tx_worker *worker);
 
 #endif

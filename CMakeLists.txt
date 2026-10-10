@@ -9,6 +9,7 @@ endif ()
 
 add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_tx_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_rx_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/client_tx_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/linked_list.c

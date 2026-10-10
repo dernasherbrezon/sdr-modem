@@ -175,9 +175,11 @@ static void *tcp_worker_callback(tcp_server *worker) {
         //   break;
         // }
 
-        //FIXME pause sdr, set rx parameters, replace existing modem with the new in sdr_rx_worker
-        // client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, id, worker->tx_worker);
-        //FIXME for tx it should be different
+        if (header.type == MESSAGE_TYPE_TX_COMM_PARAMETERS) {
+          sdr_tx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+        } else if (header.type == MESSAGE_TYPE_RX_COMM_PARAMETERS) {
+          sdr_rx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_rx_worker);
+        }
         break;
       }
       case MESSAGE_TYPE_TX_FRAME: {
@@ -284,7 +286,7 @@ int tcp_server_create(app_config *config, tcp_server **server) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = sdr_rx_worker_create(1, result->tx_worker, result->sdr, &result->sdr_rx_worker);
+  code = sdr_rx_worker_create(1, config->buffer_size, result->tx_worker, result->sdr, &result->sdr_rx_worker);
   if (code != 0) {
     tcp_server_destroy(result);
     return -1;

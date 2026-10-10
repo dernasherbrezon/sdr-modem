@@ -206,6 +206,28 @@ void queue_take(queue_message *message, queue *queue) {
   pthread_mutex_unlock(&queue->mutex);
 }
 
+void queue_peak(queue_message *message, queue *queue) {
+  pthread_mutex_lock(&queue->mutex);
+  if (queue->first_filled_node == NULL) {
+    pthread_mutex_unlock(&queue->mutex);
+    message->buffer = NULL;
+    return;
+  }
+  // same detach semantics as queue_take: caller must call queue_complete
+  queue->detached_node = queue->first_filled_node;
+  queue->first_filled_node = queue->first_filled_node->next;
+  queue->detached_node->next = NULL;
+  if (queue->first_filled_node == NULL) {
+    queue->last_filled_node = NULL;
+  }
+  message->buffer = queue->detached_node->buffer;
+  message->buffer_len = queue->detached_node->len;
+  message->type = queue->detached_node->type;
+  message->request_id = queue->detached_node->request_id;
+
+  pthread_mutex_unlock(&queue->mutex);
+}
+
 void queue_complete(queue *queue) {
   pthread_mutex_lock(&queue->mutex);
   if (queue->last_free_node == NULL) {
