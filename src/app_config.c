@@ -803,7 +803,6 @@ static int app_config_validate_file(const char *name, const char *file, sdr_file
   if (file == NULL) {
     return 0;
   }
-  LOG_INFO("%s: %s", name, file);
   if (*format == FILE_FORMAT_GUESS) {
     *format = app_config_guess_file_format(file);
   }
@@ -811,7 +810,6 @@ static int app_config_validate_file(const char *name, const char *file, sdr_file
     LOG_ERROR("invalid or unable to guess %s_format", name);
     return -1;
   }
-  LOG_INFO("%s_format: %s", name, *format == FILE_FORMAT_CU8 ? "cu8" : (*format == FILE_FORMAT_CS16 ? "cs16" : "cf32"));
   return 0;
 }
 
@@ -842,7 +840,6 @@ static int app_config_validate_and_log(app_config *result) {
     result->queue_size = 64;
   }
   LOG_INFO("queue_size: %d", result->queue_size);
-  LOG_INFO("max_frame_size: %u", result->max_frame_size);
 
   bool is_cli_mode = (result->bind_address == NULL);
   if (is_cli_mode) {
@@ -855,6 +852,10 @@ static int app_config_validate_and_log(app_config *result) {
       return -1;
     }
     LOG_INFO("direction: %s", result->direction == DIRECTION_RX ? "rx" : "tx");
+  }
+
+  if (!is_cli_mode || result->direction == DIRECTION_TX) {
+    LOG_INFO("max_frame_size: %u", result->max_frame_size);
   }
 
   if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
@@ -878,19 +879,11 @@ static int app_config_validate_and_log(app_config *result) {
     if (result->sdr_server.read_timeout_seconds == 0) {
       result->sdr_server.read_timeout_seconds = result->read_timeout_seconds;
     }
-    LOG_INFO("sdr: sdr_server");
-    LOG_INFO("sdr_server connection: %s:%d", result->sdr_server.addr, result->sdr_server.port);
-    LOG_INFO("sdr_server read timeout %ds", result->sdr_server.read_timeout_seconds);
   } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
-    LOG_INFO("sdr: plutosdr");
-    LOG_INFO("plutosdr_gain_control_mode: %d", result->plutosdr.gain_control_mode);
-    LOG_INFO("plutosdr_tx_powerdown: %s", result->plutosdr.tx_powerdown ? "true" : "false");
     if (result->plutosdr.timeout_ms == 0) {
       result->plutosdr.timeout_ms = 10000;
     }
-    LOG_INFO("plutosdr_timeout_ms: %d", result->plutosdr.timeout_ms);
   } else if (result->sdr_type == SDR_TYPE_FILE) {
-    LOG_INFO("sdr: file");
     if (!is_cli_mode) {
       LOG_ERROR("sdr_type=file is not supported in the server mode");
       return -1;

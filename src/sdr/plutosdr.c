@@ -555,6 +555,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   result->start_rx = plutosdr_start_rx;
   result->stop_rx = plutosdr_stop_rx;
 
+  LOG_INFO("plutosdr: gain_control_mode=%d tx_powerdown=%s timeout_ms=%u", settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms);
   *output = result;
   return 0;
 }

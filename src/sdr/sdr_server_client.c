@@ -10,6 +10,7 @@
 
 #include "../tcp_utils.h"
 #include "sdr_server_client.h"
+#include <inttypes.h>
 #include "../log.h"
 
 struct sdr_server_client_t {
@@ -107,6 +108,7 @@ int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_o
     result->set_max_tx_input_buffer = NULL;
     result->stop_rx = sdr_server_client_stop;
 
+    LOG_INFO("sdr_server: addr=%s:%d read_timeout=%ds frequency=%" PRIu64 " sample_rate=%" PRIu64, settings->addr, settings->port, settings->read_timeout_seconds, settings->frequency, settings->sample_rate);
     *output = result;
     return 0;
 }

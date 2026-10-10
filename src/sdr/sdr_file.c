@@ -111,6 +111,19 @@ int sdr_file_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
   return 0;
 }
 
+static const char *sdr_file_format_name(sdr_file_format format) {
+  switch (format) {
+    case FILE_FORMAT_CU8:
+      return "cu8";
+    case FILE_FORMAT_CS16:
+      return "cs16";
+    case FILE_FORMAT_CF32:
+      return "cf32";
+    default:
+      return "-";
+  }
+}
+
 int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
@@ -197,6 +210,15 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
   result->start_rx = sdr_file_no_op;
   result->stop_rx = sdr_file_no_op;
 
+  if (settings->rx_file == NULL && settings->tx_file != NULL) {
+    LOG_INFO("sdr_file: tx_file=%s tx_file_format=%s", settings->tx_file, sdr_file_format_name(settings->tx_file_format));
+  } else if (settings->tx_file == NULL && settings->rx_file != NULL) {
+    LOG_INFO("sdr_file: rx_file=%s rx_file_format=%s", settings->rx_file, sdr_file_format_name(settings->rx_file_format));
+  } else {
+    LOG_INFO("sdr_file: rx_file=%s rx_file_format=%s tx_file=%s tx_file_format=%s",
+             settings->rx_file == NULL ? "-" : settings->rx_file, sdr_file_format_name(settings->rx_file_format),
+             settings->tx_file == NULL ? "-" : settings->tx_file, sdr_file_format_name(settings->tx_file_format));
+  }
   *output = result;
   return 0;
 }
