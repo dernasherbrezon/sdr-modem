@@ -9,7 +9,8 @@ int tcp_server_create(app_config *config, tcp_server **server);
 
 void tcp_server_join_thread(tcp_server *server);
 
-void tcp_server_destroy(tcp_server *server);
+void tcp_server_shutdown(tcp_server *server);
 
+void tcp_server_destroy(tcp_server *server);
 
 #endif /* TCP_SERVER_H_ */

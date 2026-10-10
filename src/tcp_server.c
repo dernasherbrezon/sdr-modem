@@ -27,6 +27,7 @@ struct tcp_server_t {
   int server_socket;
   volatile sig_atomic_t is_running;
   pthread_t acceptor_thread;
+  bool thread_started;
   app_config *app_config;
   uint32_t client_counter;
 
@@ -265,18 +266,41 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   pthread_t acceptor_thread;
   code = pthread_create(&acceptor_thread, NULL, &acceptor_worker, result);
   if (code != 0) {
-    //FIXME this and above won't destroy allocated threads and memory
     tcp_server_destroy(result);
     return -1;
   }
   result->acceptor_thread = acceptor_thread;
+  result->thread_started = true;
 
   *server = result;
   return 0;
 }
 
 void tcp_server_join_thread(tcp_server *server) {
-  pthread_join(server->acceptor_thread, NULL);
+  if (server->thread_started) {
+    pthread_join(server->acceptor_thread, NULL);
+  }
+  tcp_server_destroy(server);
+}
+
+void tcp_server_shutdown(tcp_server *server) {
+  if (server == NULL) {
+    return;
+  }
+  LOG_INFO("tcp server is stopping");
+  server->is_running = false;
+  // close is not enough to exit from the blocking "accept" method
+  // execute shutdown first
+  int code = shutdown(server->server_socket, SHUT_RDWR);
+  if (code != 0) {
+    close(server->server_socket);
+  }
+}
+
+void tcp_server_destroy(tcp_server *server) {
+  if (server == NULL) {
+    return;
+  }
   if (server->sdr_rx_worker != NULL) {
     sdr_rx_worker_destroy(server->sdr_rx_worker);
   }
@@ -293,18 +317,4 @@ void tcp_server_join_thread(tcp_server *server) {
     free(server->buffer);
   }
   free(server);
-}
-
-void tcp_server_destroy(tcp_server *server) {
-  if (server == NULL) {
-    return;
-  }
-  LOG_INFO("tcp server is stopping");
-  server->is_running = false;
-  // close is not enough to exit from the blocking "accept" method
-  // execute shutdown first
-  int code = shutdown(server->server_socket, SHUT_RDWR);
-  if (code != 0) {
-    close(server->server_socket);
-  }
 }
