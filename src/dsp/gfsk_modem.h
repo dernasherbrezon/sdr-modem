@@ -14,7 +14,7 @@ typedef struct {
   int64_t deviation;         // frequency deviation, in Hz. must not be 0
   uint32_t bandwidth;        // full occupied bandwidth, in Hz. 0 disables the input low-pass filter
   float bt;                  // gaussian filter bandwidth-time product, in (0, 1]
-  bool use_dc_block;         // remove the frequency offset. used only without a sync word
+  uint8_t use_dc_block;         // remove the frequency offset. used only without a sync word
   uint64_t syncword;         // use syncowrd for data-aided demodulation and short bursts
   uint32_t syncword_bits;    // number of sync word bits, in [0, 64]. 0 means no sync word: symbol timing is recovered by symsync
 } gfsk_modem_settings;

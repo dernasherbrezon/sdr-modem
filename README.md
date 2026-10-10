@@ -11,7 +11,7 @@ Modem based on software defined radios.
 ## Features
 
  * TCP-based
- * Custom [binary protocol](https://github.com/dernasherbrezon/sdr-modem/blob/main/api.proto) based on protobuf messages.
+ * Custom binary protocol
  * Supported modulation/demodulation:
    * GFSK
  * Supported SDRs:
@@ -25,8 +25,6 @@ Modem based on software defined radios.
 ## API
 
  * Defined in the [api.h](https://github.com/dernasherbrezon/sdr-modem/blob/main/src/api.h)
- * And in the [api.proto](https://github.com/dernasherbrezon/sdr-modem/blob/main/api.proto)
-
 
 ## Configuration
 
@@ -40,7 +38,6 @@ sdr-modem depends on several libraries:
 
 * [liquid-dsp](https://github.com/jgaeddert/liquid-dsp)
 * [libconfig](https://hyperrealm.github.io/libconfig/libconfig_manual.html)
-* [libprotobuf-c](https://github.com/protobuf-c/protobuf-c)
 * libz. Should be installed in every operational system
 * libm. Same
 * [libiio](https://github.com/analogdevicesinc/libiio) for plutosdr SDR (Optional)
@@ -53,7 +50,7 @@ curl -fsSL https://leosatdata.com/r2cloud.gpg.key | sudo gpg --dearmor -o /usr/s
 sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud.list"
 sudo bash -c "echo \"deb [signed-by=/usr/share/keyrings/r2cloud.gpg] http://apt.leosatdata.com/cpu-generic $(lsb_release --codename --short) main\" > /etc/apt/sources.list.d/r2cloud-generic.list"
 sudo apt-get update
-sudo apt-get install libliquid-dev libprotobuf-c-dev libconfig-dev libiio-dev
+sudo apt-get install libliquid-dev libconfig-dev libiio-dev
 ```
 
 ## Build

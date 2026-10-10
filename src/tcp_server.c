@@ -13,14 +13,13 @@
 #include <inttypes.h>
 
 #include "api.h"
-#include "api.pb-c.h"
 #include "tcp_server.h"
-#include "api_utils.h"
 #include "dsp_worker.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
 #include "sdr_utils.h"
+#include "tcp_utils.h"
 
 struct tcp_server_t {
   int server_socket;
@@ -36,6 +35,9 @@ struct tcp_server_t {
   client_tx_worker *tx_worker;
   dsp_worker *dsp_worker;
   sdr_device *sdr;
+
+  uint8_t *buffer;
+  size_t buffer_length;
 };
 
 static void log_client(struct sockaddr_in *address, uint32_t id) {
@@ -44,29 +46,29 @@ static void log_client(struct sockaddr_in *address, uint32_t id) {
   printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-static int validate_request(const struct ModemRequest *req, uint32_t client_id) {
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
-    fprintf(stderr, "<3>[%d] modem settings are missing\n", client_id);
-    return -1;
-  }
-  if (req->frequency == 0) {
-    fprintf(stderr, "<3>[%d] missing frequency parameter\n", client_id);
-    return -1;
-  }
-  if (req->sample_rate == 0) {
-    fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
-    return -1;
-  }
-  if (api_utils_get_baud_rate(req) == 0) {
-    fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
-    return -1;
-  }
-  if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK && req->gfsk->bandwidth == 0) {
-    fprintf(stderr, "<3>[%d] missing bandwidth parameter\n", client_id);
-    return -1;
-  }
-  return 0;
-}
+// static int validate_request(const struct ModemRequest *req, uint32_t client_id) {
+//   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
+//     fprintf(stderr, "<3>[%d] modem settings are missing\n", client_id);
+//     return -1;
+//   }
+//   if (req->frequency == 0) {
+//     fprintf(stderr, "<3>[%d] missing frequency parameter\n", client_id);
+//     return -1;
+//   }
+//   if (req->sample_rate == 0) {
+//     fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
+//     return -1;
+//   }
+//   if (api_utils_get_baud_rate(req) == 0) {
+//     fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
+//     return -1;
+//   }
+//   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK && req->gfsk->bandwidth == 0) {
+//     fprintf(stderr, "<3>[%d] missing bandwidth parameter\n", client_id);
+//     return -1;
+//   }
+//   return 0;
+// }
 
 // void handle_tx_data(tcp_server *tcp_server, struct message_header *header) {
 //   TxData *data = NULL;
@@ -124,8 +126,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
   uint32_t id = worker->client_counter;
   fprintf(stdout, "[%d] tcp_worker is starting\n", id);
   while (worker->is_running && !worker->client_disconnected) {
-    message_header header;
-    int code = api_utils_read_header(worker->client_socket, &header);
+    int code = tcp_utils_read_data(worker->buffer, API_HEADER_SIZE, worker->client_socket);
     if (code < -1) {
       // read timeout happened. it's ok.
       // client already sent all information we need
@@ -136,43 +137,46 @@ static void *tcp_worker_callback(tcp_server *worker) {
       worker->client_disconnected = true;
       break;
     }
+    message_header header;
+    code = api_decode_message_header(worker->buffer, API_HEADER_SIZE, &header);
+    if (code != 0) {
+      //do not log failure attempts, might be ddos from malicious client
+      continue;
+    }
     if (header.protocol_version != PROTOCOL_VERSION) {
       fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
       continue;
     }
+    code = tcp_utils_read_data(worker->buffer, header.message_length, worker->client_socket);
+    if (code != 0) {
+      //do not log failure attempts, might be ddos from malicious client
+      continue;
+    }
     switch (header.type) {
-      case MESSAGE_TYPE_RX_REQUEST:
-      case MESSAGE_TYPE_TX_REQUEST:
-        struct ModemRequest *rx_req = NULL;
-        if (api_utils_read_modem_request(worker->client_socket, &header, &rx_req) != 0) {
-          fprintf(stderr, "<3>[%d] unable to read request fully\n", id);
-          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-          break;
-        }
-
-        if (validate_request(rx_req, id) < 0) {
-          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-          break;
-        }
-
-        sdr_modem_type modem_type = MODEM_TYPE_NONE;
-        sdr_modem_settings modem_settings;
-        code = api_utils_convert_modem_request(rx_req, &modem_type, &modem_settings);
+      case MESSAGE_TYPE_RX_COMM_PARAMETERS:
+      case MESSAGE_TYPE_TX_COMM_PARAMETERS:
+        sdr_modem_settings settings;
+        code = api_decode_sdr_modem_settings(worker->buffer, header.message_length, &settings);
         if (code != 0) {
-          client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
+        // if (validate_request(rx_req, id) < 0) {
+        //   client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        //   break;
+        // }
+
         //FIXME pause sdr, set rx parameters, replace existing modem with the new in dsp_worker
-        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__SUCCESS, id, worker->tx_worker);
+        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, id, worker->tx_worker);
         //FIXME for tx it should be different
         break;
-      case MESSAGE_TYPE_TX_DATA:
-        fprintf(stdout, "[%d] received tx request\n", id);
-        //FIXME
-        // handle_tx_data(worker, &header);
-        break;
+      // case MESSAGE_TYPE_TX_DATA:
+      //   fprintf(stdout, "[%d] received tx request\n", id);
+      //   //FIXME
+      //   // handle_tx_data(worker, &header);
+      //   break;
       case MESSAGE_TYPE_PING:
-        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
         break;
       case MESSAGE_TYPE_SHUTDOWN:
         fprintf(stdout, "[%d] client requested disconnect\n", id);
@@ -180,7 +184,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
         break;
       default:
         fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
-        client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
     }
   }
@@ -245,6 +249,12 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   result->app_config = config;
   // start counting from 0
   result->client_counter = -1;
+  result->buffer_length = config->buffer_size + API_HEADER_SIZE + 100; // 100 is some delta
+  result->buffer = malloc(result->buffer_length);
+  if (result->buffer == NULL) {
+    tcp_server_destroy(result);
+    return -ENOMEM;
+  }
   int code = sdr_device_create(config, &result->sdr);
   if (code != 0) {
     tcp_server_destroy(result);
@@ -316,6 +326,9 @@ void tcp_server_join_thread(tcp_server *server) {
   }
   if (server->sdr != NULL) {
     sdr_device_destroy(server->sdr);
+  }
+  if (server->buffer != NULL) {
+    free(server->buffer);
   }
   free(server);
 }

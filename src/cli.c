@@ -25,26 +25,27 @@ struct cli_t {
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
   sdr_modem_settings settings;
+  settings.modem_type = config->modem;
   switch (config->modem) {
     case MODEM_TYPE_GFSK:
-      settings.gfsk = config->gfsk;
-      settings.gfsk.sample_rate = config->sample_rate;
+      settings.modem.gfsk = config->gfsk;
+      settings.modem.gfsk.sample_rate = config->sample_rate;
       break;
     case MODEM_TYPE_BPSK:
     case MODEM_TYPE_DPSK:
     case MODEM_TYPE_SDPSK:
-      settings.psk = config->psk;
-      settings.psk.sample_rate = config->sample_rate;
+      settings.modem.psk = config->psk;
+      settings.modem.psk.sample_rate = config->sample_rate;
       break;
     case MODEM_TYPE_PSK_PM:
-      settings.psk_pm = config->psk_pm;
-      settings.psk_pm.sample_rate = config->sample_rate;
+      settings.modem.psk_pm = config->psk_pm;
+      settings.modem.psk_pm.sample_rate = config->sample_rate;
       break;
     default:
       fprintf(stderr, "<3>unsupported modem type: %d\n", config->modem);
       return -1;
   }
-  int code = sdr_modem_create(config->modem, &settings, config->buffer_size, config->freq_offset_file, &result->modem);
+  int code = sdr_modem_create(&settings, config->buffer_size, config->freq_offset_file, &result->modem);
   if (code != 0) {
     return code;
   }

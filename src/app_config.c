@@ -908,10 +908,6 @@ static int app_config_validate_and_log(app_config *result) {
     fprintf(stderr, "<3>tx is enabled, but the input file is missing\n");
     return -1;
   }
-  if (is_cli_mode && result->modem == MODEM_TYPE_NONE) {
-    fprintf(stderr, "<3>sdr is enabled, but the modem configuration is missing\n");
-    return -1;
-  }
 
   if (result->modem == MODEM_TYPE_INVALID) {
     fprintf(stderr, "<3>invalid modem\n");

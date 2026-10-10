@@ -8,8 +8,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif ()
 
 add_library(sdr_modemLib
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/api_utils.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/client_tx_worker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/linked_list.c
@@ -47,11 +46,6 @@ include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
 link_directories(${PC_LIBCONFIG_LIBRARY_DIRS})
 target_link_libraries(sdr_modemLib ${PC_LIBCONFIG_LIBRARIES})
 
-pkg_check_modules(PC_LIBPROTOBUFC REQUIRED libprotobuf-c)
-include_directories(${PC_LIBPROTOBUFC_INCLUDE_DIRS})
-link_directories(${PC_LIBPROTOBUFC_LIBRARY_DIRS})
-target_link_libraries(sdr_modemLib ${PC_LIBPROTOBUFC_LIBRARIES})
-
 if (APPLE)
     find_path(LIBIIO_INCLUDE_DIRS iio.h)
     include_directories(${LIBIIO_INCLUDE_DIRS})
@@ -82,9 +76,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/)
 # speed up test compilation.
 add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/api.pb-c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_server_mock.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_modem_client.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )
@@ -152,9 +144,9 @@ set(CPACK_DEBIAN_PACKAGE_NAME "sdr-modem")
 set(OS_CODENAME "$ENV{VERSION_CODENAME}")
 if (OS_CODENAME STREQUAL "trixie" OR
     OS_CODENAME STREQUAL "noble")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libliquid1, libprotobuf-c1, libconfig11, zlib1g")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libliquid1, libconfig11, zlib1g")
 else ()
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libliquid1, libprotobuf-c1, libconfig9, zlib1g")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libliquid1, libconfig9, zlib1g")
 endif()
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Andrey Rodionov <dernasherbrezon@gmail.com>")
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Modem based on software defined radios")

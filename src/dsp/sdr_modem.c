@@ -91,17 +91,17 @@ static float sdr_modem_halfband_cutoff(uint32_t bandwidth, uint64_t decimated_sa
 static int sdr_modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t *bandwidth) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
-      *bandwidth = settings->gfsk.bandwidth;
+      *bandwidth = settings->modem.gfsk.bandwidth;
       break;
     case MODEM_TYPE_BPSK:
     case MODEM_TYPE_DPSK:
     case MODEM_TYPE_SDPSK:
-      *bandwidth = (uint32_t) ((1 + settings->psk.rrc_beta) * settings->psk.baud_rate);
+      *bandwidth = (uint32_t) ((1 + settings->modem.psk.rrc_beta) * settings->modem.psk.baud_rate);
       break;
     case MODEM_TYPE_PSK_PM:
       // occupied bandwidth spans the subcarrier tone on both sides of the (suppressed) carrier,
       // plus the subcarrier's own RRC-shaped sidebands
-      *bandwidth = 2 * (settings->psk_pm.subcarrier_frequency + (uint32_t) ((1 + settings->psk_pm.rrc_beta) * settings->psk_pm.baud_rate));
+      *bandwidth = 2 * (settings->modem.psk_pm.subcarrier_frequency + (uint32_t) ((1 + settings->modem.psk_pm.rrc_beta) * settings->modem.psk_pm.baud_rate));
       break;
     default:
       fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
@@ -113,15 +113,15 @@ static int sdr_modem_get_bandwidth(sdr_modem_type modem_type, const sdr_modem_se
 static int sdr_modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint64_t *sample_rate) {
   switch (modem_type) {
     case MODEM_TYPE_GFSK:
-      *sample_rate = settings->gfsk.sample_rate;
+      *sample_rate = settings->modem.gfsk.sample_rate;
       break;
     case MODEM_TYPE_BPSK:
     case MODEM_TYPE_DPSK:
     case MODEM_TYPE_SDPSK:
-      *sample_rate = settings->psk.sample_rate;
+      *sample_rate = settings->modem.psk.sample_rate;
       break;
     case MODEM_TYPE_PSK_PM:
-      *sample_rate = settings->psk_pm.sample_rate;
+      *sample_rate = settings->modem.psk_pm.sample_rate;
       break;
     default:
       fprintf(stderr, "<3>unsupported modem type: %d\n", modem_type);
@@ -152,26 +152,26 @@ static int sdr_modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_r
   return 0;
 }
 
-int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
+int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
   struct sdr_modem_t *result = malloc(sizeof(struct sdr_modem_t));
   if (result == NULL) {
     return -ENOMEM;
   }
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_modem_t){0};
-  result->modem_type = modem_type;
+  result->modem_type = settings->modem_type;
 
   uint32_t bandwidth;
-  ERROR_CHECK(sdr_modem_get_bandwidth(modem_type, settings, &bandwidth));
+  ERROR_CHECK(sdr_modem_get_bandwidth(settings->modem_type, settings, &bandwidth));
   uint64_t sample_rate;
-  ERROR_CHECK(sdr_modem_get_sample_date(modem_type, settings, &sample_rate));
+  ERROR_CHECK(sdr_modem_get_sample_date(settings->modem_type, settings, &sample_rate));
   uint32_t decimated_buffer_length = buffer_size;
   ERROR_CHECK(sdr_modem_halfband_decim_create(bandwidth, sample_rate, buffer_size, &result->halfband, &result->baseband_sample_rate, &decimated_buffer_length));
 
   int code = 0;
-  switch (modem_type) {
+  switch (settings->modem_type) {
     case MODEM_TYPE_GFSK: {
-      gfsk_modem_settings decimated = settings->gfsk;
+      gfsk_modem_settings decimated = settings->modem.gfsk;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = gfsk_modem_modulate;
       result->demodulate = gfsk_modem_demodulate;
@@ -183,7 +183,7 @@ int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settin
     case MODEM_TYPE_BPSK:
     case MODEM_TYPE_DPSK:
     case MODEM_TYPE_SDPSK: {
-      bpsk_modem_settings decimated = settings->psk;
+      bpsk_modem_settings decimated = settings->modem.psk;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = bpsk_modem_modulate;
       result->demodulate = bpsk_modem_demodulate;
@@ -193,7 +193,7 @@ int sdr_modem_create(sdr_modem_type modem_type, const sdr_modem_settings *settin
       break;
     }
     case MODEM_TYPE_PSK_PM: {
-      psk_pm_modem_settings decimated = settings->psk_pm;
+      psk_pm_modem_settings decimated = settings->modem.psk_pm;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = psk_pm_modem_modulate;
       result->demodulate = psk_pm_modem_demodulate;

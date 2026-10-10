@@ -9,9 +9,9 @@
 typedef struct bpsk_modem_t bpsk_modem;
 
 typedef enum {
-  BPSK,
-  SDPSK,
-  DPSK
+  BPSK = 0,
+  SDPSK = 1,
+  DPSK = 2
 } psk_modem_type;
 
 typedef struct {
@@ -19,7 +19,7 @@ typedef struct {
   uint32_t baud_rate;        // round(sample_rate / baud_rate) must be >= 2.
   uint32_t bandwidth;
   float rrc_beta;            // root-raised-cosine excess bandwidth (rolloff), 0 < rrc_beta <= 1
-  unsigned int rrc_delay;    // root-raised-cosine filter delay, in symbols (m). typically 5-11
+  uint8_t rrc_delay;    // root-raised-cosine filter delay, in symbols (m). typically 5-11
   // dimensionless gain of the costas (carrier recovery) loop, > 0. typically 0.001-0.05.
   // the loop runs once per symbol, so it is normalized to baud_rate.
   // the loop is 2nd order with fixed damping 0.5 and natural frequency sqrt(costas_bandwidth) rad/symbol,
@@ -28,8 +28,8 @@ typedef struct {
   // wider: faster lock and tracks larger/faster residual carrier offset (doppler), but noisier.
   // narrower: cleaner constellation, but slow or no lock on short bursts and large offsets.
   float costas_bandwidth;
-  unsigned int symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
-  psk_modem_type type;
+  uint8_t symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
+  uint8_t type;
 } bpsk_modem_settings;
 
 int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_buffer_length, bpsk_modem **modem);

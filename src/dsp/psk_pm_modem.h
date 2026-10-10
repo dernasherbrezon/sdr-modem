@@ -18,9 +18,9 @@ typedef struct {
   // 0 disables the filter.
   uint32_t subcarrier_bandwidth;
   float rrc_beta; // root-raised-cosine excess bandwidth (rolloff), 0 < rrc_beta <= 1
-  unsigned int rrc_delay; // root-raised-cosine filter delay, in symbols (m). typically 5-11
+  uint8_t rrc_delay; // root-raised-cosine filter delay, in symbols (m). typically 5-11
   float costas_bandwidth; // normalized loop bandwidth of the subcarrier costas (carrier recovery) loop, > 0. typically 0.001-0.05
-  unsigned int symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
+  uint8_t symsync_filter_bank_size; // number of polyphase filters used by the symbol timing recovery loop. typically 16-32
 
   float modulation_index; // peak RF carrier phase deviation, in radians, caused by the subcarrier waveform
 } psk_pm_modem_settings;

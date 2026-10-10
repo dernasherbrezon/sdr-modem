@@ -4,32 +4,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-struct ModemRequest *create_request() {
-  struct GfskModemSettings gfsk_settings = GFSK_MODEM_SETTINGS__INIT;
-  gfsk_settings.use_dc_block = true;
-  gfsk_settings.bandwidth = 15600;
-  gfsk_settings.deviation = 5000;
-  gfsk_settings.baud_rate = 9600;
-  gfsk_settings.bt = 0.5f;
-
-  struct ModemRequest result = MODEM_REQUEST__INIT;
-  result.modem_settings_case = MODEM_REQUEST__MODEM_SETTINGS_GFSK;
-  result.gfsk = &gfsk_settings;
-  result.frequency = 437525000;
-  result.sample_rate = 48000;
-  result.syncword = 0xCCCCCCFE;
-  result.syncword_bits = 32;
-
-  size_t len = modem_request__get_packed_size(&result);
-  uint8_t *buffer = malloc(sizeof(uint8_t) * len);
-  if (buffer == NULL) {
-    return NULL;
-  }
-  modem_request__pack(&result, buffer);
-  struct ModemRequest *unpacked = modem_request__unpack(NULL, len, buffer);
-  free(buffer);
-  return unpacked;
-}
 
 void setup_input_data(float **input, size_t input_offset, size_t len) {
   float *result = malloc(sizeof(float) * len);
