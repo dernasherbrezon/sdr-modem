@@ -575,6 +575,7 @@ int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) {
       return code;
     }
   }
+  LOG_INFO("plutosdr rx: frequency=%" PRIu64 " sample_rate=%" PRIu64 " gain=%.1f", config->frequency, config->sample_rate, config->gain);
   return 0;
 }
 
@@ -615,6 +616,7 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
 
   pluto->lib->iio_channel_enable(pluto->tx0_i);
   pluto->lib->iio_channel_enable(pluto->tx0_q);
+  LOG_INFO("plutosdr tx: frequency=%" PRIu64 " sample_rate=%" PRIu64 " gain=%.1f", config->frequency, config->sample_rate, config->gain);
   return 0;
 }
 

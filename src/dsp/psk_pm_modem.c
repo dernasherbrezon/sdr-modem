@@ -6,6 +6,7 @@
 #include <liquid/liquid.h>
 #include <complex.h>
 #include "../log.h"
+#include <inttypes.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -127,6 +128,9 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
     return -ENOMEM;
   }
 
+  LOG_INFO("psk_pm: sample_rate=%" PRIu64 " baud_rate=%u subcarrier_frequency=%u subcarrier_bandwidth=%u carrier_pll_bandwidth=%.5f rrc_beta=%.3f rrc_delay=%u costas_bandwidth=%.5f symsync_filter_bank_size=%u modulation_index=%.3f",
+           settings->sample_rate, settings->baud_rate, settings->subcarrier_frequency, settings->subcarrier_bandwidth, settings->carrier_pll_bandwidth, settings->rrc_beta,
+           settings->rrc_delay, settings->costas_bandwidth, settings->symsync_filter_bank_size, settings->modulation_index);
   *modem = result;
   return 0;
 }

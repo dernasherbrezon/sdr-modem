@@ -6,6 +6,7 @@
 #include <liquid/liquid.h>
 #include <complex.h>
 #include "../log.h"
+#include <inttypes.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -240,6 +241,9 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
     }
   }
 
+  LOG_INFO("%s: sample_rate=%" PRIu64 " baud_rate=%u bandwidth=%u rrc_beta=%.3f rrc_delay=%u costas_bandwidth=%.5f symsync_filter_bank_size=%u",
+           settings->type == DPSK ? "dpsk" : (settings->type == SDPSK ? "sdpsk" : "bpsk"), settings->sample_rate, settings->baud_rate, settings->bandwidth, settings->rrc_beta,
+           settings->rrc_delay, settings->costas_bandwidth, settings->symsync_filter_bank_size);
   *modem = result;
   return 0;
 }

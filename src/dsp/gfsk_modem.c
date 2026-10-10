@@ -7,6 +7,7 @@
 #include <math.h>
 #include <liquid/liquid.h>
 #include "../log.h"
+#include <inttypes.h>
 
 // internal samples per symbol of both chains. cpfskmod requires an even number, and the correlator
 // template is built at this rate, so it is fixed: input at any other rate is resampled
@@ -300,6 +301,8 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
     }
   }
 
+  LOG_INFO("gfsk: sample_rate=%" PRIu64 " baud_rate=%u deviation=%" PRId64 " bandwidth=%u bt=%.3f use_dc_block=%u syncword=0x%" PRIX64 " syncword_bits=%u",
+           settings->sample_rate, settings->baud_rate, settings->deviation, settings->bandwidth, settings->bt, settings->use_dc_block, settings->syncword, settings->syncword_bits);
   *modem = result;
   return 0;
 }
