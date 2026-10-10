@@ -15,6 +15,7 @@
 #include "api.h"
 #include "tcp_server.h"
 #include "sdr_rx_worker.h"
+#include "sdr_tx_worker.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/sdr_device.h"
 #include "sdr/plutosdr.h"
@@ -34,6 +35,7 @@ struct tcp_server_t {
 
   client_tx_worker *tx_worker;
   sdr_rx_worker *sdr_rx_worker;
+  sdr_tx_worker *sdr_tx_worker;
   sdr_device *sdr;
 
   uint8_t *buffer;
@@ -134,6 +136,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
     }
     if (code == -1) {
       fprintf(stdout, "[%d] client disconnected\n", id);
+      client_tx_worker_send_new(-1, worker->tx_worker);
       worker->client_disconnected = true;
       break;
     }
@@ -145,6 +148,12 @@ static void *tcp_worker_callback(tcp_server *worker) {
     }
     if (header.protocol_version != PROTOCOL_VERSION) {
       fprintf(stderr, "<3>[%d] unsupported protocol: %d\n", id, header.protocol_version);
+      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+      continue;
+    }
+    if (header.message_length > worker->buffer_length) {
+      fprintf(stderr, "message length %"PRIu32" is bigger than allowed %zu\n", header.message_length, worker->buffer_length);
+      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
       continue;
     }
     code = tcp_utils_read_data(worker->buffer, header.message_length, worker->client_socket);
@@ -154,7 +163,7 @@ static void *tcp_worker_callback(tcp_server *worker) {
     }
     switch (header.type) {
       case MESSAGE_TYPE_RX_COMM_PARAMETERS:
-      case MESSAGE_TYPE_TX_COMM_PARAMETERS:
+      case MESSAGE_TYPE_TX_COMM_PARAMETERS: {
         sdr_modem_settings settings;
         code = api_decode_sdr_modem_settings(worker->buffer, header.message_length, &settings);
         if (code != 0) {
@@ -167,25 +176,35 @@ static void *tcp_worker_callback(tcp_server *worker) {
         // }
 
         //FIXME pause sdr, set rx parameters, replace existing modem with the new in sdr_rx_worker
-        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, id, worker->tx_worker);
+        // client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, id, worker->tx_worker);
         //FIXME for tx it should be different
         break;
-      // case MESSAGE_TYPE_TX_DATA:
-      //   fprintf(stdout, "[%d] received tx request\n", id);
-      //   //FIXME
-      //   // handle_tx_data(worker, &header);
-      //   break;
-      case MESSAGE_TYPE_PING:
+      }
+      case MESSAGE_TYPE_TX_FRAME: {
+        if (header.message_length > worker->app_config->max_frame_size) {
+          fprintf(stderr, "frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, worker->app_config->max_frame_size);
+          break;
+        }
+        // frame must be read fully before passing to sdr
+        // this will ensure sdr won't underflow
+        sdr_tx_worker_send(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+        break;
+      }
+      case MESSAGE_TYPE_PING: {
         client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
         break;
-      case MESSAGE_TYPE_SHUTDOWN:
+      }
+      case MESSAGE_TYPE_SHUTDOWN: {
         fprintf(stdout, "[%d] client requested disconnect\n", id);
+        client_tx_worker_send_new(-1, worker->tx_worker);
         worker->client_disconnected = true;
         break;
-      default:
+      }
+      default: {
         fprintf(stderr, "<3>[%d] unsupported request: %d\n", id, header.type);
         client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
+      }
     }
   }
 
@@ -270,6 +289,11 @@ int tcp_server_create(app_config *config, tcp_server **server) {
     tcp_server_destroy(result);
     return -1;
   }
+  code = sdr_tx_worker_create(config->max_frame_size, config->buffer_size, config->queue_size, result->tx_worker, result->sdr, &result->sdr_tx_worker);
+  if (code != 0) {
+    tcp_server_destroy(result);
+    return -1;
+  }
   int opt = 1;
   if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
     tcp_server_destroy(result);
@@ -320,6 +344,9 @@ void tcp_server_join_thread(tcp_server *server) {
   pthread_join(server->acceptor_thread, NULL);
   if (server->sdr_rx_worker != NULL) {
     sdr_rx_worker_destroy(server->sdr_rx_worker);
+  }
+  if (server->sdr_tx_worker != NULL) {
+    sdr_tx_worker_destroy(server->sdr_tx_worker);
   }
   if (server->tx_worker != NULL) {
     client_tx_worker_destroy(server->tx_worker);

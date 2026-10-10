@@ -93,7 +93,7 @@ static void *client_tx_worker_callback(void *arg) {
     int code = 0;
     size_t written = 0;
     switch (message.type) {
-      case CLIENT_TX_SOFT_BITS:
+      case CLIENT_TX_SOFT_BITS: {
         if (worker->client_socket < 0) {
           break;
         }
@@ -111,7 +111,8 @@ static void *client_tx_worker_callback(void *arg) {
           break;
         }
         break;
-      case CLIENT_TX_RESPONSE:
+      }
+      case CLIENT_TX_RESPONSE: {
         if (worker->client_socket < 0) {
           break;
         }
@@ -136,12 +137,15 @@ static void *client_tx_worker_callback(void *arg) {
           break;
         }
         break;
-      case CLIENT_TX_NEW_CLIENT:
+      }
+      case CLIENT_TX_NEW_CLIENT: {
         memcpy(&worker->client_socket, message.buffer, sizeof(int));
         break;
-      default:
+      }
+      default: {
         fprintf(stderr, "unknown message type: %d\n", message.type);
         break;
+      }
     }
 
     queue_complete(worker->queue);
