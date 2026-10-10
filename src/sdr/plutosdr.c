@@ -543,13 +543,13 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
     return -ENOMEM;
   }
   result->plugin = pluto;
-  result->destroy = plutosdr_destroy;
   result->sdr_process_rx = plutosdr_process_rx;
   result->sdr_process_tx = plutosdr_process_tx;
-  result->start_rx = plutosdr_start_rx;
-  result->stop_rx = plutosdr_stop_rx;
+  result->destroy = plutosdr_destroy;
   result->set_rx_parameters = plutosdr_set_rx_parameters;
   result->set_tx_parameters = plutosdr_set_tx_parameters;
+  result->start_rx = plutosdr_start_rx;
+  result->stop_rx = plutosdr_stop_rx;
 
   *output = result;
   return 0;
@@ -584,7 +584,7 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   if (code != 0) {
     return code;
   }
-  //FIXME validate maximum power
+  //FIXME validate maximum power. can if be taken from libiio?
   // convert 0~80 power level into -80~0 attenuation level
   code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->tx0_chn, "hardwaregain", config->gain - 80), "hardwaregain", pluto);
   if (code != 0) {

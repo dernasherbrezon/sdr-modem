@@ -92,7 +92,18 @@ int cli_create(app_config *config, cli **output) {
     return -1;
   }
 
+  sdr_channel_config channel_config = {
+    .sample_rate = config->sample_rate,
+    .frequency = config->frequency,
+    .gain = config->gain
+  };
   if (config->direction == DIRECTION_RX) {
+    code = result->device->set_rx_parameters(&channel_config, result->device->plugin);
+    if (code != 0) {
+      fprintf(stderr, "<3>unable to set rx parameters\n");
+      cli_destroy(result);
+      return -1;
+    }
     result->output_file = fopen(config->output_file, "wb");
     if (result->output_file == NULL) {
       fprintf(stderr, "<3>unable to open file %s: %s\n", config->output_file, strerror(errno));
@@ -100,6 +111,12 @@ int cli_create(app_config *config, cli **output) {
       return -1;
     }
   } else {
+    code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
+    if (code != 0) {
+      fprintf(stderr, "<3>unable to set tx parameters\n");
+      cli_destroy(result);
+      return -1;
+    }
     result->input_file = fopen(config->input_file, "rb");
     if (result->input_file == NULL) {
       fprintf(stderr, "<3>unable to open file %s: %s\n", config->input_file, strerror(errno));
@@ -120,6 +137,7 @@ int cli_create(app_config *config, cli **output) {
 
 int cli_process(cli *cli) {
   if (cli->direction == DIRECTION_RX) {
+    cli->device->start_rx(cli->device->plugin);
     while (!cli->do_exit) {
       float complex *output = NULL;
       size_t output_len = 0;
@@ -135,6 +153,7 @@ int cli_process(cli *cli) {
         break;
       }
     }
+    cli->device->stop_rx(cli->device->plugin);
   } else {
     while (!cli->do_exit) {
       size_t actually_read = fread(cli->input_temp, sizeof(uint8_t), cli->input_temp_size, cli->input_file);

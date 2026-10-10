@@ -84,8 +84,13 @@ static void cf32_to_cs16(const float complex *in, int16_t *raw, size_t nsamples)
   }
 }
 
-void sdr_file_stop(void *plugin) {
+void sdr_file_no_op(void *plugin) {
   //do nothing. file source is not blocking
+}
+
+int sdr_file_set_no_op(sdr_channel_config *config, void *plugin) {
+  //do nothing
+  return 0;
 }
 
 int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
@@ -157,10 +162,13 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
     return -ENOMEM;
   }
   result->plugin = device;
-  result->destroy = sdr_file_destroy;
   result->sdr_process_rx = sdr_file_process_rx;
   result->sdr_process_tx = sdr_file_process_tx;
-  result->stop_rx = sdr_file_stop;
+  result->destroy = sdr_file_destroy;
+  result->set_rx_parameters = sdr_file_set_no_op;
+  result->set_tx_parameters = sdr_file_set_no_op;
+  result->start_rx = sdr_file_no_op;
+  result->stop_rx = sdr_file_no_op;
 
   *output = result;
   return 0;
