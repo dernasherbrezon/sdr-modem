@@ -24,7 +24,7 @@ typedef struct {
   unsigned int timeout_ms; // timeout for all iio operations
 } plutosdr_settings;
 
-int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
+int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
 
 int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
 

@@ -14,8 +14,6 @@
 #define M_2PI ((float) (2 * M_PI))
 
 struct file_device_t {
-  uint32_t id;
-
   FILE *rx_file;
   FILE *tx_file;
   gzFile rx_gz;
@@ -94,13 +92,13 @@ void sdr_file_stop(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int sdr_file_create(uint32_t id, const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
   const char *rx_filename = settings->rx_file;
   sdr_file_format rx_format = settings->rx_file_format;
   const char *tx_filename = settings->tx_file;
   sdr_file_format tx_format = settings->tx_file_format;
   if ((rx_filename != NULL && !is_valid_file_format(rx_format)) || (tx_filename != NULL && !is_valid_file_format(tx_format))) {
-    fprintf(stderr, "<3>[%d] unsupported file format\n", id);
+    fprintf(stderr, "<3>unsupported file format\n");
     return -1;
   }
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
@@ -108,7 +106,6 @@ int sdr_file_create(uint32_t id, const sdr_file_settings *settings, uint32_t max
     return -ENOMEM;
   }
   *device = (struct file_device_t){0};
-  device->id = id;
   device->rx_format = rx_format;
   device->tx_format = tx_format;
   device->temp_len = max_output_buffer_length;
@@ -132,14 +129,14 @@ int sdr_file_create(uint32_t id, const sdr_file_settings *settings, uint32_t max
     } else if (has_gz_suffix(rx_filename)) {
       device->rx_gz = gzopen(rx_filename, "rb");
       if (device->rx_gz == NULL) {
-        fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
+        fprintf(stderr, "<3>unable to open file for input: %s\n", rx_filename);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->rx_file = fopen(rx_filename, "rb");
       if (device->rx_file == NULL) {
-        fprintf(stderr, "<3>[%d] unable to open file for input: %s\n", device->id, rx_filename);
+        fprintf(stderr, "<3>unable to open file for input: %s\n", rx_filename);
         sdr_file_destroy(device);
         return -1;
       }
@@ -152,14 +149,14 @@ int sdr_file_create(uint32_t id, const sdr_file_settings *settings, uint32_t max
     } else if (has_gz_suffix(tx_filename)) {
       device->tx_gz = gzopen(tx_filename, "wb");
       if (device->tx_gz == NULL) {
-        fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
+        fprintf(stderr, "<3>unable to open file for output: %s\n", tx_filename);
         sdr_file_destroy(device);
         return -1;
       }
     } else {
       device->tx_file = fopen(tx_filename, "wb");
       if (device->tx_file == NULL) {
-        fprintf(stderr, "<3>[%d] unable to open file for output: %s\n", device->id, tx_filename);
+        fprintf(stderr, "<3>unable to open file for output: %s\n", tx_filename);
         sdr_file_destroy(device);
         return -1;
       }
@@ -212,7 +209,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
       return -1;
     }
   } else {
-    fprintf(stderr, "<3>[%d] rx file was not initialized\n", device->id);
+    fprintf(stderr, "<3>rx file was not initialized\n");
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -253,7 +250,7 @@ int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   } else if (device->tx_file != NULL) {
     fwrite(write_buf, bytes_per_sample, input_len, device->tx_file);
   } else {
-    fprintf(stderr, "<3>[%d] tx file was not initialized\n", device->id);
+    fprintf(stderr, "<3>tx file was not initialized\n");
     return -1;
   }
   return 0;

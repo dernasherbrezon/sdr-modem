@@ -13,20 +13,18 @@
 
 struct sdr_server_client_t {
     int client_socket;
-    uint32_t id;
 
     float complex *output;
     size_t output_len;
 };
 
-int sdr_server_client_create_inner(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_server_client **client) {
+int sdr_server_client_create_inner(const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_server_client **client) {
     struct sdr_server_client_t *result = malloc(sizeof(struct sdr_server_client_t));
     if (result == NULL) {
         return -ENOMEM;
     }
     *result = (struct sdr_server_client_t) {0};
 
-    result->id = id;
     result->output_len = max_output_buffer_length;
     result->output = malloc(sizeof(float complex) * result->output_len);
     if (result->output == NULL) {
@@ -36,7 +34,7 @@ int sdr_server_client_create_inner(uint32_t id, const sdr_server_settings *setti
 
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1) {
-        fprintf(stderr, "<3>[%d] socket creation to sdr server failed: %d\n", result->id, client_socket);
+        fprintf(stderr, "<3>socket creation to sdr server failed: %d\n", client_socket);
         sdr_server_client_destroy(result);
         return -1;
     }
@@ -59,19 +57,19 @@ int sdr_server_client_create_inner(uint32_t id, const sdr_server_settings *setti
     int code = connect(client_socket, (struct sockaddr *) &address, sizeof(address));
     if (code != 0) {
         close(client_socket);
-        fprintf(stderr, "<3>[%d] connection with sdr server failed: %d\n", result->id, code);
+        fprintf(stderr, "<3>connection with sdr server failed: %d\n", code);
         sdr_server_client_destroy(result);
         return -1;
     }
-    fprintf(stdout, "[%d] connected to sdr server..\n", result->id);
+    fprintf(stdout, "connected to sdr server..\n");
 
     *client = result;
     return 0;
 }
 
-int sdr_server_client_create(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
     sdr_server_client *client = NULL;
-    int code = sdr_server_client_create_inner(id, settings, max_output_buffer_length, &client);
+    int code = sdr_server_client_create_inner(settings, max_output_buffer_length, &client);
     if (code != 0) {
         return code;
     }
@@ -84,12 +82,12 @@ int sdr_server_client_create(uint32_t id, const sdr_server_settings *settings, u
     struct sdr_server_response *response = NULL;
     code = sdr_server_client_request(req, &response, client);
     if (code != 0) {
-        fprintf(stderr, "<3>[%d] unable to send request to sdr server\n", id);
+        fprintf(stderr, "<3>unable to send request to sdr server\n");
         sdr_server_client_destroy(client);
         return code;
     }
     if (response->status != SDR_SERVER_RESPONSE_STATUS_SUCCESS) {
-        fprintf(stderr, "<3>[%d] request to sdr server rejected: %d\n", id, response->details);
+        fprintf(stderr, "<3>request to sdr server rejected: %d\n", response->details);
         sdr_server_client_destroy(client);
         free(response);
         return -1;
@@ -122,12 +120,12 @@ int sdr_server_client_read_response(struct sdr_server_response **response, sdr_s
         return code;
     }
     if (header->protocol_version != SDR_SERVER_PROTOCOL_VERSION) {
-        fprintf(stderr, "<3>[%d] unsupported protocol version: %d\n", client->id, header->protocol_version);
+        fprintf(stderr, "<3>unsupported protocol version: %d\n", header->protocol_version);
         free(header);
         return -1;
     }
     if (header->type != SDR_SERVER_TYPE_RESPONSE) {
-        fprintf(stderr, "<3>[%d] unsupported message type: %d\n", client->id, header->type);
+        fprintf(stderr, "<3>unsupported message type: %d\n", header->type);
         free(header);
         return -1;
     }
@@ -207,7 +205,7 @@ void sdr_server_client_stop(void *plugin) {
             break;
         }
     }
-    fprintf(stdout, "[%d] disconnected from sdr server..\n", client->id);
+    fprintf(stdout, "disconnected from sdr server..\n");
     close(client->client_socket);
 }
 

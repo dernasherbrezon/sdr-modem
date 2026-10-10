@@ -21,11 +21,14 @@ int sdr_device_create(app_config *app_config, sdr_device **device) {
       .timeout_ms = app_config->plutosdr.timeout_ms
     };
     sdr_device *pluto = NULL;
-    int code = plutosdr_create(1, &settings, app_config->buffer_size, app_config->iio, &pluto);
+    int code = plutosdr_create(&settings, app_config->buffer_size, app_config->iio, &pluto);
     if (code != 0) {
       return code;
     }
     *device = pluto;
+  } else if (app_config->sdr_type == SDR_TYPE_FILE) {
+    //FIXME
+    // int code = sdr_file_create()
   } else {
     return -1;
   }

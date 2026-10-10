@@ -33,8 +33,6 @@ static int16_t fir_128_2[] = {
 };
 
 struct plutosdr_t {
-  uint32_t id;
-
   struct iio_device *tx;
   struct iio_channel *tx0_chn;
   struct iio_channel *tx0_lo;
@@ -411,14 +409,13 @@ void plutosdr_stop_rx(void *plugin) {
   pluto->lib->iio_channel_disable(pluto->rx0_q);
 }
 
-int plutosdr_create(uint32_t id, const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
+int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
   struct plutosdr_t *pluto = malloc(sizeof(struct plutosdr_t));
   if (pluto == NULL) {
     return -ENOMEM;
   }
   *pluto = (struct plutosdr_t){0};
   pluto->lib = lib;
-  pluto->id = id;
   pluto->max_input_buffer_length = max_input_buffer_length;
 
   pthread_mutex_lock(&global_iio_mutex);

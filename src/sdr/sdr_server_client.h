@@ -16,7 +16,7 @@ typedef struct {
   uint64_t sample_rate;     // sample rate to request from sdr-server, in Hz
 } sdr_server_settings;
 
-int sdr_server_client_create(uint32_t id, const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);
+int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);
 
 int sdr_server_client_read_stream(float complex **output, size_t *output_len, void *plugin);
 

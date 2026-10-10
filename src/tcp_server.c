@@ -48,82 +48,6 @@ static void log_client(struct sockaddr_in *address, uint32_t id) {
   printf("[%d] accepted new client from %s:%d\n", id, ptr, ntohs(address->sin_port));
 }
 
-// static int validate_request(const struct ModemRequest *req, uint32_t client_id) {
-//   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS__NOT_SET) {
-//     fprintf(stderr, "<3>[%d] modem settings are missing\n", client_id);
-//     return -1;
-//   }
-//   if (req->frequency == 0) {
-//     fprintf(stderr, "<3>[%d] missing frequency parameter\n", client_id);
-//     return -1;
-//   }
-//   if (req->sample_rate == 0) {
-//     fprintf(stderr, "<3>[%d] missing sample_rate parameter\n", client_id);
-//     return -1;
-//   }
-//   if (api_utils_get_baud_rate(req) == 0) {
-//     fprintf(stderr, "<3>[%d] missing baud_rate parameter\n", client_id);
-//     return -1;
-//   }
-//   if (req->modem_settings_case == MODEM_REQUEST__MODEM_SETTINGS_GFSK && req->gfsk->bandwidth == 0) {
-//     fprintf(stderr, "<3>[%d] missing bandwidth parameter\n", client_id);
-//     return -1;
-//   }
-//   return 0;
-// }
-
-// void handle_tx_data(tcp_server *tcp_server, struct message_header *header) {
-//   TxData *data = NULL;
-//   int code = api_utils_read_tx_data(tcp_server->client_socket, header, &data);
-//   if (code != 0) {
-//     fprintf(stderr, "<3>[%d] unable to read tx request fully\n", tcp_server->client_counter);
-//     api_utils_write_response(tcp_server->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST);
-//     return;
-//   }
-//   size_t left = data->data.len;
-//   uint32_t processed = 0;
-//   while (left > 0) {
-//     uint32_t batch;
-//     if (left < worker->buffer_size) {
-//       batch = (uint32_t) left;
-//     } else {
-//       batch = worker->buffer_size;
-//     }
-//     float complex *output = NULL;
-//     size_t output_len = 0;
-//     if (worker->modem != NULL) {
-//       sdr_modem_modulate(data->data.data + processed, batch, &output, &output_len, worker->modem);
-//     }
-//
-//     if (worker->tx_dump_file != NULL) {
-//       size_t n_written = fwrite(output, sizeof(float complex), output_len, worker->tx_dump_file);
-//       if (n_written < output_len) {
-//         fprintf(stderr, "<3>[%d] unable to write tx data\n", tcp_server->client_counter);
-//         //ignore full disk
-//         //continue transmitting
-//       }
-//     }
-//
-//     if (worker->tx_device != NULL) {
-//       code = worker->tx_device->sdr_process_tx(output, output_len, worker->tx_device->plugin);
-//       if (code != 0) {
-//         fprintf(stderr, "<3>[%d] unable to transmit request fully\n", worker->id);
-//         api_utils_write_response(worker->client_socket, RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INTERNAL_ERROR);
-//         break;
-//       }
-//     }
-//
-//     left -= batch;
-//     processed += batch;
-//   }
-//
-//   if (left == 0) {
-//     fprintf(stdout, "[%d] successfully sent %zu bytes\n", worker->id, data->data.len);
-//     api_utils_write_response(worker->client_socket, RESPONSE_STATUS__SUCCESS, RESPONSE_NO_DETAILS);
-//   }
-//   tx_data__free_unpacked(data, NULL);
-// }
-
 static void *tcp_worker_callback(tcp_server *worker) {
   uint32_t id = worker->client_counter;
   fprintf(stdout, "[%d] tcp_worker is starting\n", id);
@@ -164,16 +88,15 @@ static void *tcp_worker_callback(tcp_server *worker) {
     switch (header.type) {
       case MESSAGE_TYPE_RX_COMM_PARAMETERS:
       case MESSAGE_TYPE_TX_COMM_PARAMETERS: {
+        // this will validate if settings can be created from the worker->buffer
+        // if OK then pass worker->buffer (serialized settings) to the worker thread
+        // next step of validation will happen there
         sdr_modem_settings settings;
         code = api_decode_sdr_modem_settings(worker->buffer, header.message_length, &settings);
         if (code != 0) {
           client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
-        // if (validate_request(rx_req, id) < 0) {
-        //   client_tx_worker_send_response(header.request_id, (response_status) RESPONSE_STATUS__FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-        //   break;
-        // }
 
         if (header.type == MESSAGE_TYPE_TX_COMM_PARAMETERS) {
           sdr_tx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
