@@ -10,6 +10,7 @@
 #include "api.h"
 #include "queue.h"
 #include "tcp_utils.h"
+#include <stdio.h>
 
 struct client_tx_worker_t {
   queue *queue;
@@ -73,6 +74,7 @@ static int client_tx_send_header(message_header *header, client_tx_worker *worke
   }
   code = tcp_utils_write_data(worker->header_buffer, written, worker->client_socket);
   if (code != 0) {
+    worker->client_socket = -1;
     return code;
   }
   return 0;
@@ -103,7 +105,11 @@ static void *client_tx_worker_callback(void *arg) {
         if (code != 0) {
           break;
         }
-        tcp_utils_write_data(message.buffer, header.message_length, worker->client_socket);
+        code = tcp_utils_write_data(message.buffer, header.message_length, worker->client_socket);
+        if (code != 0) {
+          worker->client_socket = -1;
+          break;
+        }
         break;
       case CLIENT_TX_RESPONSE:
         if (worker->client_socket < 0) {
@@ -126,6 +132,7 @@ static void *client_tx_worker_callback(void *arg) {
         }
         code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
         if (code != 0) {
+          worker->client_socket = -1;
           break;
         }
         break;
