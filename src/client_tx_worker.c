@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include <arpa/inet.h>
