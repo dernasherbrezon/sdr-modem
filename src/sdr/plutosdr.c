@@ -33,6 +33,12 @@ static int16_t fir_128_2[] = {
   169, 0, -134, -0, 104, 0, -80, -0, 61, 0, -45, -0, 33, 0, -24, -0, 17, 0, -11, -0, 8, 0, -5, -0, 3, 0, -2, -0, 1, 0, -0, 0
 };
 
+typedef struct {
+  double min;
+  double step;
+  double max;
+} plutosdr_range;
+
 struct plutosdr_t {
   struct iio_context *iio_ctx;
   struct iio_device *tx;
@@ -49,11 +55,10 @@ struct plutosdr_t {
   struct iio_channel *rx0_q;
   struct iio_buffer *rx_buffer;
 
-  float min_gain;
-  float max_gain;
-
-  float min_power;
-  float max_power;
+  plutosdr_range gain;
+  plutosdr_range power;
+  plutosdr_range frequency;
+  plutosdr_range sample_rate;
 
   char *uri;
 
@@ -226,6 +231,48 @@ static int plutosdr_write_lli(struct iio_channel *chn, const char *what, long lo
   return plutosdr_error_check(iio->lib->iio_channel_attr_write_longlong(chn, what, val), what, iio);
 }
 
+static int plutosdr_read_range(struct iio_channel *chn, const char *name, plutosdr_range *range, plutosdr *iio) {
+  char buf[128];
+  ssize_t len = iio->lib->iio_channel_attr_read(chn, name, buf, sizeof(buf) - 1);
+  if (len < 0) {
+    iio->lib->iio_strerror((int) -len, plutosdr_tmpstr, plutosdr_tmpstr_len);
+    LOG_ERROR("unable to read \"%s\": %s", name, plutosdr_tmpstr);
+    return (int) len;
+  }
+  buf[len] = '\0';
+
+  const char *p = buf;
+  while (*p == ' ' || *p == '\t') {
+    p++;
+  }
+  if (*p != '[') {
+    LOG_ERROR("unexpected format of \"%s\": %s", name, buf);
+    return -EINVAL;
+  }
+  p++;
+  double values[3];
+  for (int i = 0; i < 3; i++) {
+    char *end = NULL;
+    values[i] = strtod(p, &end);
+    if (end == p) {
+      LOG_ERROR("unexpected format of \"%s\": %s", name, buf);
+      return -EINVAL;
+    }
+    p = end;
+  }
+  while (*p == ' ' || *p == '\t') {
+    p++;
+  }
+  if (*p != ']') {
+    LOG_ERROR("unexpected format of \"%s\": %s", name, buf);
+    return -EINVAL;
+  }
+  range->min = values[0];
+  range->step = values[1];
+  range->max = values[2];
+  return 0;
+}
+
 int plutosdr_enable_fir_filter(struct iio_device *dev, bool enable, plutosdr *pluto) {
   int ret = pluto->lib->iio_device_attr_write_bool(dev, "in_out_voltage_filter_fir_en", enable);
   if (ret < 0) {
@@ -242,104 +289,104 @@ static int plutosdr_set_sample_rate(uint64_t sample_rate, struct iio_channel *ch
   return plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio);
 }
 
-static int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
-  if (sample_rate == 0) {
-    *decimation = 0;
-    *fir_filter_taps = NULL;
-    return 0;
-  }
+// static int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
+//   if (sample_rate == 0) {
+//     *decimation = 0;
+//     *fir_filter_taps = NULL;
+//     return 0;
+//   }
+//
+//   if (sample_rate < MIN_FIR_FILTER) {
+//     LOG_ERROR("sampling freq is too low: %" PRIu64, sample_rate);
+//     return -1;
+//   } else if (sample_rate < MIN_FIR_FILTER_2) {
+//     *decimation = 4;
+//     *fir_filter_taps = fir_128_4;
+//   } else if (sample_rate < MIN_NO_FIR_FILTER) {
+//     *decimation = 2;
+//     *fir_filter_taps = fir_128_2;
+//   }
+//   return 0;
+// }
 
-  if (sample_rate < MIN_FIR_FILTER) {
-    LOG_ERROR("sampling freq is too low: %" PRIu64, sample_rate);
-    return -1;
-  } else if (sample_rate < MIN_FIR_FILTER_2) {
-    *decimation = 4;
-    *fir_filter_taps = fir_128_4;
-  } else if (sample_rate < MIN_NO_FIR_FILTER) {
-    *decimation = 2;
-    *fir_filter_taps = fir_128_2;
-  }
-  return 0;
-}
-
-static int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency, plutosdr *pluto) {
-  int rx_decimation = 0;
-  int16_t *rx_fir_filter_taps = NULL;
-  int code = plutosdr_select_fir_filter_config(rx_sampling_frequency, &rx_decimation, &rx_fir_filter_taps);
-  if (code < 0) {
-    return code;
-  }
-  int tx_decimation = 0;
-  int16_t *tx_fir_filter_taps = NULL;
-  code = plutosdr_select_fir_filter_config(tx_sampling_frequency, &tx_decimation, &tx_fir_filter_taps);
-  if (code < 0) {
-    return code;
-  }
-
-  struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
-
-  // filter is not needed
-  if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
-    //setup sampling freq a bit more to disable fir filter without error
-    struct iio_channel *chn = plutosdr_find_phy_channel(ctx, TX, pluto);
-    if (chn == NULL) {
-      return -1;
-    }
-    code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
-    if (code < 0) {
-      return code;
-    }
-    chn = plutosdr_find_phy_channel(ctx, RX, pluto);
-    if (chn == NULL) {
-      return -1;
-    }
-    code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
-    if (code < 0) {
-      return code;
-    }
-    // filter might be configured prior to execution. disable it to support higher rates
-    return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
-  }
-
-  // just to simplify the code below a bit
-  if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
-    tx_fir_filter_taps = rx_fir_filter_taps;
-    tx_decimation = rx_decimation;
-  }
-  if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
-    rx_fir_filter_taps = tx_fir_filter_taps;
-    rx_decimation = tx_decimation;
-  }
-
-  char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
-  if (buf == NULL) {
-    return -ENOMEM;
-  }
-  int len = 0;
-  if (rx_decimation > 0) {
-    len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
-  }
-  if (tx_decimation > 0) {
-    len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
-  }
-  for (int i = 0; i < 128; i++) {
-    len += snprintf(buf + len, FIR_BUF_SIZE - len, "%d,%d\n", tx_fir_filter_taps[i], rx_fir_filter_taps[i]);
-  }
-  len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
-
-  code = plutosdr_error_check(pluto->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", pluto);
-  free(buf);
-  if (code < 0) {
-    return code;
-  }
-
-  code = plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, true, pluto), "in_out_voltage_filter_fir_en", pluto);
-  if (code < 0) {
-    return code;
-  }
-
-  return 0;
-}
+// static int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency, plutosdr *pluto) {
+//   int rx_decimation = 0;
+//   int16_t *rx_fir_filter_taps = NULL;
+//   int code = plutosdr_select_fir_filter_config(rx_sampling_frequency, &rx_decimation, &rx_fir_filter_taps);
+//   if (code < 0) {
+//     return code;
+//   }
+//   int tx_decimation = 0;
+//   int16_t *tx_fir_filter_taps = NULL;
+//   code = plutosdr_select_fir_filter_config(tx_sampling_frequency, &tx_decimation, &tx_fir_filter_taps);
+//   if (code < 0) {
+//     return code;
+//   }
+//
+//   struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
+//
+//   // filter is not needed
+//   if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
+//     //setup sampling freq a bit more to disable fir filter without error
+//     struct iio_channel *chn = plutosdr_find_phy_channel(ctx, TX, pluto);
+//     if (chn == NULL) {
+//       return -1;
+//     }
+//     code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
+//     if (code < 0) {
+//       return code;
+//     }
+//     chn = plutosdr_find_phy_channel(ctx, RX, pluto);
+//     if (chn == NULL) {
+//       return -1;
+//     }
+//     code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
+//     if (code < 0) {
+//       return code;
+//     }
+//     // filter might be configured prior to execution. disable it to support higher rates
+//     return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
+//   }
+//
+//   // just to simplify the code below a bit
+//   if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
+//     tx_fir_filter_taps = rx_fir_filter_taps;
+//     tx_decimation = rx_decimation;
+//   }
+//   if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
+//     rx_fir_filter_taps = tx_fir_filter_taps;
+//     rx_decimation = tx_decimation;
+//   }
+//
+//   char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
+//   if (buf == NULL) {
+//     return -ENOMEM;
+//   }
+//   int len = 0;
+//   if (rx_decimation > 0) {
+//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
+//   }
+//   if (tx_decimation > 0) {
+//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
+//   }
+//   for (int i = 0; i < 128; i++) {
+//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "%d,%d\n", tx_fir_filter_taps[i], rx_fir_filter_taps[i]);
+//   }
+//   len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
+//
+//   code = plutosdr_error_check(pluto->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", pluto);
+//   free(buf);
+//   if (code < 0) {
+//     return code;
+//   }
+//
+//   code = plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, true, pluto), "in_out_voltage_filter_fir_en", pluto);
+//   if (code < 0) {
+//     return code;
+//   }
+//
+//   return 0;
+// }
 
 static char *plutosdr_find_default_uri(const iio_lib *lib) {
   struct iio_scan_context *scan_ctx = lib->iio_create_scan_context(NULL, 0);
@@ -486,7 +533,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   code = plutosdr_write_str(pluto->rx0_chn, "gain_control_mode", gain_control_mode_str, pluto);
   if (code < 0) {
     plutosdr_destroy(pluto);
-    return -1;
+    return code;
   }
   pluto->gain_control_mode = settings->gain_control_mode;
   pluto->output = malloc(sizeof(float complex) * pluto->max_input_buffer_length);
@@ -494,8 +541,22 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
     plutosdr_destroy(pluto);
     return -ENOMEM;
   }
-
-
+  code = plutosdr_read_range(pluto->rx0_chn, "hardwaregain_available", &pluto->gain, pluto);
+  if (code != 0) {
+    plutosdr_destroy(pluto);
+    return code;
+  }
+  // both rx and tx have the same range of supported frequencies and sample rates
+  code = plutosdr_read_range(pluto->rx0_lo, "frequency_available", &pluto->frequency, pluto);
+  if (code != 0) {
+    plutosdr_destroy(pluto);
+    return code;
+  }
+  code = plutosdr_read_range(pluto->rx0_chn, "sampling_frequency_available", &pluto->sample_rate, pluto);
+  if (code != 0) {
+    plutosdr_destroy(pluto);
+    return code;
+  }
 
   // TX chain //////////////////////////////
   pluto->tx = pluto->lib->iio_context_find_device(pluto->iio_ctx, "cf-ad9361-dds-core-lpc");
@@ -538,11 +599,10 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
     plutosdr_destroy(pluto);
     return -1;
   }
-  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
-  if (pluto->tx_buffer == NULL) {
-    LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
+  code = plutosdr_read_range(pluto->tx0_chn, "hardwaregain_available", &pluto->power, pluto);
+  if (code != 0) {
     plutosdr_destroy(pluto);
-    return -1;
+    return code;
   }
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
@@ -560,13 +620,30 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   result->start_rx = plutosdr_start_rx;
   result->stop_rx = plutosdr_stop_rx;
 
-  LOG_INFO("plutosdr: uri=%s gain_control_mode=%d tx_powerdown=%s timeout_ms=%u", pluto->uri, settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms);
+  LOG_INFO("plutosdr: uri=%s gain_control_mode=%d tx_powerdown=%s timeout_ms=%u frequency=%.0f~%.0f sample_rate=%.0f~%.0f gain=%.0f~%.0f power=%.2f~%.2f",
+           pluto->uri, settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms,
+           pluto->frequency.min, pluto->frequency.max,
+           pluto->sample_rate.min, pluto->sample_rate.max,
+           pluto->gain.min, pluto->gain.max,
+           pluto->power.min, pluto->power.max);
   *output = result;
   return 0;
 }
 
 int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) {
   struct plutosdr_t *pluto = (struct plutosdr_t *) plugin;
+  if (config->frequency < pluto->frequency.min || config->frequency > pluto->frequency.max) {
+    LOG_ERROR("frequency is outside of supported range: %"PRIu64, config->frequency);
+    return -1;
+  }
+  if (config->sample_rate < pluto->sample_rate.min || config->sample_rate > pluto->sample_rate.max) {
+    LOG_ERROR("sample_rate is outside of supported range: %"PRIu64, config->sample_rate);
+    return -1;
+  }
+  if (config->gain < pluto->gain.min || config->gain > pluto->gain.max) {
+    LOG_ERROR("gain is outside of supported range: %.0f", config->gain);
+    return -1;
+  }
   int code = plutosdr_write_lli(pluto->rx0_lo, "frequency", (long long) config->frequency, pluto);
   if (code != 0) {
     return code;
@@ -605,6 +682,18 @@ int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
 
 int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   struct plutosdr_t *pluto = (struct plutosdr_t *) plugin;
+  if (config->frequency < pluto->frequency.min || config->frequency > pluto->frequency.max) {
+    LOG_ERROR("frequency is outside of supported range: %"PRIu64, config->frequency);
+    return -1;
+  }
+  if (config->sample_rate < pluto->sample_rate.min || config->sample_rate > pluto->sample_rate.max) {
+    LOG_ERROR("sample_rate is outside of supported range: %"PRIu64, config->sample_rate);
+    return -1;
+  }
+  if (config->gain < pluto->power.min || config->gain > pluto->power.max) {
+    LOG_ERROR("power is outside of supported range: %.0f", config->gain);
+    return -1;
+  }
   int code = plutosdr_write_lli(pluto->tx0_lo, "frequency", (long long) config->frequency, pluto);
   if (code != 0) {
     return code;
@@ -613,15 +702,22 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   if (code != 0) {
     return code;
   }
-  //FIXME validate maximum power. can if be taken from libiio?
-  // convert 0~80 power level into -80~0 attenuation level
-  code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->tx0_chn, "hardwaregain", config->gain - 80), "hardwaregain", pluto);
+  code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->tx0_chn, "hardwaregain", config->gain), "hardwaregain", pluto);
   if (code != 0) {
     return code;
   }
 
   pluto->lib->iio_channel_enable(pluto->tx0_i);
   pluto->lib->iio_channel_enable(pluto->tx0_q);
+  if (pluto->tx_buffer != NULL) {
+    pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
+  }
+  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
+  if (pluto->tx_buffer == NULL) {
+    LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
+    plutosdr_destroy(pluto);
+    return -1;
+  }
   LOG_INFO("plutosdr tx: frequency=%" PRIu64 " sample_rate=%" PRIu64 " power=%.1f", config->frequency, config->sample_rate, config->gain);
   return 0;
 }

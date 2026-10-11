@@ -75,6 +75,11 @@ int iio_lib_create(iio_lib **lib) {
         iio_lib_destroy(result);
         return -1;
     }
+    result->iio_channel_attr_read = iio_lib_dlsym(result->handle, "iio_channel_attr_read");
+    if (result->iio_channel_attr_read == NULL) {
+        iio_lib_destroy(result);
+        return -1;
+    }
     result->iio_device_attr_write_bool = iio_lib_dlsym(result->handle, "iio_device_attr_write_bool");
     if (result->iio_device_attr_write_bool == NULL) {
         iio_lib_destroy(result);
