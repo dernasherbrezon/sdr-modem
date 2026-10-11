@@ -22,6 +22,7 @@ typedef struct {
   bool tx_powerdown;
   iio_gain_mode gain_control_mode;
   unsigned int timeout_ms; // timeout for all iio operations
+  char *uri;
 } plutosdr_settings;
 
 int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);

@@ -375,6 +375,13 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     if (setting != NULL) {
       result->plutosdr.timeout_ms = config_setting_get_int(setting);
     }
+    setting = config_lookup(libconfig, "plutosdr_uri");
+    if (setting != NULL) {
+      code = app_config_replace_str(config_setting_get_string(setting), &result->plutosdr.uri);
+      if (code != 0) {
+        return code;
+      }
+    }
   }
   code = app_config_load_sdr_file_from_file(libconfig, result);
   if (code != 0) {
@@ -452,6 +459,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_PLUTOSDR_GAIN_CONTROL_MODE,
     OPT_PLUTOSDR_TX_POWERDOWN,
     OPT_PLUTOSDR_TIMEOUT_MS,
+    OPT_PLUTOSDR_URI,
     OPT_RX_FILE,
     OPT_RX_FILE_FORMAT,
     OPT_TX_FILE,
@@ -505,6 +513,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"plutosdr_gain_control_mode", required_argument, NULL, OPT_PLUTOSDR_GAIN_CONTROL_MODE},
     {"plutosdr_tx_powerdown", required_argument, NULL, OPT_PLUTOSDR_TX_POWERDOWN},
     {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
+    {"plutosdr_uri", required_argument, NULL, OPT_PLUTOSDR_URI},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
     {"tx_file", required_argument, NULL, OPT_TX_FILE},
@@ -610,6 +619,13 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_PLUTOSDR_TIMEOUT_MS:
         result->plutosdr.timeout_ms = (unsigned int) atoi(optarg);
         break;
+      case OPT_PLUTOSDR_URI: {
+        int code = app_config_replace_str(optarg, &result->plutosdr.uri);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
       case OPT_RX_FILE: {
         int code = app_config_replace_str(optarg, &result->sdr_file.rx_file);
         if (code != 0) {
@@ -883,6 +899,11 @@ static int app_config_validate_and_log(app_config *result) {
     if (result->plutosdr.timeout_ms == 0) {
       result->plutosdr.timeout_ms = 10000;
     }
+    if (result->plutosdr.uri != NULL && result->plutosdr.uri[0] == '\0') {
+      // empty uri means the first available context will be used
+      free(result->plutosdr.uri);
+      result->plutosdr.uri = NULL;
+    }
   } else if (result->sdr_type == SDR_TYPE_FILE) {
     if (!is_cli_mode) {
       LOG_ERROR("sdr_type=file is not supported in the server mode");
@@ -1028,6 +1049,9 @@ void app_config_destroy(app_config *config) {
   }
   if (config->debug_subcarrier_file != NULL) {
     free(config->debug_subcarrier_file);
+  }
+  if (config->plutosdr.uri != NULL) {
+    free(config->plutosdr.uri);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
