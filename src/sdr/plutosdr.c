@@ -67,7 +67,6 @@ struct plutosdr_t {
   size_t max_tx_input_buffer_length;
 
   iio_lib *lib;
-  atomic_bool rx_is_running;
   iio_gain_mode gain_control_mode;
 };
 
@@ -123,11 +122,6 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
 
 int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin) {
   plutosdr *iio = (plutosdr *) plugin;
-  if (!iio->rx_is_running) {
-    *output = NULL;
-    *output_len = 0;
-    return -1;
-  }
   if (iio->rx_buffer == NULL) {
     LOG_ERROR("rx was not initialized");
     *output = NULL;
@@ -459,6 +453,10 @@ void plutosdr_stop_rx(void *plugin) {
   plutosdr *pluto = (plutosdr *) plugin;
   pluto->lib->iio_channel_disable(pluto->rx0_i);
   pluto->lib->iio_channel_disable(pluto->rx0_q);
+  if (pluto->rx_buffer != NULL) {
+    pluto->lib->iio_buffer_destroy(pluto->rx_buffer);
+    pluto->rx_buffer = NULL;
+  }
 }
 
 int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {

@@ -400,10 +400,6 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   if (setting != NULL) {
     result->sample_rate = (uint64_t) config_setting_get_int64(setting);
   }
-  setting = config_lookup(libconfig, "gain");
-  if (setting != NULL) {
-    result->gain = config_setting_get_float(setting);
-  }
   app_config_load_gfsk_from_file(libconfig, result);
   app_config_load_psk_from_file(libconfig, result);
   app_config_load_psk_pm_from_file(libconfig, result);
@@ -471,6 +467,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_SYNCWORD,
     OPT_FREQUENCY,
     OPT_SAMPLE_RATE,
+    OPT_GAIN,
+    OPT_POWER,
     OPT_GFSK_BAUD_RATE,
     OPT_GFSK_DEVIATION,
     OPT_GFSK_BANDWIDTH,
@@ -525,6 +523,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"syncword", required_argument, NULL, OPT_SYNCWORD},
     {"frequency", required_argument, NULL, OPT_FREQUENCY},
     {"sample_rate", required_argument, NULL, OPT_SAMPLE_RATE},
+    {"gain", required_argument, NULL, OPT_GAIN},
+    {"power", required_argument, NULL, OPT_POWER},
     {"gfsk_baud_rate", required_argument, NULL, OPT_GFSK_BAUD_RATE},
     {"gfsk_deviation", required_argument, NULL, OPT_GFSK_DEVIATION},
     {"gfsk_bandwidth", required_argument, NULL, OPT_GFSK_BANDWIDTH},
@@ -675,6 +675,12 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_SAMPLE_RATE:
         result->sample_rate = strtoull(optarg, NULL, 10);
+        break;
+      case OPT_GAIN:
+        result->gain = (float) atof(optarg);
+        break;
+      case OPT_POWER:
+        result->power = (float) atof(optarg);
         break;
       case OPT_GFSK_BAUD_RATE:
         result->gfsk.baud_rate = (uint32_t) atoi(optarg);

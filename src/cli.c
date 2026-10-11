@@ -93,12 +93,12 @@ int cli_create(app_config *config, cli **output) {
     return -1;
   }
 
-  sdr_channel_config channel_config = {
-    .sample_rate = config->sample_rate,
-    .frequency = config->frequency,
-    .gain = config->gain
-  };
   if (config->direction == DIRECTION_RX) {
+    sdr_channel_config channel_config = {
+      .sample_rate = config->sample_rate,
+      .frequency = config->frequency,
+      .gain = config->gain
+    };
     code = result->device->set_rx_parameters(&channel_config, result->device->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set rx parameters");
@@ -112,6 +112,11 @@ int cli_create(app_config *config, cli **output) {
       return -1;
     }
   } else {
+    sdr_channel_config channel_config = {
+      .sample_rate = config->sample_rate,
+      .frequency = config->frequency,
+      .gain = config->power
+    };
     code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set tx parameters");
@@ -184,9 +189,6 @@ void cli_stop(cli *cli) {
     return;
   }
   cli->do_exit = 1;
-  if (cli->direction == DIRECTION_RX && cli->device != NULL) {
-    cli->device->stop_rx(cli->device->plugin);
-  }
 }
 
 void cli_destroy(cli *cli) {

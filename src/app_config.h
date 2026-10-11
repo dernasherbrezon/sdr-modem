@@ -60,6 +60,7 @@ typedef struct app_config_t {
   uint64_t frequency;
   uint64_t sample_rate;
   float gain;
+  float power;
   // settings of each modem type are kept separately, the active one is selected by "modem"
   gfsk_modem_settings gfsk;
   // bpsk, dpsk and sdpsk share the same settings. psk.type is derived from "modem"
