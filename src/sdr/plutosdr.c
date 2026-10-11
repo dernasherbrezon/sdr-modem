@@ -665,15 +665,6 @@ int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
   if (pluto->tx == NULL) {
     return -1;
   }
-  struct iio_buffer *tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, max_input_len, false);
-  if (tx_buffer == NULL) {
-    LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
-    return -1;
-  }
-  if (pluto->tx_buffer != NULL) {
-    pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
-  }
-  pluto->tx_buffer = tx_buffer;
   pluto->max_tx_input_buffer_length = max_input_len;
   return 0;
 }
@@ -709,11 +700,11 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   pluto->lib->iio_channel_enable(pluto->tx0_q);
   if (pluto->tx_buffer != NULL) {
     pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
+    pluto->tx_buffer = NULL;
   }
   pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
   if (pluto->tx_buffer == NULL) {
     LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
-    plutosdr_destroy(pluto);
     return -1;
   }
   LOG_INFO("plutosdr tx: frequency=%" PRIu64 " sample_rate=%" PRIu64 " power=%.1f", config->frequency, config->sample_rate, config->gain);

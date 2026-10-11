@@ -117,15 +117,16 @@ int cli_create(app_config *config, cli **output) {
       .frequency = config->frequency,
       .gain = config->power
     };
-    code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
-    if (code != 0) {
-      LOG_ERROR("unable to set tx parameters");
-      cli_destroy(result);
-      return -1;
-    }
+    // max buffer length must be known before set_tx_parameters allocates the device tx buffer
     code = result->device->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(result->modem), result->device->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set max tx input buffer");
+      cli_destroy(result);
+      return -1;
+    }
+    code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
+    if (code != 0) {
+      LOG_ERROR("unable to set tx parameters");
       cli_destroy(result);
       return -1;
     }
@@ -169,12 +170,12 @@ int cli_process(cli *cli) {
   } else {
     while (!cli->do_exit) {
       size_t actually_read = fread(cli->input_temp, sizeof(uint8_t), cli->input_temp_size, cli->input_file);
-      if (actually_read < cli->input_temp_size) {
+      if (actually_read == 0) {
         break;
       }
       float complex *output = NULL;
       size_t output_len = 0;
-      sdr_modem_modulate(cli->input_temp, cli->input_temp_size, &output, &output_len, cli->modem);
+      sdr_modem_modulate(cli->input_temp, actually_read, &output, &output_len, cli->modem);
       int code = cli->device->sdr_process_tx(output, output_len, cli->device->plugin);
       if (code != 0) {
         return -1;
