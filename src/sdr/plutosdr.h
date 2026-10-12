@@ -25,7 +25,7 @@ typedef struct {
   char *uri;
 } plutosdr_settings;
 
-int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **result);
+int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, iio_lib *lib, sdr_device **result);
 
 int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
 

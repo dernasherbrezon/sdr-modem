@@ -105,7 +105,6 @@ int sdr_server_client_create(const sdr_server_settings *settings, uint32_t max_o
     result->destroy = sdr_server_client_destroy;
     result->sdr_process_rx = sdr_server_client_read_stream;
     result->sdr_process_tx = NULL;
-    result->set_max_tx_input_buffer = NULL;
     result->stop_rx = sdr_server_client_stop;
 
     LOG_INFO("sdr_server: addr=%s:%d read_timeout=%ds frequency=%" PRIu64 " sample_rate=%" PRIu64, settings->addr, settings->port, settings->read_timeout_seconds, settings->frequency, settings->sample_rate);

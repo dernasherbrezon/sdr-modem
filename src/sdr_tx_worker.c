@@ -18,7 +18,7 @@ struct sdr_tx_worker_t {
   pthread_t thread;
   bool thread_started;
 
-  uint32_t buffer_size;
+  uint32_t max_frame_size;
   client_tx_worker *tx_worker;
   sdr_modem *modem;
   sdr_device *sdr;
@@ -63,7 +63,7 @@ static void *sdr_tx_worker_callback(void *arg) {
         }
 
         sdr_modem *new_modem = NULL;
-        code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
+        code = sdr_modem_create(&settings.modem_settings, worker->max_frame_size, NULL, &new_modem);
         if (code != 0) {
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
@@ -74,14 +74,6 @@ static void *sdr_tx_worker_callback(void *arg) {
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
-        // modulated signal depends on the sample rate and can be much larger than the modem input
-        code = worker->sdr->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(new_modem), worker->sdr->plugin);
-        if (code != 0) {
-          sdr_modem_destroy(new_modem);
-          client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-          break;
-        }
-
         //switch to the new modem only when sdr and modem successfully updated
         if (worker->modem != NULL) {
           sdr_modem_destroy(worker->modem);
@@ -101,7 +93,7 @@ static void *sdr_tx_worker_callback(void *arg) {
   return (void *) 0;
 }
 
-int sdr_tx_worker_create(uint32_t max_frame_size, uint32_t buffer_size, uint16_t queue_size, client_tx_worker *tx_worker, sdr_device *sdr, sdr_tx_worker **worker) {
+int sdr_tx_worker_create(uint32_t max_frame_size, uint16_t queue_size, client_tx_worker *tx_worker, sdr_device *sdr, sdr_tx_worker **worker) {
   struct sdr_tx_worker_t *result = malloc(sizeof(struct sdr_tx_worker_t));
   if (result == NULL) {
     return -ENOMEM;
@@ -110,7 +102,7 @@ int sdr_tx_worker_create(uint32_t max_frame_size, uint32_t buffer_size, uint16_t
   *result = (struct sdr_tx_worker_t){0};
   result->sdr = sdr;
   result->tx_worker = tx_worker;
-  result->buffer_size = buffer_size;
+  result->max_frame_size = max_frame_size;
 
   int code = create_queue(max_frame_size, queue_size, true, &result->queue);
   if (code != 0) {

@@ -63,8 +63,7 @@ struct plutosdr_t {
   char *uri;
 
   float complex *output;
-  size_t max_input_buffer_length;
-  size_t max_tx_input_buffer_length;
+  size_t sdr_buffer_len;
 
   iio_lib *lib;
   iio_gain_mode gain_control_mode;
@@ -86,8 +85,8 @@ int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
   while (left > 0) {
     char *p_start = (char *) iio->lib->iio_buffer_first(iio->tx_buffer, iio->tx0_i);
     size_t batch;
-    if (left > iio->max_tx_input_buffer_length / 2) {
-      batch = iio->max_tx_input_buffer_length / 2;
+    if (left > iio->sdr_buffer_len / 2) {
+      batch = iio->sdr_buffer_len / 2;
     } else {
       batch = left;
     }
@@ -138,8 +137,8 @@ int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin
   char *p_end = iio->lib->iio_buffer_end(iio->rx_buffer);
   char *p_start = (char *) iio->lib->iio_buffer_first(iio->rx_buffer, iio->rx0_i);
   size_t num_points = (p_end - p_start) / sizeof(int16_t);
-  if (num_points / 2 > iio->max_input_buffer_length) {
-    LOG_ERROR("input buffer %zu is more than max: %zu", num_points / 2, iio->max_input_buffer_length);
+  if (num_points / 2 > iio->sdr_buffer_len) {
+    LOG_ERROR("input buffer %zu is more than max: %zu", num_points / 2, iio->sdr_buffer_len);
     *output = NULL;
     *output_len = 0;
     return -1;
@@ -443,7 +442,7 @@ void plutosdr_start_rx(void *plugin) {
   if (pluto->rx_buffer != NULL) {
     pluto->lib->iio_buffer_destroy(pluto->rx_buffer);
   }
-  pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, pluto->max_input_buffer_length, false);
+  pluto->rx_buffer = pluto->lib->iio_device_create_buffer(pluto->rx, pluto->sdr_buffer_len, false);
   if (pluto->rx_buffer == NULL) {
     LOG_ERROR("unable to create rx buffer: %s", strerror(errno));
   }
@@ -459,15 +458,14 @@ void plutosdr_stop_rx(void *plugin) {
   }
 }
 
-int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer_length, iio_lib *lib, sdr_device **output) {
+int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, iio_lib *lib, sdr_device **output) {
   struct plutosdr_t *pluto = malloc(sizeof(struct plutosdr_t));
   if (pluto == NULL) {
     return -ENOMEM;
   }
   *pluto = (struct plutosdr_t){0};
   pluto->lib = lib;
-  pluto->max_input_buffer_length = max_input_buffer_length;
-  pluto->max_tx_input_buffer_length = max_input_buffer_length;
+  pluto->sdr_buffer_len = sdr_buffer_len;
 
   if (settings->uri == NULL) {
     pluto->uri = plutosdr_find_default_uri(lib);
@@ -534,7 +532,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
     return code;
   }
   pluto->gain_control_mode = settings->gain_control_mode;
-  pluto->output = malloc(sizeof(float complex) * pluto->max_input_buffer_length);
+  pluto->output = malloc(sizeof(float complex) * pluto->sdr_buffer_len);
   if (pluto->output == NULL) {
     plutosdr_destroy(pluto);
     return -ENOMEM;
@@ -614,7 +612,6 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t max_input_buffer
   result->destroy = plutosdr_destroy;
   result->set_rx_parameters = plutosdr_set_rx_parameters;
   result->set_tx_parameters = plutosdr_set_tx_parameters;
-  result->set_max_tx_input_buffer = plutosdr_set_max_tx_input_buffer;
   result->start_rx = plutosdr_start_rx;
   result->stop_rx = plutosdr_stop_rx;
 
@@ -660,15 +657,6 @@ int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) {
   return 0;
 }
 
-int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
-  plutosdr *pluto = (plutosdr *) plugin;
-  if (pluto->tx == NULL) {
-    return -1;
-  }
-  pluto->max_tx_input_buffer_length = max_input_len;
-  return 0;
-}
-
 int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   struct plutosdr_t *pluto = (struct plutosdr_t *) plugin;
   if (config->frequency < pluto->frequency.min || config->frequency > pluto->frequency.max) {
@@ -702,7 +690,7 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
     pluto->lib->iio_buffer_destroy(pluto->tx_buffer);
     pluto->tx_buffer = NULL;
   }
-  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->max_tx_input_buffer_length, false);
+  pluto->tx_buffer = pluto->lib->iio_device_create_buffer(pluto->tx, pluto->sdr_buffer_len, false);
   if (pluto->tx_buffer == NULL) {
     LOG_ERROR("unable to create tx buffer: %s", strerror(errno));
     return -1;

@@ -24,13 +24,10 @@ struct file_device_t {
   sdr_file_format tx_format;
 
   float complex *temp;
-  size_t temp_len;
+  size_t sdr_buffer_len;
 
   //raw on-disk bytes for formats that don't use float complex directly (e.g. cu8, cs16)
   uint8_t *raw_temp;
-
-  //tx is independent from rx: modulated signal is much larger than modem input buffer
-  size_t tx_temp_len;
   uint8_t *tx_raw_temp;
 };
 
@@ -98,19 +95,6 @@ int sdr_file_set_no_op(sdr_channel_config *config, void *plugin) {
   return 0;
 }
 
-int sdr_file_set_max_tx_input_buffer(size_t max_input_len, void *plugin) {
-  file_device *device = (file_device *) plugin;
-  if (device->tx_format == FILE_FORMAT_CU8 || device->tx_format == FILE_FORMAT_CS16) {
-    uint8_t *tx_raw_temp = realloc(device->tx_raw_temp, 2 * sizeof(int16_t) * max_input_len);
-    if (tx_raw_temp == NULL) {
-      return -ENOMEM;
-    }
-    device->tx_raw_temp = tx_raw_temp;
-  }
-  device->tx_temp_len = max_input_len;
-  return 0;
-}
-
 static const char *sdr_file_format_name(sdr_file_format format) {
   switch (format) {
     case FILE_FORMAT_CU8:
@@ -124,7 +108,7 @@ static const char *sdr_file_format_name(sdr_file_format format) {
   }
 }
 
-int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **output) {
+int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, sdr_device **output) {
   struct file_device_t *device = malloc(sizeof(struct file_device_t));
   if (device == NULL) {
     return -ENOMEM;
@@ -132,23 +116,22 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
   *device = (struct file_device_t){0};
   device->rx_format = settings->rx_file_format;
   device->tx_format = settings->tx_file_format;
-  device->temp_len = max_output_buffer_length;
-  device->tx_temp_len = max_output_buffer_length;
-  device->temp = malloc(sizeof(float complex) * device->temp_len);
+  device->sdr_buffer_len = sdr_buffer_len;
+  device->temp = malloc(sizeof(float complex) * device->sdr_buffer_len);
   if (device->temp == NULL) {
     sdr_file_destroy(device);
     return -ENOMEM;
   }
   if (settings->rx_file_format == FILE_FORMAT_CU8 || settings->tx_file_format == FILE_FORMAT_CU8 || settings->rx_file_format == FILE_FORMAT_CS16 || settings->tx_file_format == FILE_FORMAT_CS16) {
     //sized for the widest raw sample format (cs16: 2 * int16_t per complex sample)
-    device->raw_temp = malloc(2 * sizeof(int16_t) * device->temp_len);
+    device->raw_temp = malloc(2 * sizeof(int16_t) * device->sdr_buffer_len);
     if (device->raw_temp == NULL) {
       sdr_file_destroy(device);
       return -ENOMEM;
     }
   }
   if (settings->tx_file_format == FILE_FORMAT_CU8 || settings->tx_file_format == FILE_FORMAT_CS16) {
-    device->tx_raw_temp = malloc(2 * sizeof(int16_t) * device->tx_temp_len);
+    device->tx_raw_temp = malloc(2 * sizeof(int16_t) * device->sdr_buffer_len);
     if (device->tx_raw_temp == NULL) {
       sdr_file_destroy(device);
       return -ENOMEM;
@@ -206,7 +189,6 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffe
   result->destroy = sdr_file_destroy;
   result->set_rx_parameters = sdr_file_set_no_op;
   result->set_tx_parameters = sdr_file_set_no_op;
-  result->set_max_tx_input_buffer = sdr_file_set_max_tx_input_buffer;
   result->start_rx = sdr_file_no_op;
   result->stop_rx = sdr_file_no_op;
 
@@ -239,7 +221,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
   }
   size_t actually_read;
   if (device->rx_gz != NULL) {
-    int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->temp_len));
+    int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->sdr_buffer_len));
     if (result <= 0) {
       *output = NULL;
       *output_len = 0;
@@ -247,7 +229,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
     }
     actually_read = (size_t) result / bytes_per_sample;
   } else if (device->rx_file != NULL) {
-    actually_read = fread(read_buf, bytes_per_sample, device->temp_len, device->rx_file);
+    actually_read = fread(read_buf, bytes_per_sample, device->sdr_buffer_len, device->rx_file);
     if (actually_read == 0) {
       *output = NULL;
       *output_len = 0;
@@ -271,10 +253,7 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
 
 int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   file_device *device = (file_device *) plugin;
-  if (input_len > device->tx_temp_len) {
-    LOG_ERROR("requested buffer %zu is more than max: %zu", input_len, device->tx_temp_len);
-    return -1;
-  }
+  //FIXME input_len can be bigger than sdr_buffer_len
   const void *write_buf;
   size_t bytes_per_sample;
   if (device->tx_format == FILE_FORMAT_CU8) {

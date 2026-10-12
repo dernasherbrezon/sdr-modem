@@ -204,7 +204,7 @@ int tcp_server_create(app_config *config, tcp_server **server) {
   result->app_config = config;
   // start counting from 0
   result->client_counter = -1;
-  result->buffer_length = config->buffer_size + API_HEADER_SIZE + 100; // 100 is some delta
+  result->buffer_length = config->sdr_buffer_len + API_HEADER_SIZE + 100; // 100 is some delta
   result->buffer = malloc(result->buffer_length);
   if (result->buffer == NULL) {
     tcp_server_destroy(result);
@@ -215,17 +215,17 @@ int tcp_server_create(app_config *config, tcp_server **server) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = client_tx_worker_create(config->buffer_size, config->queue_size, &result->tx_worker);
+  code = client_tx_worker_create(config->sdr_buffer_len, config->queue_size, &result->tx_worker);
   if (code != 0) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = sdr_rx_worker_create(1, config->buffer_size, result->tx_worker, result->sdr, &result->sdr_rx_worker);
+  code = sdr_rx_worker_create(config->sdr_buffer_len, result->tx_worker, result->sdr, &result->sdr_rx_worker);
   if (code != 0) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = sdr_tx_worker_create(config->max_frame_size, config->buffer_size, config->queue_size, result->tx_worker, result->sdr, &result->sdr_tx_worker);
+  code = sdr_tx_worker_create(config->max_frame_size, config->queue_size, result->tx_worker, result->sdr, &result->sdr_tx_worker);
   if (code != 0) {
     tcp_server_destroy(result);
     return -1;

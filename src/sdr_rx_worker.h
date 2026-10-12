@@ -10,7 +10,7 @@
 
 typedef struct sdr_rx_worker_t sdr_rx_worker;
 
-int sdr_rx_worker_create(uint32_t id, uint32_t buffer_size, client_tx_worker *tx_worker, sdr_device *rx_device, sdr_rx_worker **result);
+int sdr_rx_worker_create(uint32_t sdr_buffer_len, client_tx_worker *tx_worker, sdr_device *sdr, sdr_rx_worker **result);
 
 void sdr_rx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, size_t buffer_len, sdr_rx_worker *worker);
 

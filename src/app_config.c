@@ -306,9 +306,9 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     return -1;
   }
 
-  const config_setting_t *setting = config_lookup(libconfig, "buffer_size");
+  const config_setting_t *setting = config_lookup(libconfig, "sdr_buffer_len");
   if (setting != NULL) {
-    result->buffer_size = (uint32_t) config_setting_get_int(setting);
+    result->sdr_buffer_len = (uint32_t) config_setting_get_int(setting);
   }
 
   setting = config_lookup(libconfig, "bind_address");
@@ -443,7 +443,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_BIND_ADDRESS = 1000,
     OPT_LOG_LEVEL,
     OPT_PORT,
-    OPT_BUFFER_SIZE,
+    OPT_SDR_BUFFER_LEN,
     OPT_READ_TIMEOUT_SECONDS,
     OPT_QUEUE_SIZE,
     OPT_MAX_FRAME_SIZE,
@@ -499,7 +499,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"bind_address", required_argument, NULL, OPT_BIND_ADDRESS},
     {"log_level", required_argument, NULL, OPT_LOG_LEVEL},
     {"port", required_argument, NULL, OPT_PORT},
-    {"buffer_size", required_argument, NULL, OPT_BUFFER_SIZE},
+    {"sdr_buffer_len", required_argument, NULL, OPT_SDR_BUFFER_LEN},
     {"read_timeout_seconds", required_argument, NULL, OPT_READ_TIMEOUT_SECONDS},
     {"queue_size", required_argument, NULL, OPT_QUEUE_SIZE},
     {"max_frame_size", required_argument, NULL, OPT_MAX_FRAME_SIZE},
@@ -574,8 +574,8 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
       case OPT_PORT:
         result->port = (uint16_t) atoi(optarg);
         break;
-      case OPT_BUFFER_SIZE:
-        result->buffer_size = (uint32_t) atoi(optarg);
+      case OPT_SDR_BUFFER_LEN:
+        result->sdr_buffer_len = (uint32_t) atoi(optarg);
         break;
       case OPT_READ_TIMEOUT_SECONDS: {
         result->read_timeout_seconds = atoi(optarg);
@@ -840,10 +840,10 @@ static int app_config_validate_and_log(app_config *result) {
     result->log_level = LOG_LEVEL_INFO;
   }
   log_set_level(result->log_level);
-  if (result->buffer_size == 0) {
-    result->buffer_size = 262144;
+  if (result->sdr_buffer_len == 0) {
+    result->sdr_buffer_len = 262144;
   }
-  LOG_INFO("buffer size: %d", result->buffer_size);
+  LOG_INFO("buffer size: %d", result->sdr_buffer_len);
   if (result->port == 0) {
     result->port = 8091;
   }
@@ -876,7 +876,11 @@ static int app_config_validate_and_log(app_config *result) {
     LOG_INFO("direction: %s", result->direction == DIRECTION_RX ? "rx" : "tx");
   }
 
-  if (!is_cli_mode || result->direction == DIRECTION_TX) {
+  if (result->direction == DIRECTION_TX) {
+    if (result->max_frame_size == 0) {
+      LOG_ERROR("max_frame_size is missing");
+      return -1;
+    }
     LOG_INFO("max_frame_size: %u", result->max_frame_size);
   }
 

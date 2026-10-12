@@ -25,7 +25,7 @@ typedef struct {
   sdr_file_format tx_file_format; // format of the i/q samples in tx_file
 } sdr_file_settings;
 
-int sdr_file_create(const sdr_file_settings *settings, uint32_t max_output_buffer_length, sdr_device **result);
+int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, sdr_device **result);
 
 int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin);
 

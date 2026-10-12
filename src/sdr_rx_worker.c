@@ -19,9 +19,7 @@ typedef enum {
 } sdr_rx_message_type;
 
 struct sdr_rx_worker_t {
-  uint32_t id;
-  int client_socket;
-  uint32_t buffer_size;
+  uint32_t sdr_buffer_len;
 
   queue *queue;
   client_tx_worker *tx_worker;
@@ -45,7 +43,7 @@ static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_wo
         break;
       }
       sdr_modem *new_modem = NULL;
-      code = sdr_modem_create(&settings.modem_settings, worker->buffer_size, NULL, &new_modem);
+      code = sdr_modem_create(&settings.modem_settings, worker->sdr_buffer_len, NULL, &new_modem);
       if (code != 0) {
         client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
@@ -88,8 +86,7 @@ static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_wo
 
 static void *sdr_rx_worker_callback(void *arg) {
   sdr_rx_worker *worker = (sdr_rx_worker *) arg;
-  uint32_t id = worker->id;
-  LOG_DEBUG("[%d] sdr_rx_worker is starting", id);
+  LOG_DEBUG("sdr_rx_worker is starting");
   float complex *output = NULL;
   size_t output_len = 0;
   uint32_t request_id = 0;
@@ -135,7 +132,7 @@ static void *sdr_rx_worker_callback(void *arg) {
     client_tx_worker_send_soft_bits(request_id, demod_output, demod_output_len, worker->tx_worker);
     request_id++;
   }
-  LOG_DEBUG("[%d] sdr_rx_worker stopped", worker->id);
+  LOG_DEBUG("sdr_rx_worker stopped");
   return (void *) 0;
 }
 
@@ -168,19 +165,18 @@ void sdr_rx_worker_set_comm_parameters(uint32_t request_id, uint8_t *buffer, siz
   queue_put(&message, worker->queue);
 }
 
-int sdr_rx_worker_create(uint32_t id, uint32_t buffer_size, client_tx_worker *tx_worker, sdr_device *rx_device, sdr_rx_worker **worker) {
+int sdr_rx_worker_create(uint32_t sdr_buffer_len, client_tx_worker *tx_worker, sdr_device *sdr, sdr_rx_worker **worker) {
   struct sdr_rx_worker_t *result = malloc(sizeof(struct sdr_rx_worker_t));
   if (result == NULL) {
     return -ENOMEM;
   }
   // init all fields with 0 so that destroy_* method would work
   *result = (struct sdr_rx_worker_t){0};
-  result->id = id;
-  result->sdr = rx_device;
+  result->sdr = sdr;
   result->tx_worker = tx_worker;
-  result->buffer_size = buffer_size;
+  result->sdr_buffer_len = sdr_buffer_len;
 
-  int code = create_queue(buffer_size, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
+  int code = create_queue(sdr_buffer_len, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
   if (code != 0) {
     sdr_rx_worker_destroy(result);
     return -1;
@@ -205,7 +201,7 @@ void sdr_rx_worker_destroy(void *data) {
     return;
   }
   sdr_rx_worker *worker = (sdr_rx_worker *) data;
-  LOG_DEBUG("[%d] sdr_rx_worker is stopping", worker->id);
+  LOG_DEBUG("sdr_rx_worker is stopping");
   if (worker->sdr != NULL) {
     worker->sdr->stop_rx(worker->sdr->plugin);
   }

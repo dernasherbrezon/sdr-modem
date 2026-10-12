@@ -47,7 +47,7 @@ void test_success() {
   TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->bind_address);
   TEST_ASSERT_EQUAL_INT(8091, config->port);
   TEST_ASSERT_EQUAL_INT(10, config->read_timeout_seconds);
-  TEST_ASSERT_EQUAL_INT(2048, config->buffer_size);
+  TEST_ASSERT_EQUAL_INT(2048, config->sdr_buffer_len);
   TEST_ASSERT_EQUAL_INT(SDR_TYPE_SDR_SERVER, config->sdr_type);
   TEST_ASSERT_EQUAL_INT(64, config->queue_size);
   TEST_ASSERT(config->iio == NULL);

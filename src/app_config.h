@@ -36,7 +36,7 @@ typedef struct app_config_t {
   int read_timeout_seconds;
   int log_level;
 
-  uint32_t buffer_size;
+  uint32_t sdr_buffer_len;
   uint16_t queue_size;
   // maximum size of a single frame when sending data and control buffers
   uint32_t max_frame_size;

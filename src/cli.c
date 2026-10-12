@@ -46,7 +46,13 @@ static int cli_create_modem(app_config *config, struct cli_t *result) {
       LOG_ERROR("unsupported modem type: %d", config->modem);
       return -1;
   }
-  int code = sdr_modem_create(&settings, config->buffer_size, config->freq_offset_file, &result->modem);
+  uint32_t buffer_size;
+  if (config->direction == DIRECTION_RX) {
+    buffer_size = config->sdr_buffer_len;
+  } else {
+    buffer_size = config->max_frame_size;
+  }
+  int code = sdr_modem_create(&settings, buffer_size, config->freq_offset_file, &result->modem);
   if (code != 0) {
     return code;
   }
@@ -117,13 +123,6 @@ int cli_create(app_config *config, cli **output) {
       .frequency = config->frequency,
       .gain = config->power
     };
-    // max buffer length must be known before set_tx_parameters allocates the device tx buffer
-    code = result->device->set_max_tx_input_buffer(sdr_modem_max_modulation_buffer_length(result->modem), result->device->plugin);
-    if (code != 0) {
-      LOG_ERROR("unable to set max tx input buffer");
-      cli_destroy(result);
-      return -1;
-    }
     code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set tx parameters");
@@ -136,7 +135,7 @@ int cli_create(app_config *config, cli **output) {
       cli_destroy(result);
       return -1;
     }
-    result->input_temp_size = config->buffer_size;
+    result->input_temp_size = config->max_frame_size;
     result->input_temp = malloc(sizeof(uint8_t) * result->input_temp_size);
     if (result->input_temp == NULL) {
       cli_destroy(result);

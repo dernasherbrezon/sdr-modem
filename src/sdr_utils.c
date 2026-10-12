@@ -16,14 +16,14 @@ int sdr_device_create(app_config *app_config, sdr_device **device) {
     // }
   } else if (app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     sdr_device *pluto = NULL;
-    int code = plutosdr_create(&app_config->plutosdr, app_config->buffer_size, app_config->iio, &pluto);
+    int code = plutosdr_create(&app_config->plutosdr, app_config->sdr_buffer_len, app_config->iio, &pluto);
     if (code != 0) {
       return code;
     }
     *device = pluto;
   } else if (app_config->sdr_type == SDR_TYPE_FILE) {
     sdr_device *file = NULL;
-    int code = sdr_file_create(&app_config->sdr_file, app_config->buffer_size, &file);
+    int code = sdr_file_create(&app_config->sdr_file, app_config->sdr_buffer_len, &file);
     if (code != 0) {
       return code;
     }
