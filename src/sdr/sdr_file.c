@@ -253,29 +253,39 @@ int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin
 
 int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
   file_device *device = (file_device *) plugin;
-  //FIXME input_len can be bigger than sdr_buffer_len
-  const void *write_buf;
-  size_t bytes_per_sample;
-  if (device->tx_format == FILE_FORMAT_CU8) {
-    cf32_to_cu8(input, device->tx_raw_temp, input_len);
-    write_buf = device->tx_raw_temp;
-    bytes_per_sample = 2 * sizeof(uint8_t);
-  } else if (device->tx_format == FILE_FORMAT_CS16) {
-    cf32_to_cs16(input, (int16_t *) device->tx_raw_temp, input_len);
-    write_buf = device->tx_raw_temp;
-    bytes_per_sample = 2 * sizeof(int16_t);
-  } else {
-    write_buf = input;
-    bytes_per_sample = sizeof(float complex);
-  }
-  //ignore actually written
-  if (device->tx_gz != NULL) {
-    gzwrite(device->tx_gz, write_buf, (unsigned int) (bytes_per_sample * input_len));
-  } else if (device->tx_file != NULL) {
-    fwrite(write_buf, bytes_per_sample, input_len, device->tx_file);
-  } else {
+  if (device->tx_gz == NULL && device->tx_file == NULL) {
     LOG_ERROR("tx file was not initialized");
     return -1;
+  }
+  //input_len can be bigger than sdr_buffer_len. convert and write in chunks
+  size_t offset = 0;
+  while (offset < input_len) {
+    size_t chunk = input_len - offset;
+    if (chunk > device->sdr_buffer_len) {
+      chunk = device->sdr_buffer_len;
+    }
+    const float complex *chunk_in = input + offset;
+    const void *write_buf;
+    size_t bytes_per_sample;
+    if (device->tx_format == FILE_FORMAT_CU8) {
+      cf32_to_cu8(chunk_in, device->tx_raw_temp, chunk);
+      write_buf = device->tx_raw_temp;
+      bytes_per_sample = 2 * sizeof(uint8_t);
+    } else if (device->tx_format == FILE_FORMAT_CS16) {
+      cf32_to_cs16(chunk_in, (int16_t *) device->tx_raw_temp, chunk);
+      write_buf = device->tx_raw_temp;
+      bytes_per_sample = 2 * sizeof(int16_t);
+    } else {
+      write_buf = chunk_in;
+      bytes_per_sample = sizeof(float complex);
+    }
+    //ignore actually written
+    if (device->tx_gz != NULL) {
+      gzwrite(device->tx_gz, write_buf, (unsigned int) (bytes_per_sample * chunk));
+    } else {
+      fwrite(write_buf, bytes_per_sample, chunk, device->tx_file);
+    }
+    offset += chunk;
   }
   return 0;
 }
