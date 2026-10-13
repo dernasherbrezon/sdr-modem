@@ -561,6 +561,12 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
+  if (settings->sample_rate != 0 && settings->sample_rate != pluto->rx_current_sample_rate) {
+    code = plutosdr_set_sample_rate(settings->sample_rate, pluto->rx0_chn, pluto);
+    if (code == 0) {
+      pluto->rx_current_sample_rate = settings->sample_rate;
+    }
+  }
 
   // TX chain //////////////////////////////
   pluto->tx = pluto->lib->iio_context_find_device(pluto->iio_ctx, "cf-ad9361-dds-core-lpc");
@@ -612,6 +618,12 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   if (code != 0) {
     plutosdr_destroy(pluto);
     return code;
+  }
+  if (settings->sample_rate != 0 && settings->sample_rate != pluto->tx_current_sample_rate) {
+    code = plutosdr_set_sample_rate(settings->sample_rate, pluto->tx0_chn, pluto);
+    if (code == 0) {
+      pluto->tx_current_sample_rate = settings->sample_rate;
+    }
   }
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));

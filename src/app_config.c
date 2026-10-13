@@ -914,6 +914,7 @@ static int app_config_validate_and_log(app_config *result) {
       free(result->plutosdr.uri);
       result->plutosdr.uri = NULL;
     }
+    result->plutosdr.sample_rate = result->sample_rate;
   } else if (result->sdr_type == SDR_TYPE_FILE) {
     if (!is_cli_mode) {
       LOG_ERROR("sdr_type=file is not supported in the server mode");

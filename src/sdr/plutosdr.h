@@ -23,6 +23,7 @@ typedef struct {
   iio_gain_mode gain_control_mode;
   unsigned int timeout_ms; // timeout for all iio operations
   char *uri;
+  uint64_t sample_rate;  // default sample rate
 } plutosdr_settings;
 
 int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, iio_lib *lib, sdr_device **result);
