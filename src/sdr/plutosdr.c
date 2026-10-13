@@ -60,6 +60,9 @@ struct plutosdr_t {
   plutosdr_range frequency;
   plutosdr_range sample_rate;
 
+  long long rx_current_sample_rate;
+  long long tx_current_sample_rate;
+
   char *uri;
 
   float complex *output;
@@ -553,6 +556,11 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
+  code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->rx0_chn, "sampling_frequency", &pluto->rx_current_sample_rate), "sampling_frequency", pluto);
+  if (code != 0) {
+    plutosdr_destroy(pluto);
+    return code;
+  }
 
   // TX chain //////////////////////////////
   pluto->tx = pluto->lib->iio_context_find_device(pluto->iio_ctx, "cf-ad9361-dds-core-lpc");
@@ -600,6 +608,11 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
+  code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->tx0_chn, "sampling_frequency", &pluto->tx_current_sample_rate), "sampling_frequency", pluto);
+  if (code != 0) {
+    plutosdr_destroy(pluto);
+    return code;
+  }
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
   if (result == NULL) {
@@ -643,9 +656,13 @@ int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) {
   if (code != 0) {
     return code;
   }
-  code = plutosdr_set_sample_rate(config->sample_rate, pluto->rx0_chn, pluto);
-  if (code != 0) {
-    return code;
+  if (pluto->rx_current_sample_rate != config->sample_rate) {
+    code = plutosdr_set_sample_rate(config->sample_rate, pluto->rx0_chn, pluto);
+    if (code != 0) {
+      return code;
+    } else {
+      pluto->rx_current_sample_rate = config->sample_rate;
+    }
   }
   if (pluto->gain_control_mode == IIO_GAIN_MODE_MANUAL) {
     code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->rx0_chn, "hardwaregain", config->gain), "hardwaregain", pluto);
@@ -675,9 +692,13 @@ int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) {
   if (code != 0) {
     return code;
   }
-  code = plutosdr_set_sample_rate(config->sample_rate, pluto->tx0_chn, pluto);
-  if (code != 0) {
-    return code;
+  if (pluto->tx_current_sample_rate != config->sample_rate) {
+    code = plutosdr_set_sample_rate(config->sample_rate, pluto->tx0_chn, pluto);
+    if (code != 0) {
+      return code;
+    } else {
+      pluto->tx_current_sample_rate = (long long) config->sample_rate;
+    }
   }
   code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->tx0_chn, "hardwaregain", config->gain), "hardwaregain", pluto);
   if (code != 0) {

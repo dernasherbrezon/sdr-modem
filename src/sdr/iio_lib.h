@@ -35,6 +35,8 @@ struct iio_lib_t {
 
     ssize_t (*iio_channel_attr_read)(const struct iio_channel *chn, const char *attr, char *dst, size_t len);
 
+    int (*iio_channel_attr_read_longlong)(const struct iio_channel *chn, const char *attr, long long *val);
+
     ssize_t (*iio_device_attr_write_raw)(const struct iio_device *dev, const char *attr, const void *src, size_t len);
 
     struct iio_scan_context *(*iio_create_scan_context)(const char *backend, unsigned int flags);
