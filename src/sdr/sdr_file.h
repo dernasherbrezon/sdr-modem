@@ -27,10 +27,4 @@ typedef struct {
 
 int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, sdr_device **result);
 
-int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin);
-
-int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin);
-
-void sdr_file_destroy(void *plugin);
-
 #endif //SDR_MODEM_SDR_FILE_H

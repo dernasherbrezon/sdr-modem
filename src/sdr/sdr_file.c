@@ -86,11 +86,11 @@ static void cf32_to_cs16(const float complex *in, int16_t *raw, size_t nsamples)
   }
 }
 
-void sdr_file_no_op(void *plugin) {
+static void sdr_file_no_op(void *plugin) {
   //do nothing. file source is not blocking
 }
 
-int sdr_file_set_no_op(sdr_channel_config *config, void *plugin) {
+static int sdr_file_set_no_op(sdr_channel_config *config, void *plugin) {
   //do nothing
   return 0;
 }
@@ -106,6 +106,120 @@ static const char *sdr_file_format_name(sdr_file_format format) {
     default:
       return "-";
   }
+}
+
+static int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin) {
+  file_device *device = (file_device *) plugin;
+  size_t bytes_per_sample;
+  void *read_buf;
+  if (device->rx_format == FILE_FORMAT_CU8) {
+    bytes_per_sample = 2 * sizeof(uint8_t);
+    read_buf = (void *) device->raw_temp;
+  } else if (device->rx_format == FILE_FORMAT_CS16) {
+    bytes_per_sample = 2 * sizeof(int16_t);
+    read_buf = (void *) device->raw_temp;
+  } else {
+    bytes_per_sample = sizeof(float complex);
+    read_buf = (void *) device->temp;
+  }
+  size_t actually_read;
+  if (device->rx_gz != NULL) {
+    int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->sdr_buffer_len));
+    if (result <= 0) {
+      *output = NULL;
+      *output_len = 0;
+      return -1;
+    }
+    actually_read = (size_t) result / bytes_per_sample;
+  } else if (device->rx_file != NULL) {
+    actually_read = fread(read_buf, bytes_per_sample, device->sdr_buffer_len, device->rx_file);
+    if (actually_read == 0) {
+      *output = NULL;
+      *output_len = 0;
+      return -1;
+    }
+  } else {
+    LOG_ERROR("rx file was not initialized");
+    *output = NULL;
+    *output_len = 0;
+    return -1;
+  }
+  if (device->rx_format == FILE_FORMAT_CU8) {
+    cu8_to_cf32(device->raw_temp, device->temp, actually_read);
+  } else if (device->rx_format == FILE_FORMAT_CS16) {
+    cs16_to_cf32((const int16_t *) device->raw_temp, device->temp, actually_read);
+  }
+  *output = device->temp;
+  *output_len = actually_read;
+  return 0;
+}
+
+static int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
+  file_device *device = (file_device *) plugin;
+  if (device->tx_gz == NULL && device->tx_file == NULL) {
+    LOG_ERROR("tx file was not initialized");
+    return -1;
+  }
+  //input_len can be bigger than sdr_buffer_len. convert and write in chunks
+  size_t offset = 0;
+  while (offset < input_len) {
+    size_t chunk = input_len - offset;
+    if (chunk > device->sdr_buffer_len) {
+      chunk = device->sdr_buffer_len;
+    }
+    const float complex *chunk_in = input + offset;
+    const void *write_buf;
+    size_t bytes_per_sample;
+    if (device->tx_format == FILE_FORMAT_CU8) {
+      cf32_to_cu8(chunk_in, device->tx_raw_temp, chunk);
+      write_buf = device->tx_raw_temp;
+      bytes_per_sample = 2 * sizeof(uint8_t);
+    } else if (device->tx_format == FILE_FORMAT_CS16) {
+      cf32_to_cs16(chunk_in, (int16_t *) device->tx_raw_temp, chunk);
+      write_buf = device->tx_raw_temp;
+      bytes_per_sample = 2 * sizeof(int16_t);
+    } else {
+      write_buf = chunk_in;
+      bytes_per_sample = sizeof(float complex);
+    }
+    //ignore actually written
+    if (device->tx_gz != NULL) {
+      gzwrite(device->tx_gz, write_buf, (unsigned int) (bytes_per_sample * chunk));
+    } else {
+      fwrite(write_buf, bytes_per_sample, chunk, device->tx_file);
+    }
+    offset += chunk;
+  }
+  return 0;
+}
+
+static void sdr_file_destroy(void *plugin) {
+  if (plugin == NULL) {
+    return;
+  }
+  file_device *device = (file_device *) plugin;
+  if (device->rx_file != NULL) {
+    fclose(device->rx_file);
+  }
+  if (device->tx_file != NULL) {
+    fclose(device->tx_file);
+  }
+  if (device->rx_gz != NULL) {
+    gzclose(device->rx_gz);
+  }
+  if (device->tx_gz != NULL) {
+    gzclose(device->tx_gz);
+  }
+  if (device->temp != NULL) {
+    free(device->temp);
+  }
+  if (device->tx_raw_temp != NULL) {
+    free(device->tx_raw_temp);
+  }
+  if (device->raw_temp != NULL) {
+    free(device->raw_temp);
+  }
+  free(device);
 }
 
 int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, sdr_device **output) {
@@ -203,118 +317,4 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, 
   }
   *output = result;
   return 0;
-}
-
-int sdr_file_process_rx(float complex **output, size_t *output_len, void *plugin) {
-  file_device *device = (file_device *) plugin;
-  size_t bytes_per_sample;
-  void *read_buf;
-  if (device->rx_format == FILE_FORMAT_CU8) {
-    bytes_per_sample = 2 * sizeof(uint8_t);
-    read_buf = (void *) device->raw_temp;
-  } else if (device->rx_format == FILE_FORMAT_CS16) {
-    bytes_per_sample = 2 * sizeof(int16_t);
-    read_buf = (void *) device->raw_temp;
-  } else {
-    bytes_per_sample = sizeof(float complex);
-    read_buf = (void *) device->temp;
-  }
-  size_t actually_read;
-  if (device->rx_gz != NULL) {
-    int result = gzread(device->rx_gz, read_buf, (unsigned int) (bytes_per_sample * device->sdr_buffer_len));
-    if (result <= 0) {
-      *output = NULL;
-      *output_len = 0;
-      return -1;
-    }
-    actually_read = (size_t) result / bytes_per_sample;
-  } else if (device->rx_file != NULL) {
-    actually_read = fread(read_buf, bytes_per_sample, device->sdr_buffer_len, device->rx_file);
-    if (actually_read == 0) {
-      *output = NULL;
-      *output_len = 0;
-      return -1;
-    }
-  } else {
-    LOG_ERROR("rx file was not initialized");
-    *output = NULL;
-    *output_len = 0;
-    return -1;
-  }
-  if (device->rx_format == FILE_FORMAT_CU8) {
-    cu8_to_cf32(device->raw_temp, device->temp, actually_read);
-  } else if (device->rx_format == FILE_FORMAT_CS16) {
-    cs16_to_cf32((const int16_t *) device->raw_temp, device->temp, actually_read);
-  }
-  *output = device->temp;
-  *output_len = actually_read;
-  return 0;
-}
-
-int sdr_file_process_tx(float complex *input, size_t input_len, void *plugin) {
-  file_device *device = (file_device *) plugin;
-  if (device->tx_gz == NULL && device->tx_file == NULL) {
-    LOG_ERROR("tx file was not initialized");
-    return -1;
-  }
-  //input_len can be bigger than sdr_buffer_len. convert and write in chunks
-  size_t offset = 0;
-  while (offset < input_len) {
-    size_t chunk = input_len - offset;
-    if (chunk > device->sdr_buffer_len) {
-      chunk = device->sdr_buffer_len;
-    }
-    const float complex *chunk_in = input + offset;
-    const void *write_buf;
-    size_t bytes_per_sample;
-    if (device->tx_format == FILE_FORMAT_CU8) {
-      cf32_to_cu8(chunk_in, device->tx_raw_temp, chunk);
-      write_buf = device->tx_raw_temp;
-      bytes_per_sample = 2 * sizeof(uint8_t);
-    } else if (device->tx_format == FILE_FORMAT_CS16) {
-      cf32_to_cs16(chunk_in, (int16_t *) device->tx_raw_temp, chunk);
-      write_buf = device->tx_raw_temp;
-      bytes_per_sample = 2 * sizeof(int16_t);
-    } else {
-      write_buf = chunk_in;
-      bytes_per_sample = sizeof(float complex);
-    }
-    //ignore actually written
-    if (device->tx_gz != NULL) {
-      gzwrite(device->tx_gz, write_buf, (unsigned int) (bytes_per_sample * chunk));
-    } else {
-      fwrite(write_buf, bytes_per_sample, chunk, device->tx_file);
-    }
-    offset += chunk;
-  }
-  return 0;
-}
-
-void sdr_file_destroy(void *plugin) {
-  if (plugin == NULL) {
-    return;
-  }
-  file_device *device = (file_device *) plugin;
-  if (device->rx_file != NULL) {
-    fclose(device->rx_file);
-  }
-  if (device->tx_file != NULL) {
-    fclose(device->tx_file);
-  }
-  if (device->rx_gz != NULL) {
-    gzclose(device->rx_gz);
-  }
-  if (device->tx_gz != NULL) {
-    gzclose(device->tx_gz);
-  }
-  if (device->temp != NULL) {
-    free(device->temp);
-  }
-  if (device->tx_raw_temp != NULL) {
-    free(device->tx_raw_temp);
-  }
-  if (device->raw_temp != NULL) {
-    free(device->raw_temp);
-  }
-  free(device);
 }
