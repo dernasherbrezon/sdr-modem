@@ -41,6 +41,8 @@ typedef struct {
 
 struct plutosdr_t {
   struct iio_context *iio_ctx;
+  struct iio_device *control_device;
+
   struct iio_device *tx;
   struct iio_channel *tx0_chn;
   struct iio_channel *tx0_lo;
@@ -70,10 +72,6 @@ struct plutosdr_t {
 
   iio_lib *lib;
   iio_gain_mode gain_control_mode;
-};
-
-enum iio_direction {
-  RX, TX
 };
 
 int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
@@ -197,17 +195,6 @@ static int plutosdr_disable_dds(plutosdr *pluto) {
     return code;
   }
   return 0;
-}
-
-static struct iio_channel *plutosdr_find_phy_channel(struct iio_context *ctx, enum iio_direction d, plutosdr *iio) {
-  switch (d) {
-    case RX:
-      return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), "voltage0", false);
-    case TX:
-      return iio->lib->iio_device_find_channel(iio->lib->iio_context_find_device(ctx, "ad9361-phy"), "voltage0", true);
-    default:
-      return NULL;
-  }
 }
 
 static int plutosdr_error_check(int v, const char *what, plutosdr *iio) {
@@ -486,6 +473,12 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return -1;
   }
+  pluto->control_device = pluto->lib->iio_context_find_device(pluto->iio_ctx, "ad9361-phy");
+  if (pluto->control_device == NULL) {
+    LOG_ERROR("unable to find control device");
+    plutosdr_destroy(pluto);
+    return -1;
+  }
 
   int code = pluto->lib->iio_context_set_timeout(pluto->iio_ctx, settings->timeout_ms);
   if (code < 0) {
@@ -499,21 +492,21 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return -1;
   }
+  pluto->rx0_chn = pluto->lib->iio_device_find_channel(pluto->control_device, "voltage0", false);
+  if (pluto->rx0_chn == NULL) {
+    LOG_ERROR("can't find rx channel control");
+    plutosdr_destroy(pluto);
+    return -1;
+  }
+  pluto->rx0_lo = pluto->lib->iio_device_find_channel(pluto->control_device, "altvoltage0", true);
+  if (pluto->rx0_lo == NULL) {
+    LOG_ERROR("can't find rx lo");
+    plutosdr_destroy(pluto);
+    return -1;
+  }
   pluto->rx = pluto->lib->iio_context_find_device(pluto->iio_ctx, "cf-ad9361-lpc");
   if (pluto->rx == NULL) {
-    LOG_ERROR("unable to find rx result");
-    plutosdr_destroy(pluto);
-    return -1;
-  }
-  pluto->rx0_chn = plutosdr_find_phy_channel(pluto->iio_ctx, RX, pluto);
-  if (pluto->rx0_chn == NULL) {
-    LOG_ERROR("can't find RX channel: voltage0");
-    plutosdr_destroy(pluto);
-    return -1;
-  }
-  pluto->rx0_lo = pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(pluto->iio_ctx, "ad9361-phy"), "altvoltage0", true);
-  if (pluto->rx0_lo == NULL) {
-    LOG_ERROR("can't find RX lo");
+    LOG_ERROR("unable to find rx device");
     plutosdr_destroy(pluto);
     return -1;
   }
@@ -563,9 +556,11 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   }
   if (settings->sample_rate != 0 && settings->sample_rate != pluto->rx_current_sample_rate) {
     code = plutosdr_set_sample_rate(settings->sample_rate, pluto->rx0_chn, pluto);
-    if (code == 0) {
-      pluto->rx_current_sample_rate = settings->sample_rate;
+    if (code != 0) {
+      plutosdr_destroy(pluto);
+      return code;
     }
+    pluto->rx_current_sample_rate = settings->sample_rate;
   }
 
   // TX chain //////////////////////////////
@@ -580,13 +575,13 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return -1;
   }
-  pluto->tx0_chn = plutosdr_find_phy_channel(pluto->iio_ctx, TX, pluto);
+  pluto->tx0_chn = pluto->lib->iio_device_find_channel(pluto->control_device, "voltage0", true);
   if (pluto->tx0_chn == NULL) {
-    LOG_ERROR("can't find TX channel: voltage0");
+    LOG_ERROR("can't find tx channel control");
     plutosdr_destroy(pluto);
     return -1;
   }
-  pluto->tx0_lo = pluto->lib->iio_device_find_channel(pluto->lib->iio_context_find_device(pluto->iio_ctx, "ad9361-phy"), "altvoltage1", true);
+  pluto->tx0_lo = pluto->lib->iio_device_find_channel(pluto->control_device, "altvoltage1", true);
   if (pluto->tx0_lo == NULL) {
     LOG_ERROR("can't find TX lo");
     plutosdr_destroy(pluto);
@@ -621,9 +616,11 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   }
   if (settings->sample_rate != 0 && settings->sample_rate != pluto->tx_current_sample_rate) {
     code = plutosdr_set_sample_rate(settings->sample_rate, pluto->tx0_chn, pluto);
-    if (code == 0) {
-      pluto->tx_current_sample_rate = settings->sample_rate;
+    if (code != 0) {
+      plutosdr_destroy(pluto);
+      return code;
     }
+    pluto->tx_current_sample_rate = settings->sample_rate;
   }
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
