@@ -28,16 +28,4 @@ typedef struct {
 
 int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, iio_lib *lib, sdr_device **result);
 
-int plutosdr_process_rx(float complex **output, size_t *output_len, void *plugin);
-
-int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin);
-
-int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin);
-
-int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin);
-
-int plutosdr_set_max_tx_input_buffer(size_t max_input_len, void *plugin);
-
-void plutosdr_destroy(void *plugin);
-
 #endif //SDR_MODEM_PLUTOSDR_H
