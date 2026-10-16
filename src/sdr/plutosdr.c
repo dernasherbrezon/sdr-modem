@@ -62,8 +62,7 @@ struct plutosdr_t {
   plutosdr_range frequency;
   plutosdr_range sample_rate;
 
-  long long rx_current_sample_rate;
-  long long tx_current_sample_rate;
+  long long current_sample_rate;
 
   char *uri;
 
@@ -395,20 +394,6 @@ static char *plutosdr_find_default_uri(const iio_lib *lib) {
   return result;
 }
 
-// rx and tx share the same baseband clock, so their sampling rates can differ only by an integer ratio of 1, 2 or 4
-static int plutosdr_validate_sampling_frequencies(uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency) {
-  if (rx_sampling_frequency == 0 || tx_sampling_frequency == 0) {
-    return 0;
-  }
-  uint64_t max = rx_sampling_frequency > tx_sampling_frequency ? rx_sampling_frequency : tx_sampling_frequency;
-  uint64_t min = rx_sampling_frequency > tx_sampling_frequency ? tx_sampling_frequency : rx_sampling_frequency;
-  if (max % min != 0 || (max / min != 1 && max / min != 2 && max / min != 4)) {
-    LOG_ERROR("incompatible sampling frequencies: rx %" PRIu64 ", tx %" PRIu64 ". they must be equal or differ by a factor of 2 or 4", rx_sampling_frequency, tx_sampling_frequency);
-    return -1;
-  }
-  return 0;
-}
-
 static const char *plutosdr_convert_gain_mode(iio_gain_mode mode) {
   switch (mode) {
     case IIO_GAIN_MODE_MANUAL:
@@ -458,24 +443,20 @@ static int plutosdr_set_rx_parameters(sdr_channel_config *config, void *plugin) 
     LOG_ERROR("sample_rate is outside of supported range: %"PRIu64, config->sample_rate);
     return -1;
   }
-  int code = plutosdr_validate_sampling_frequencies(config->sample_rate, pluto->tx_current_sample_rate);
-  if (code != 0) {
-    return code;
-  }
   if (config->gain < pluto->gain.min || config->gain > pluto->gain.max) {
     LOG_ERROR("gain is outside of supported range: %.0f", config->gain);
     return -1;
   }
-  code = plutosdr_write_lli(pluto->rx0_lo, "frequency", (long long) config->frequency, pluto);
+  int code = plutosdr_write_lli(pluto->rx0_lo, "frequency", (long long) config->frequency, pluto);
   if (code != 0) {
     return code;
   }
-  if (pluto->rx_current_sample_rate != config->sample_rate) {
+  if (pluto->current_sample_rate != config->sample_rate) {
     code = plutosdr_set_sample_rate(config->sample_rate, pluto->rx0_chn, pluto);
     if (code != 0) {
       return code;
     }
-    pluto->rx_current_sample_rate = config->sample_rate;
+    pluto->current_sample_rate = config->sample_rate;
   }
   if (pluto->gain_control_mode == IIO_GAIN_MODE_MANUAL) {
     code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->rx0_chn, "hardwaregain", config->gain), "hardwaregain", pluto);
@@ -497,24 +478,20 @@ static int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) 
     LOG_ERROR("sample_rate is outside of supported range: %"PRIu64, config->sample_rate);
     return -1;
   }
-  int code = plutosdr_validate_sampling_frequencies(pluto->rx_current_sample_rate, config->sample_rate);
-  if (code != 0) {
-    return code;
-  }
   if (config->gain < pluto->power.min || config->gain > pluto->power.max) {
     LOG_ERROR("power is outside of supported range: %.0f", config->gain);
     return -1;
   }
-  code = plutosdr_write_lli(pluto->tx0_lo, "frequency", (long long) config->frequency, pluto);
+  int code = plutosdr_write_lli(pluto->tx0_lo, "frequency", (long long) config->frequency, pluto);
   if (code != 0) {
     return code;
   }
-  if (pluto->tx_current_sample_rate != config->sample_rate) {
+  if (pluto->current_sample_rate != config->sample_rate) {
     code = plutosdr_set_sample_rate(config->sample_rate, pluto->tx0_chn, pluto);
     if (code != 0) {
       return code;
     }
-    pluto->tx_current_sample_rate = (long long) config->sample_rate;
+    pluto->current_sample_rate = (long long) config->sample_rate;
   }
   code = plutosdr_error_check(pluto->lib->iio_channel_attr_write_double(pluto->tx0_chn, "hardwaregain", config->gain), "hardwaregain", pluto);
   if (code != 0) {
@@ -672,18 +649,18 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
-  code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->rx0_chn, "sampling_frequency", &pluto->rx_current_sample_rate), "sampling_frequency", pluto);
+  code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->rx0_chn, "sampling_frequency", &pluto->current_sample_rate), "sampling_frequency", pluto);
   if (code != 0) {
     plutosdr_destroy(pluto);
     return code;
   }
-  if (settings->sample_rate != 0 && settings->sample_rate != pluto->rx_current_sample_rate) {
+  if (settings->sample_rate != 0 && settings->sample_rate != pluto->current_sample_rate) {
     code = plutosdr_set_sample_rate(settings->sample_rate, pluto->rx0_chn, pluto);
     if (code != 0) {
       plutosdr_destroy(pluto);
       return code;
     }
-    pluto->rx_current_sample_rate = settings->sample_rate;
+    pluto->current_sample_rate = settings->sample_rate;
   }
 
   // TX chain //////////////////////////////
@@ -731,19 +708,6 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   if (code != 0) {
     plutosdr_destroy(pluto);
     return code;
-  }
-  code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->tx0_chn, "sampling_frequency", &pluto->tx_current_sample_rate), "sampling_frequency", pluto);
-  if (code != 0) {
-    plutosdr_destroy(pluto);
-    return code;
-  }
-  if (settings->sample_rate != 0 && settings->sample_rate != pluto->tx_current_sample_rate) {
-    code = plutosdr_set_sample_rate(settings->sample_rate, pluto->tx0_chn, pluto);
-    if (code != 0) {
-      plutosdr_destroy(pluto);
-      return code;
-    }
-    pluto->tx_current_sample_rate = settings->sample_rate;
   }
 
   struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
