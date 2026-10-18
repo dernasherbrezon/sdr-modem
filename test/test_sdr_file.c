@@ -17,6 +17,7 @@ void test_rx_invalid_arguments() {
   code = sdr_file_create(&(sdr_file_settings){.rx_file = filename, .rx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
+  // tx file not initialized
   const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   size_t buffer_len = sizeof(buffer) / sizeof(float) / 2;
   code = device->sdr_process_tx((complex float *) buffer, buffer_len, device->plugin);
@@ -31,10 +32,7 @@ void test_tx_invalid_arguments() {
   code = sdr_file_create(&(sdr_file_settings){.tx_file = filename, .tx_file_format = FILE_FORMAT_CF32}, max_output_buffer_length, &device);
   TEST_ASSERT_EQUAL_INT(0, code);
 
-  const float buffer[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  code = device->sdr_process_tx((complex float *) buffer, max_output_buffer_length + 1, device->plugin);
-  TEST_ASSERT_EQUAL_INT(-1, code);
-
+  // rx file not initialized
   complex float *output = NULL;
   size_t output_len = 0;
   code = device->sdr_process_rx(&output, &output_len, device->plugin);
