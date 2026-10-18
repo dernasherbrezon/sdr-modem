@@ -263,112 +263,72 @@ static int plutosdr_enable_fir_filter(struct iio_device *dev, bool enable, pluto
   return ret;
 }
 
+static int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
+  if (sample_rate == 0) {
+    *decimation = 0;
+    *fir_filter_taps = NULL;
+    return 0;
+  }
+
+  if (sample_rate < MIN_FIR_FILTER) {
+    LOG_ERROR("sampling freq is too low: %" PRIu64, sample_rate);
+    return -1;
+  }
+
+  if (sample_rate < MIN_FIR_FILTER_2) {
+    *decimation = 4;
+    *fir_filter_taps = fir_128_4;
+  } else if (sample_rate < MIN_NO_FIR_FILTER) {
+    *decimation = 2;
+    *fir_filter_taps = fir_128_2;
+  }
+  return 0;
+}
+
 static int plutosdr_set_sample_rate(uint64_t sample_rate, struct iio_channel *chn, plutosdr *iio) {
-  int code = plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio);
+  int decimation = 0;
+  int16_t *fir_filter_taps = NULL;
+  int code = plutosdr_select_fir_filter_config(sample_rate, &decimation, &fir_filter_taps);
+  if (code < 0) {
+    return code;
+  }
+  if (fir_filter_taps != NULL) {
+    char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
+    if (buf == NULL) {
+      return -ENOMEM;
+    }
+    int len = 0;
+    len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", decimation);
+    len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", decimation);
+    for (int i = 0; i < 128; i++) {
+      len += snprintf(buf + len, FIR_BUF_SIZE - len, "%d,%d\n", fir_filter_taps[i], fir_filter_taps[i]);
+    }
+    len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
+    code = plutosdr_error_check(iio->lib->iio_device_attr_write_raw(iio->control_device, "filter_fir_config", buf, len), "filter_fir_config", iio);
+    free(buf);
+    if (code < 0) {
+      return code;
+    }
+    code = plutosdr_error_check(plutosdr_enable_fir_filter(iio->control_device, true, iio), "in_out_voltage_filter_fir_en", iio);
+    if (code < 0) {
+      return code;
+    }
+  }
+  code = plutosdr_write_lli(chn, "sampling_frequency", (long long) sample_rate, iio);
   if (code != 0) {
     return code;
   }
-  return plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio);
+  //FIXME test going down to filter_fir and then up above min rate
+  code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio);
+  if (fir_filter_taps == NULL) {
+    // ensure filter disabled if not needed
+    code = plutosdr_error_check(plutosdr_enable_fir_filter(iio->control_device, false, iio), "in_out_voltage_filter_fir_en", iio);
+    if (code < 0) {
+      return code;
+    }
+  }
+  return code;
 }
-
-// static int plutosdr_select_fir_filter_config(uint64_t sample_rate, int *decimation, int16_t **fir_filter_taps) {
-//   if (sample_rate == 0) {
-//     *decimation = 0;
-//     *fir_filter_taps = NULL;
-//     return 0;
-//   }
-//
-//   if (sample_rate < MIN_FIR_FILTER) {
-//     LOG_ERROR("sampling freq is too low: %" PRIu64, sample_rate);
-//     return -1;
-//   } else if (sample_rate < MIN_FIR_FILTER_2) {
-//     *decimation = 4;
-//     *fir_filter_taps = fir_128_4;
-//   } else if (sample_rate < MIN_NO_FIR_FILTER) {
-//     *decimation = 2;
-//     *fir_filter_taps = fir_128_2;
-//   }
-//   return 0;
-// }
-
-// static int plutosdr_setup_fir_filter(struct iio_context *ctx, uint64_t rx_sampling_frequency, uint64_t tx_sampling_frequency, plutosdr *pluto) {
-//   int rx_decimation = 0;
-//   int16_t *rx_fir_filter_taps = NULL;
-//   int code = plutosdr_select_fir_filter_config(rx_sampling_frequency, &rx_decimation, &rx_fir_filter_taps);
-//   if (code < 0) {
-//     return code;
-//   }
-//   int tx_decimation = 0;
-//   int16_t *tx_fir_filter_taps = NULL;
-//   code = plutosdr_select_fir_filter_config(tx_sampling_frequency, &tx_decimation, &tx_fir_filter_taps);
-//   if (code < 0) {
-//     return code;
-//   }
-//
-//   struct iio_device *phy_device = pluto->lib->iio_context_find_device(ctx, "ad9361-phy");
-//
-//   // filter is not needed
-//   if (rx_fir_filter_taps == NULL && tx_fir_filter_taps == NULL) {
-//     //setup sampling freq a bit more to disable fir filter without error
-//     struct iio_channel *chn = plutosdr_find_phy_channel(ctx, TX, pluto);
-//     if (chn == NULL) {
-//       return -1;
-//     }
-//     code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
-//     if (code < 0) {
-//       return code;
-//     }
-//     chn = plutosdr_find_phy_channel(ctx, RX, pluto);
-//     if (chn == NULL) {
-//       return -1;
-//     }
-//     code = plutosdr_write_lli(chn, "sampling_frequency", MIN_NO_FIR_FILTER, pluto);
-//     if (code < 0) {
-//       return code;
-//     }
-//     // filter might be configured prior to execution. disable it to support higher rates
-//     return plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, false, pluto), "in_out_voltage_filter_fir_en", pluto);
-//   }
-//
-//   // just to simplify the code below a bit
-//   if (rx_fir_filter_taps != NULL && tx_fir_filter_taps == NULL) {
-//     tx_fir_filter_taps = rx_fir_filter_taps;
-//     tx_decimation = rx_decimation;
-//   }
-//   if (rx_fir_filter_taps == NULL && tx_fir_filter_taps != NULL) {
-//     rx_fir_filter_taps = tx_fir_filter_taps;
-//     rx_decimation = tx_decimation;
-//   }
-//
-//   char *buf = malloc(sizeof(char) * FIR_BUF_SIZE);
-//   if (buf == NULL) {
-//     return -ENOMEM;
-//   }
-//   int len = 0;
-//   if (rx_decimation > 0) {
-//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "RX 3 GAIN -6 DEC %d\n", rx_decimation);
-//   }
-//   if (tx_decimation > 0) {
-//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "TX 3 GAIN 0 INT %d\n", tx_decimation);
-//   }
-//   for (int i = 0; i < 128; i++) {
-//     len += snprintf(buf + len, FIR_BUF_SIZE - len, "%d,%d\n", tx_fir_filter_taps[i], rx_fir_filter_taps[i]);
-//   }
-//   len += snprintf(buf + len, FIR_BUF_SIZE - len, "\n");
-//
-//   code = plutosdr_error_check(pluto->lib->iio_device_attr_write_raw(phy_device, "filter_fir_config", buf, len), "filter_fir_config", pluto);
-//   free(buf);
-//   if (code < 0) {
-//     return code;
-//   }
-//
-//   code = plutosdr_error_check(plutosdr_enable_fir_filter(phy_device, true, pluto), "in_out_voltage_filter_fir_en", pluto);
-//   if (code < 0) {
-//     return code;
-//   }
-//
-//   return 0;
-// }
 
 static char *plutosdr_find_default_uri(const iio_lib *lib) {
   struct iio_scan_context *scan_ctx = lib->iio_create_scan_context(NULL, 0);
@@ -649,6 +609,8 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
+  // if filter is not configured, then the minimum sample rate will be much bigger
+  pluto->sample_rate.min = MIN_FIR_FILTER;
   code = plutosdr_error_check(pluto->lib->iio_channel_attr_read_longlong(pluto->rx0_chn, "sampling_frequency", &pluto->current_sample_rate), "sampling_frequency", pluto);
   if (code != 0) {
     plutosdr_destroy(pluto);
