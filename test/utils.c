@@ -64,8 +64,11 @@ void assert_float_array(const float expected[], size_t expected_size, float *act
 void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size, int tolerance) {
   TEST_ASSERT_EQUAL_INT(expected_size, actual_size);
   for (size_t i = 0; i < expected_size; i++) {
-    if ( abs((int8_t) expected[i] - actual[i]) > tolerance ) {
-      printf("failed: %d\n", abs((int8_t) expected[i] - actual[i]));
+    if (abs((int8_t) expected[i] - actual[i]) > tolerance) {
+      printf("mismatch at %zu of %zu: expected=%d actual=%d\n", i, expected_size, expected[i], actual[i]);
+      for (size_t j = (i > 8 ? i - 8 : 0); j < i + 8 && j < expected_size; j++) {
+        printf("  [%zu] expected=%d actual=%d\n", j, expected[j], actual[j]);
+      }
     }
     TEST_ASSERT(abs((int8_t) expected[i] - actual[i]) <= tolerance);
   }
