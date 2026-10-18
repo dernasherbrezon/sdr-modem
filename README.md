@@ -15,7 +15,6 @@ Modem based on software defined radios.
  * Supported modulation/demodulation:
    * GFSK
  * Supported SDRs:
-   * [sdr-server](https://github.com/dernasherbrezon/sdr-server)
    * [plutosdr](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/adalm-pluto.html)
    * file
  * Misc:

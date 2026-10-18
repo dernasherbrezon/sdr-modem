@@ -10,15 +10,13 @@
 #include "dsp/psk_pm_modem.h"
 #include "dsp/sdr_modem.h"
 #include "sdr/sdr_file.h"
-#include "sdr/sdr_server_client.h"
 
 typedef enum {
   // returned when a sdr type name cannot be parsed
   SDR_TYPE_INVALID = -1,
   SDR_TYPE_NONE = 0,
   SDR_TYPE_PLUTOSDR,
-  SDR_TYPE_FILE,
-  SDR_TYPE_SDR_SERVER
+  SDR_TYPE_FILE
 } sdr_device_type;
 
 #define FRAMING_TYPE_NONE 0
@@ -45,7 +43,6 @@ typedef struct app_config_t {
 
   sdr_device_type sdr_type;
 
-  sdr_server_settings sdr_server;
 
   sdr_file_settings sdr_file;
 

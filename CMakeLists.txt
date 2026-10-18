@@ -32,7 +32,6 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_file.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_server_client.c
         )
 
 find_package(PkgConfig REQUIRED)
@@ -77,7 +76,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/)
 # speed up test compilation.
 add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_server_mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )

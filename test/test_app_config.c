@@ -48,23 +48,11 @@ void test_success() {
   TEST_ASSERT_EQUAL_INT(8091, config->port);
   TEST_ASSERT_EQUAL_INT(10, config->read_timeout_seconds);
   TEST_ASSERT_EQUAL_INT(2048, config->sdr_buffer_len);
-  TEST_ASSERT_EQUAL_INT(SDR_TYPE_SDR_SERVER, config->sdr_type);
+  TEST_ASSERT_EQUAL_INT(SDR_TYPE_PLUTOSDR, config->sdr_type);
   TEST_ASSERT_EQUAL_INT(64, config->queue_size);
-  TEST_ASSERT(config->iio == NULL);
+  TEST_ASSERT(config->iio != NULL);
   TEST_ASSERT(fabsl(0.0 - config->gain) < 0.001);
-  TEST_ASSERT_EQUAL_INT(0, config->plutosdr.timeout_ms);
-  TEST_ASSERT_EQUAL_STRING("127.0.0.1", config->sdr_server.addr);
-  TEST_ASSERT_EQUAL_INT(8090, config->sdr_server.port);
-  TEST_ASSERT_EQUAL_INT(10, config->sdr_server.read_timeout_seconds);
-}
-
-void test_merge_sdr_server_settings() {
-  char *argv[] = {"test_app_config", "--config", "full.conf", "--sdr_server_address", "192.168.1.2", "--sdr_server_port", "8092", "--sdr_server_read_timeout_seconds", "3", NULL};
-  int code = app_config_create(9, argv, &config);
-  TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_STRING("192.168.1.2", config->sdr_server.addr);
-  TEST_ASSERT_EQUAL_INT(8092, config->sdr_server.port);
-  TEST_ASSERT_EQUAL_INT(3, config->sdr_server.read_timeout_seconds);
+  TEST_ASSERT_EQUAL_INT(10000, config->plutosdr.timeout_ms);
 }
 
 void test_override_from_cli() {
@@ -215,7 +203,6 @@ int main(void) {
   RUN_TEST(test_missing_file);
   RUN_TEST(test_unknown_sdr_type);
   RUN_TEST(test_pluto_enabled);
-  RUN_TEST(test_merge_sdr_server_settings);
   RUN_TEST(test_override_from_cli);
   RUN_TEST(test_override_with_invalid);
   RUN_TEST(test_invalid);

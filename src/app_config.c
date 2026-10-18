@@ -10,9 +10,7 @@
 #include "log.h"
 
 static sdr_device_type app_config_convert_sdr_type(const char *type) {
-  if (strcmp(type, "sdr-server") == 0) {
-    return SDR_TYPE_SDR_SERVER;
-  } else if (strcmp(type, "plutosdr") == 0) {
+  if (strcmp(type, "plutosdr") == 0) {
     return SDR_TYPE_PLUTOSDR;
   } else if (strcmp(type, "file") == 0) {
     return SDR_TYPE_FILE;
@@ -244,30 +242,6 @@ static void app_config_load_psk_pm_from_file(config_t *libconfig, app_config *re
 
 // frequency and sample_rate are not loaded here: they are shared with other sdr types and modems,
 // so they are taken from the generic "frequency" and "sample_rate" settings at the time of use
-static int app_config_load_sdr_server_from_file(config_t *libconfig, app_config *result) {
-  sdr_server_settings *settings = &result->sdr_server;
-  const config_setting_t *setting;
-
-  setting = config_lookup(libconfig, "sdr_server_address");
-  if (setting != NULL) {
-    int code = app_config_replace_str(config_setting_get_string(setting), &settings->addr);
-    if (code != 0) {
-      return code;
-    }
-  }
-  setting = config_lookup(libconfig, "sdr_server_port");
-  if (setting != NULL) {
-    settings->port = config_setting_get_int(setting);
-  }
-  setting = config_lookup(libconfig, "sdr_server_read_timeout_seconds");
-  if (setting != NULL) {
-    settings->read_timeout_seconds = config_setting_get_int(setting);
-  }
-  return 0;
-}
-
-// frequency and sample_rate are not loaded here: they are shared with other sdr types and modems,
-// so they are taken from the generic "frequency" and "sample_rate" settings at the time of use
 static int app_config_load_sdr_file_from_file(config_t *libconfig, app_config *result) {
   sdr_file_settings *settings = &result->sdr_file;
   const config_setting_t *setting;
@@ -355,10 +329,6 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
     result->sdr_type = app_config_convert_sdr_type(config_setting_get_string(setting));
   }
 
-  code = app_config_load_sdr_server_from_file(libconfig, result);
-  if (code != 0) {
-    return code;
-  }
   if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     setting = config_lookup(libconfig, "plutosdr_gain_control_mode");
     if (setting != NULL) {
@@ -453,9 +423,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_MAX_FRAME_SIZE,
     OPT_DIRECTION,
     OPT_SDR_TYPE,
-    OPT_SDR_SERVER_ADDRESS,
-    OPT_SDR_SERVER_PORT,
-    OPT_SDR_SERVER_READ_TIMEOUT_SECONDS,
     OPT_PLUTOSDR_GAIN_CONTROL_MODE,
     OPT_PLUTOSDR_TX_POWERDOWN,
     OPT_PLUTOSDR_TIMEOUT_MS,
@@ -509,9 +476,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"max_frame_size", required_argument, NULL, OPT_MAX_FRAME_SIZE},
     {"direction", required_argument, NULL, OPT_DIRECTION},
     {"sdr_type", required_argument, NULL, OPT_SDR_TYPE},
-    {"sdr_server_address", required_argument, NULL, OPT_SDR_SERVER_ADDRESS},
-    {"sdr_server_port", required_argument, NULL, OPT_SDR_SERVER_PORT},
-    {"sdr_server_read_timeout_seconds", required_argument, NULL, OPT_SDR_SERVER_READ_TIMEOUT_SECONDS},
     {"plutosdr_gain_control_mode", required_argument, NULL, OPT_PLUTOSDR_GAIN_CONTROL_MODE},
     {"plutosdr_tx_powerdown", required_argument, NULL, OPT_PLUTOSDR_TX_POWERDOWN},
     {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
@@ -596,19 +560,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_SDR_TYPE:
         result->sdr_type = app_config_convert_sdr_type(optarg);
-        break;
-      case OPT_SDR_SERVER_ADDRESS: {
-        int code = app_config_replace_str(optarg, &result->sdr_server.addr);
-        if (code != 0) {
-          return code;
-        }
-        break;
-      }
-      case OPT_SDR_SERVER_PORT:
-        result->sdr_server.port = atoi(optarg);
-        break;
-      case OPT_SDR_SERVER_READ_TIMEOUT_SECONDS:
-        result->sdr_server.read_timeout_seconds = atoi(optarg);
         break;
       case OPT_PLUTOSDR_GAIN_CONTROL_MODE: {
         int code = app_config_parse_gain_mode(optarg, &result->plutosdr.gain_control_mode);
@@ -888,28 +839,7 @@ static int app_config_validate_and_log(app_config *result) {
     LOG_INFO("max_frame_size: %u", result->max_frame_size);
   }
 
-  if (result->sdr_type == SDR_TYPE_SDR_SERVER) {
-    if (is_cli_mode && result->direction == DIRECTION_TX) {
-      LOG_ERROR("sdr-server cannot tx. invalid sdr_type parameter");
-      return -1;
-    }
-    if (result->sdr_server.addr == NULL) {
-      result->sdr_server.addr = strdup("127.0.0.1");
-      if (result->sdr_server.addr == NULL) {
-        return -ENOMEM;
-      }
-    }
-    if (result->sdr_server.port == 0) {
-      result->sdr_server.port = 8090;
-    }
-    if (result->sdr_server.read_timeout_seconds < 0) {
-      LOG_ERROR("sdr_server read timeout should be positive: %d", result->sdr_server.read_timeout_seconds);
-      return -1;
-    }
-    if (result->sdr_server.read_timeout_seconds == 0) {
-      result->sdr_server.read_timeout_seconds = result->read_timeout_seconds;
-    }
-  } else if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
+  if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     if (result->plutosdr.timeout_ms == 0) {
       result->plutosdr.timeout_ms = 10000;
     }
@@ -1046,9 +976,6 @@ void app_config_destroy(app_config *config) {
   }
   if (config->bind_address != NULL) {
     free(config->bind_address);
-  }
-  if (config->sdr_server.addr != NULL) {
-    free(config->sdr_server.addr);
   }
   if (config->freq_offset_file != NULL) {
     free(config->freq_offset_file);

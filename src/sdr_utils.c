@@ -3,18 +3,7 @@
 #include "./sdr/plutosdr.h"
 
 int sdr_device_create(app_config *app_config, sdr_device **device) {
-  if (app_config->sdr_type == SDR_TYPE_SDR_SERVER) {
-    //re-use sdr connections
-    //this will allow demodulating different modes using the same data
-
-    // sdr_server_settings settings = app_config->sdr_server;
-    // settings.frequency = rx->rx_center_freq;
-    // settings.sample_rate = rx->rx_sample_rate;
-    // int code = sdr_server_client_create(1, &settings, app_config->buffer_size, device);
-    // if (code != 0) {
-    //   return -1;
-    // }
-  } else if (app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
+  if (app_config->sdr_type == SDR_TYPE_PLUTOSDR) {
     sdr_device *pluto = NULL;
     int code = plutosdr_create(&app_config->plutosdr, app_config->sdr_buffer_len, app_config->iio, &pluto);
     if (code != 0) {
