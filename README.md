@@ -15,6 +15,7 @@ Modem based on software defined radios.
  * Supported modulation/demodulation:
    * GFSK
  * Supported SDRs:
+   * [airspy](https://airspy.com) (rx only)
    * [plutosdr](https://www.analog.com/en/design-center/evaluation-hardware-and-software/evaluation-boards-kits/adalm-pluto.html)
    * file
  * Misc:
@@ -48,6 +49,7 @@ sdr-modem depends on several libraries:
 * libz. Should be installed in every operational system
 * libm. Same
 * [libiio](https://github.com/analogdevicesinc/libiio) for plutosdr SDR (Optional)
+* [libairspy](https://github.com/airspy/airspyone_host) for airspy SDR (Optional). Loaded at runtime, not needed to build sdr-modem
 
 All dependencies can be easily installed from [r2cloud APT repository](https://r2server.ru/apt.html):
 

@@ -32,6 +32,8 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/plutosdr.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/sdr_file.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/iio_lib.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/airspy.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr/airspy_lib.c
         )
 
 find_package(PkgConfig REQUIRED)
@@ -76,6 +78,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/)
 # speed up test compilation.
 add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/airspy_lib_mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )
@@ -127,6 +130,10 @@ target_link_libraries(test_cli sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS
 add_test(NAME test_plutosdr COMMAND test_plutosdr)
 add_executable(test_plutosdr ${CMAKE_CURRENT_SOURCE_DIR}/test/test_plutosdr.c)
 target_link_libraries(test_plutosdr sdr_modemLib sdr_modemTestLib)
+
+add_test(NAME test_airspy COMMAND test_airspy)
+add_executable(test_airspy ${CMAKE_CURRENT_SOURCE_DIR}/test/test_airspy.c)
+target_link_libraries(test_airspy sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS_INIT})
 
 file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")

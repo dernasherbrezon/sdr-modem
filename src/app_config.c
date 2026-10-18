@@ -14,6 +14,8 @@ static sdr_device_type app_config_convert_sdr_type(const char *type) {
     return SDR_TYPE_PLUTOSDR;
   } else if (strcmp(type, "file") == 0) {
     return SDR_TYPE_FILE;
+  } else if (strcmp(type, "airspy") == 0) {
+    return SDR_TYPE_AIRSPY;
   }
   return SDR_TYPE_INVALID;
 }
@@ -31,6 +33,44 @@ static int app_config_parse_gain_mode(const char *str, iio_gain_mode *result) {
     LOG_ERROR("invalid plutosdr_gain_control_mode: %s. expected manual, fast_attack, slow_attack or hybrid", str);
     return -1;
   }
+  return 0;
+}
+
+static int app_config_parse_airspy_gain_mode(const char *str, airspy_gain_mode *result) {
+  if (strcmp(str, "auto") == 0) {
+    *result = AIRSPY_GAIN_MODE_AUTO;
+  } else if (strcmp(str, "sensitivity") == 0) {
+    *result = AIRSPY_GAIN_MODE_SENSITIVITY;
+  } else if (strcmp(str, "linearity") == 0) {
+    *result = AIRSPY_GAIN_MODE_LINEARITY;
+  } else if (strcmp(str, "manual") == 0) {
+    *result = AIRSPY_GAIN_MODE_MANUAL;
+  } else {
+    LOG_ERROR("invalid airspy_gain_mode: %s. expected auto, sensitivity, linearity or manual", str);
+    return -1;
+  }
+  return 0;
+}
+
+// strict: the whole string must be a number within [0, max]. base 0 allows hex serial numbers, e.g. 0x1234ABCD
+static int app_config_parse_airspy_number(const char *name, const char *str, uint64_t max, uint64_t *result) {
+  char *end = NULL;
+  errno = 0;
+  unsigned long long value = strtoull(str, &end, 0);
+  if (str[0] == '-' || str[0] == '\0' || *end != '\0' || errno != 0 || value > max) {
+    LOG_ERROR("invalid %s: %s", name, str);
+    return -1;
+  }
+  *result = value;
+  return 0;
+}
+
+static int app_config_parse_airspy_gain(const char *name, const char *str, uint8_t max, uint8_t *result) {
+  uint64_t value;
+  if (app_config_parse_airspy_number(name, str, max, &value) != 0) {
+    return -1;
+  }
+  *result = (uint8_t) value;
   return 0;
 }
 
@@ -242,6 +282,56 @@ static void app_config_load_psk_pm_from_file(config_t *libconfig, app_config *re
 
 // frequency and sample_rate are not loaded here: they are shared with other sdr types and modems,
 // so they are taken from the generic "frequency" and "sample_rate" settings at the time of use
+static int app_config_load_airspy_gain_from_file(config_t *libconfig, const char *name, uint8_t max, uint8_t *result) {
+  const config_setting_t *setting = config_lookup(libconfig, name);
+  if (setting == NULL) {
+    return 0;
+  }
+  int value = config_setting_get_int(setting);
+  if (value < 0 || value > max) {
+    LOG_ERROR("invalid %s: %d", name, value);
+    return -1;
+  }
+  *result = (uint8_t) value;
+  return 0;
+}
+
+static int app_config_load_airspy_from_file(config_t *libconfig, app_config *result) {
+  const config_setting_t *setting = config_lookup(libconfig, "airspy_gain_mode");
+  if (setting != NULL) {
+    int code = app_config_parse_airspy_gain_mode(config_setting_get_string(setting), &result->airspy.gain_mode);
+    if (code != 0) {
+      return code;
+    }
+  }
+  int code = app_config_load_airspy_gain_from_file(libconfig, "airspy_lna_gain", AIRSPY_MAX_LNA_GAIN, &result->airspy.lna_gain);
+  if (code != 0) {
+    return code;
+  }
+  code = app_config_load_airspy_gain_from_file(libconfig, "airspy_mixer_gain", AIRSPY_MAX_MIXER_GAIN, &result->airspy.mixer_gain);
+  if (code != 0) {
+    return code;
+  }
+  code = app_config_load_airspy_gain_from_file(libconfig, "airspy_vga_gain", AIRSPY_MAX_VGA_GAIN, &result->airspy.vga_gain);
+  if (code != 0) {
+    return code;
+  }
+  setting = config_lookup(libconfig, "airspy_bias_tee");
+  if (setting != NULL) {
+    result->airspy.bias_tee = config_setting_get_bool(setting) ? true : false;
+  }
+  setting = config_lookup(libconfig, "airspy_timeout_ms");
+  if (setting != NULL) {
+    result->airspy.timeout_ms = config_setting_get_int(setting);
+  }
+  // serial numbers are 64-bit, thus are specified as strings. hex is supported: "0x1234ABCD5678EF90"
+  setting = config_lookup(libconfig, "airspy_serial");
+  if (setting != NULL) {
+    return app_config_parse_airspy_number("airspy_serial", config_setting_get_string(setting), UINT64_MAX, &result->airspy.serial_number);
+  }
+  return 0;
+}
+
 static int app_config_load_sdr_file_from_file(config_t *libconfig, app_config *result) {
   sdr_file_settings *settings = &result->sdr_file;
   const config_setting_t *setting;
@@ -353,6 +443,12 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
       }
     }
   }
+  if (result->sdr_type == SDR_TYPE_AIRSPY) {
+    code = app_config_load_airspy_from_file(libconfig, result);
+    if (code != 0) {
+      return code;
+    }
+  }
   code = app_config_load_sdr_file_from_file(libconfig, result);
   if (code != 0) {
     return code;
@@ -427,6 +523,13 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_PLUTOSDR_TX_POWERDOWN,
     OPT_PLUTOSDR_TIMEOUT_MS,
     OPT_PLUTOSDR_URI,
+    OPT_AIRSPY_GAIN_MODE,
+    OPT_AIRSPY_LNA_GAIN,
+    OPT_AIRSPY_MIXER_GAIN,
+    OPT_AIRSPY_VGA_GAIN,
+    OPT_AIRSPY_BIAS_TEE,
+    OPT_AIRSPY_TIMEOUT_MS,
+    OPT_AIRSPY_SERIAL,
     OPT_RX_FILE,
     OPT_RX_FILE_FORMAT,
     OPT_TX_FILE,
@@ -480,6 +583,13 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"plutosdr_tx_powerdown", required_argument, NULL, OPT_PLUTOSDR_TX_POWERDOWN},
     {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
     {"plutosdr_uri", required_argument, NULL, OPT_PLUTOSDR_URI},
+    {"airspy_gain_mode", required_argument, NULL, OPT_AIRSPY_GAIN_MODE},
+    {"airspy_lna_gain", required_argument, NULL, OPT_AIRSPY_LNA_GAIN},
+    {"airspy_mixer_gain", required_argument, NULL, OPT_AIRSPY_MIXER_GAIN},
+    {"airspy_vga_gain", required_argument, NULL, OPT_AIRSPY_VGA_GAIN},
+    {"airspy_bias_tee", required_argument, NULL, OPT_AIRSPY_BIAS_TEE},
+    {"airspy_timeout_ms", required_argument, NULL, OPT_AIRSPY_TIMEOUT_MS},
+    {"airspy_serial", required_argument, NULL, OPT_AIRSPY_SERIAL},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
     {"tx_file", required_argument, NULL, OPT_TX_FILE},
@@ -581,6 +691,39 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         }
         break;
       }
+      case OPT_AIRSPY_GAIN_MODE: {
+        int code = app_config_parse_airspy_gain_mode(optarg, &result->airspy.gain_mode);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
+      case OPT_AIRSPY_LNA_GAIN:
+        if (app_config_parse_airspy_gain("airspy_lna_gain", optarg, AIRSPY_MAX_LNA_GAIN, &result->airspy.lna_gain) != 0) {
+          return -1;
+        }
+        break;
+      case OPT_AIRSPY_MIXER_GAIN:
+        if (app_config_parse_airspy_gain("airspy_mixer_gain", optarg, AIRSPY_MAX_MIXER_GAIN, &result->airspy.mixer_gain) != 0) {
+          return -1;
+        }
+        break;
+      case OPT_AIRSPY_VGA_GAIN:
+        if (app_config_parse_airspy_gain("airspy_vga_gain", optarg, AIRSPY_MAX_VGA_GAIN, &result->airspy.vga_gain) != 0) {
+          return -1;
+        }
+        break;
+      case OPT_AIRSPY_BIAS_TEE:
+        result->airspy.bias_tee = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
+        break;
+      case OPT_AIRSPY_TIMEOUT_MS:
+        result->airspy.timeout_ms = (unsigned int) atoi(optarg);
+        break;
+      case OPT_AIRSPY_SERIAL:
+        if (app_config_parse_airspy_number("airspy_serial", optarg, UINT64_MAX, &result->airspy.serial_number) != 0) {
+          return -1;
+        }
+        break;
       case OPT_RX_FILE: {
         int code = app_config_replace_str(optarg, &result->sdr_file.rx_file);
         if (code != 0) {
@@ -849,6 +992,15 @@ static int app_config_validate_and_log(app_config *result) {
       result->plutosdr.uri = NULL;
     }
     result->plutosdr.sample_rate = result->sample_rate;
+  } else if (result->sdr_type == SDR_TYPE_AIRSPY) {
+    if (result->airspy.timeout_ms == 0) {
+      result->airspy.timeout_ms = 10000;
+    }
+    result->airspy.sample_rate = result->sample_rate;
+    if (is_cli_mode && result->direction == DIRECTION_TX) {
+      LOG_ERROR("sdr_type=airspy doesn't support tx");
+      return -1;
+    }
   } else if (result->sdr_type == SDR_TYPE_FILE) {
     if (!is_cli_mode) {
       LOG_ERROR("sdr_type=file is not supported in the server mode");
@@ -966,6 +1118,14 @@ int app_config_create(int argc, char **argv, app_config **config) {
     }
   }
 
+  if (result->sdr_type == SDR_TYPE_AIRSPY) {
+    code = airspy_lib_create(&result->airspy_lib);
+    if (code != 0) {
+      app_config_destroy(result);
+      return -1;
+    }
+  }
+
   *config = result;
   return 0;
 }
@@ -997,6 +1157,9 @@ void app_config_destroy(app_config *config) {
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);
+  }
+  if (config->airspy_lib != NULL) {
+    airspy_lib_destroy(config->airspy_lib);
   }
   if (config->sdr_file.rx_file != NULL) {
     free(config->sdr_file.rx_file);

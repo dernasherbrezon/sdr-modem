@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include "sdr/iio_lib.h"
 #include "sdr/plutosdr.h"
+#include "sdr/airspy_lib.h"
+#include "sdr/airspy.h"
 #include "dsp/gfsk_modem.h"
 #include "dsp/bpsk_modem.h"
 #include "dsp/psk_pm_modem.h"
@@ -16,7 +18,8 @@ typedef enum {
   SDR_TYPE_INVALID = -1,
   SDR_TYPE_NONE = 0,
   SDR_TYPE_PLUTOSDR,
-  SDR_TYPE_FILE
+  SDR_TYPE_FILE,
+  SDR_TYPE_AIRSPY
 } sdr_device_type;
 
 #define FRAMING_TYPE_NONE 0
@@ -49,6 +52,10 @@ typedef struct app_config_t {
   plutosdr_settings plutosdr;
 
   iio_lib *iio;
+
+  airspy_settings airspy;
+
+  airspy_lib *airspy_lib;
 
   char *input_file;
   char *output_file;
