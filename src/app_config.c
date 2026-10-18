@@ -400,6 +400,10 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
   if (setting != NULL) {
     result->sample_rate = (uint64_t) config_setting_get_int64(setting);
   }
+  setting = config_lookup(libconfig, "gain");
+  if (setting != NULL) {
+    result->gain = (float) config_setting_get_float(setting);
+  }
   app_config_load_gfsk_from_file(libconfig, result);
   app_config_load_psk_from_file(libconfig, result);
   app_config_load_psk_pm_from_file(libconfig, result);
