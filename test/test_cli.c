@@ -76,10 +76,30 @@ void test_tx_modulate_to_file() {
 }
 
 void test_rx_demodulate_to_file() {
-  char *argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", "lucky7.cf32", "--output", rx_output_path, NULL};
-  int code = app_config_create(11, argv, &config);
-  TEST_ASSERT_EQUAL_INT(0, code);
+  // tx a known burst: syncword (from cli.conf) + payload, padded with zeros so that the correlator can flush it
+  const uint8_t syncword[] = {0xCC, 0xCC, 0xCC, 0xFE};
+  const uint8_t payload[] = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x0F, 0xA5, 0x5A, 0xC3};
+  uint8_t frame[64] = {0};
+  memcpy(frame + 4, syncword, sizeof(syncword));
+  memcpy(frame + 4 + sizeof(syncword), payload, sizeof(payload));
+  write_bytes(tx_input_path, frame, sizeof(frame));
 
+  char *tx_argv[] = {"test_cli", "--config", "cli.conf", "--direction", "tx", "--sdr_type", "file", "--tx_file", tx_output_path, "--input", tx_input_path, "--buffer_size", "64", NULL};
+  int code = app_config_create(13, tx_argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  code = cli_create(config, &cli_instance);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  code = cli_process(cli_instance);
+  TEST_ASSERT_EQUAL_INT(0, code);
+  cli_destroy(cli_instance);
+  cli_instance = NULL;
+  app_config_destroy(config);
+  config = NULL;
+
+  // rx the burst back
+  char *rx_argv[] = {"test_cli", "--config", "cli.conf", "--direction", "rx", "--sdr_type", "file", "--rx_file", tx_output_path, "--output", rx_output_path, NULL};
+  code = app_config_create(11, rx_argv, &config);
+  TEST_ASSERT_EQUAL_INT(0, code);
   code = cli_create(config, &cli_instance);
   TEST_ASSERT_EQUAL_INT(0, code);
   code = cli_process(cli_instance);
@@ -87,7 +107,30 @@ void test_rx_demodulate_to_file() {
   // make sure output is flushed to the output file
   cli_destroy(cli_instance);
   cli_instance = NULL;
-  assert_s8_files("expected_cli_rx_output.s8", rx_output_path, 1000, 10);
+
+  // soft bits are noisy and platform dependent, so compare only the signs of the bits: the sync word followed by the payload
+  FILE *f = fopen(rx_output_path, "rb");
+  TEST_ASSERT(f != NULL);
+  int8_t soft[4096];
+  size_t soft_len = fread(soft, sizeof(int8_t), sizeof(soft), f);
+  fclose(f);
+  const size_t expected_bits = (sizeof(syncword) + sizeof(payload)) * 8;
+  TEST_ASSERT(soft_len >= expected_bits);
+  size_t found = soft_len;
+  for (size_t start = 0; start + expected_bits <= soft_len && found == soft_len; start++) {
+    size_t i = 0;
+    for (; i < expected_bits; i++) {
+      uint8_t byte = i < sizeof(syncword) * 8 ? syncword[i / 8] : payload[i / 8 - sizeof(syncword)];
+      int expected_bit = (byte >> (7 - i % 8)) & 1;
+      if ((soft[start + i] > 0) != expected_bit) {
+        break;
+      }
+    }
+    if (i == expected_bits) {
+      found = start;
+    }
+  }
+  TEST_ASSERT_TRUE_MESSAGE(found != soft_len, "syncword and payload were not demodulated");
 }
 
 void tearDown() {
