@@ -64,6 +64,9 @@ void assert_float_array(const float expected[], size_t expected_size, float *act
 void assert_byte_array(const int8_t expected[], size_t expected_size, int8_t *actual, size_t actual_size, int tolerance) {
   TEST_ASSERT_EQUAL_INT(expected_size, actual_size);
   for (size_t i = 0; i < expected_size; i++) {
+    if ( abs((int8_t) expected[i] - actual[i]) > tolerance ) {
+      printf("failed: %d\n", abs((int8_t) expected[i] - actual[i]));
+    }
     TEST_ASSERT(abs((int8_t) expected[i] - actual[i]) <= tolerance);
   }
 }
