@@ -432,7 +432,7 @@ void test_rx_write_failures() {
     create_ok(settings);
     airspy_lib_mock_fail(cases[i].function);
     sdr_channel_config cfg = config(433000000, 2500000, 5);
-    TEST_ASSERT_EQUAL_INT_MESSAGE(-1, device->set_rx_parameters(&cfg, device->plugin), cases[i].function);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(-9999, device->set_rx_parameters(&cfg, device->plugin), cases[i].function);
     device->destroy(device->plugin);
     free(device);
     device = NULL;
@@ -445,7 +445,7 @@ void test_rx_sample_rate_retried_after_failure() {
   create_ok(default_settings());
   sdr_channel_config cfg = config(433000000, 2500000, 0);
   airspy_lib_mock_fail("airspy_set_samplerate");
-  TEST_ASSERT_EQUAL_INT(-1, device->set_rx_parameters(&cfg, device->plugin));
+  TEST_ASSERT_EQUAL_INT(-9999, device->set_rx_parameters(&cfg, device->plugin));
   airspy_lib_mock_fail(NULL);
   // the failed write must not be remembered as the current sample rate
   TEST_ASSERT_EQUAL_INT(0, device->set_rx_parameters(&cfg, device->plugin));

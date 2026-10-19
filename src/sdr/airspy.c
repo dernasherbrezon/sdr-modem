@@ -15,6 +15,15 @@
 #define AIRSPY_MIN_RING_SAMPLES 262144
 #define AIRSPY_RING_BUFFERS 16
 
+#define ERROR_CHECK(x, dev)           \
+    do {                           \
+      int __err_rc = (x);          \
+      if (__err_rc != 0) { \
+        LOG_ERROR("airspy failure: %s (%d)", (dev)->lib->airspy_error_name(__err_rc), __err_rc); \
+        return __err_rc;           \
+      }                            \
+    } while (0)
+
 struct airspy_t {
   airspy_lib *lib;
   struct airspy_device *device;
@@ -45,13 +54,13 @@ struct airspy_t {
   bool rx_enabled;
 };
 
-static int airspy_check(int code, const char *what, airspy *dev) {
-  if (code != AIRSPY_LIB_SUCCESS) {
-    LOG_ERROR("unable to %s: %s (%d)", what, dev->lib->airspy_error_name(code), code);
-    return -1;
-  }
-  return 0;
-}
+// static int airspy_check(int code, const char *what, airspy *dev) {
+//   if (code != AIRSPY_LIB_SUCCESS) {
+//     LOG_ERROR("unable to %s: %s (%d)", what, dev->lib->airspy_error_name(code), code);
+//     return -1;
+//   }
+//   return 0;
+// }
 
 static const char *airspy_gain_mode_name(airspy_gain_mode mode) {
   switch (mode) {
@@ -159,11 +168,9 @@ static int airspy_process_rx(float complex **output, size_t *output_len, void *p
 }
 
 static int airspy_set_agc(airspy *dev, uint8_t enabled) {
-  int code = airspy_check(dev->lib->airspy_set_lna_agc(dev->device, enabled), "set lna agc", dev);
-  if (code != 0) {
-    return code;
-  }
-  return airspy_check(dev->lib->airspy_set_mixer_agc(dev->device, enabled), "set mixer agc", dev);
+  ERROR_CHECK(dev->lib->airspy_set_lna_agc(dev->device, enabled), dev);
+  ERROR_CHECK(dev->lib->airspy_set_mixer_agc(dev->device, enabled), dev);
+  return 0;
 }
 
 static int airspy_apply_gain(float gain, airspy *dev) {
@@ -174,33 +181,31 @@ static int airspy_apply_gain(float gain, airspy *dev) {
       if (code != 0) {
         return code;
       }
-      return airspy_check(dev->lib->airspy_set_vga_gain(dev->device, dev->vga_gain), "set vga gain", dev);
+      ERROR_CHECK(dev->lib->airspy_set_vga_gain(dev->device, dev->vga_gain), dev);
+      return 0;
     case AIRSPY_GAIN_MODE_SENSITIVITY:
       code = airspy_set_agc(dev, 0);
       if (code != 0) {
         return code;
       }
-      return airspy_check(dev->lib->airspy_set_sensitivity_gain(dev->device, (uint8_t) lroundf(gain)), "set sensitivity gain", dev);
+      ERROR_CHECK(dev->lib->airspy_set_sensitivity_gain(dev->device, (uint8_t) lroundf(gain)), dev);
+      return 0;
     case AIRSPY_GAIN_MODE_LINEARITY:
       code = airspy_set_agc(dev, 0);
       if (code != 0) {
         return code;
       }
-      return airspy_check(dev->lib->airspy_set_linearity_gain(dev->device, (uint8_t) lroundf(gain)), "set linearity gain", dev);
+      ERROR_CHECK(dev->lib->airspy_set_linearity_gain(dev->device, (uint8_t) lroundf(gain)), dev);
+      return 0;
     case AIRSPY_GAIN_MODE_MANUAL:
       code = airspy_set_agc(dev, 0);
       if (code != 0) {
         return code;
       }
-      code = airspy_check(dev->lib->airspy_set_lna_gain(dev->device, dev->lna_gain), "set lna gain", dev);
-      if (code != 0) {
-        return code;
-      }
-      code = airspy_check(dev->lib->airspy_set_mixer_gain(dev->device, dev->mixer_gain), "set mixer gain", dev);
-      if (code != 0) {
-        return code;
-      }
-      return airspy_check(dev->lib->airspy_set_vga_gain(dev->device, dev->vga_gain), "set vga gain", dev);
+      ERROR_CHECK(dev->lib->airspy_set_lna_gain(dev->device, dev->lna_gain), dev);
+      ERROR_CHECK(dev->lib->airspy_set_mixer_gain(dev->device, dev->mixer_gain), dev);
+      ERROR_CHECK(dev->lib->airspy_set_vga_gain(dev->device, dev->vga_gain), dev);
+      return 0;
     default:
       return -1;
   }
@@ -220,10 +225,7 @@ static int airspy_set_sample_rate(uint64_t sample_rate, airspy *dev) {
     LOG_ERROR("sample_rate is not supported: %" PRIu64, sample_rate);
     return -1;
   }
-  int code = airspy_check(dev->lib->airspy_set_samplerate(dev->device, (uint32_t) sample_rate), "set sample rate", dev);
-  if (code != 0) {
-    return code;
-  }
+  ERROR_CHECK(dev->lib->airspy_set_samplerate(dev->device, (uint32_t) sample_rate), dev);
   dev->current_sample_rate = sample_rate;
   return 0;
 }
@@ -241,7 +243,7 @@ static void airspy_start_rx(void *plugin) {
   dev->rx_enabled = true;
   pthread_mutex_unlock(&dev->mutex);
 
-  if (airspy_check(dev->lib->airspy_start_rx(dev->device, airspy_rx_callback, dev), "start rx", dev) != 0) {
+  if (dev->lib->airspy_start_rx(dev->device, airspy_rx_callback, dev) != 0) {
     pthread_mutex_lock(&dev->mutex);
     dev->rx_enabled = false;
     pthread_mutex_unlock(&dev->mutex);
@@ -258,7 +260,7 @@ static void airspy_stop_rx(void *plugin) {
   pthread_mutex_unlock(&dev->mutex);
   if (was_enabled) {
     // must be called without the lock: it joins the streaming thread, which can be waiting in the callback for the lock
-    airspy_check(dev->lib->airspy_stop_rx(dev->device), "stop rx", dev);
+    dev->lib->airspy_stop_rx(dev->device);
   }
 }
 
@@ -284,10 +286,7 @@ static int airspy_set_rx_parameters(sdr_channel_config *config, void *plugin) {
       return code;
     }
   }
-  code = airspy_check(dev->lib->airspy_set_freq(dev->device, (uint32_t) config->frequency), "set frequency", dev);
-  if (code != 0) {
-    return code;
-  }
+  ERROR_CHECK(dev->lib->airspy_set_freq(dev->device, (uint32_t) config->frequency), dev);
   code = airspy_apply_gain(config->gain, dev);
   if (code != 0) {
     return code;
@@ -339,10 +338,7 @@ static int airspy_validate_settings(const airspy_settings *settings) {
 
 static int airspy_load_sample_rates(airspy *dev) {
   uint32_t count = 0;
-  int code = airspy_check(dev->lib->airspy_get_samplerates(dev->device, &count, 0), "get number of sample rates", dev);
-  if (code != 0) {
-    return code;
-  }
+  ERROR_CHECK(dev->lib->airspy_get_samplerates(dev->device, &count, 0), dev);
   if (count == 0) {
     LOG_ERROR("airspy doesn't report any sample rates");
     return -1;
@@ -351,10 +347,7 @@ static int airspy_load_sample_rates(airspy *dev) {
   if (dev->sample_rates == NULL) {
     return -ENOMEM;
   }
-  code = airspy_check(dev->lib->airspy_get_samplerates(dev->device, dev->sample_rates, count), "get sample rates", dev);
-  if (code != 0) {
-    return code;
-  }
+  ERROR_CHECK(dev->lib->airspy_get_samplerates(dev->device, dev->sample_rates, count), dev);
   dev->sample_rates_len = count;
   return 0;
 }
@@ -409,7 +402,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
     airspy_destroy(dev);
     return -1;
   }
-  code = airspy_check(lib->airspy_set_sample_type(dev->device, AIRSPY_LIB_SAMPLE_FLOAT32_IQ), "set sample type", dev);
+  code = lib->airspy_set_sample_type(dev->device, AIRSPY_LIB_SAMPLE_FLOAT32_IQ);
   if (code != 0) {
     airspy_destroy(dev);
     return -1;
@@ -419,7 +412,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
     airspy_destroy(dev);
     return code == -ENOMEM ? code : -1;
   }
-  code = airspy_check(lib->airspy_set_rf_bias(dev->device, settings->bias_tee ? 1 : 0), "set bias tee", dev);
+  code = lib->airspy_set_rf_bias(dev->device, settings->bias_tee ? 1 : 0);
   if (code != 0) {
     airspy_destroy(dev);
     return -1;
