@@ -50,11 +50,11 @@ static void log_client(struct sockaddr_in *address, uint32_t id) {
   LOG_INFO("[%d] accepted new client from %s:%d", id, ptr, ntohs(address->sin_port));
 }
 
-static void *tcp_worker_callback(tcp_server *worker) {
-  uint32_t id = worker->client_counter;
+static void *tcp_worker_callback(tcp_server *server) {
+  uint32_t id = server->client_counter;
   LOG_DEBUG("[%d] tcp_worker is starting", id);
-  while (worker->is_running && !worker->client_disconnected) {
-    int code = tcp_utils_read_data(worker->buffer, API_HEADER_SIZE, worker->client_socket);
+  while (server->is_running && !server->client_disconnected) {
+    int code = tcp_utils_read_data(server->buffer, API_HEADER_SIZE, server->client_socket);
     if (code < -1) {
       // read timeout happened. it's ok.
       // client already sent all information we need
@@ -62,27 +62,27 @@ static void *tcp_worker_callback(tcp_server *worker) {
     }
     if (code == -1) {
       LOG_INFO("[%d] client disconnected", id);
-      client_tx_worker_send_new(-1, worker->tx_worker);
-      worker->client_disconnected = true;
+      client_tx_worker_send_new(-1, server->tx_worker);
+      server->client_disconnected = true;
       break;
     }
     message_header header;
-    code = api_decode_message_header(worker->buffer, API_HEADER_SIZE, &header);
+    code = api_decode_message_header(server->buffer, API_HEADER_SIZE, &header);
     if (code != 0) {
       //do not log failure attempts, might be ddos from malicious client
       continue;
     }
     if (header.protocol_version != PROTOCOL_VERSION) {
       LOG_ERROR("[%d] unsupported protocol: %d", id, header.protocol_version);
-      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
       continue;
     }
-    if (header.message_length > worker->buffer_length) {
-      LOG_ERROR("message length %"PRIu32" is bigger than allowed %zu", header.message_length, worker->buffer_length);
-      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+    if (header.message_length > server->buffer_length) {
+      LOG_ERROR("message length %"PRIu32" is bigger than allowed %zu", header.message_length, server->buffer_length);
+      client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
       continue;
     }
-    code = tcp_utils_read_data(worker->buffer, header.message_length, worker->client_socket);
+    code = tcp_utils_read_data(server->buffer, header.message_length, server->client_socket);
     if (code != 0) {
       //do not log failure attempts, might be ddos from malicious client
       continue;
@@ -94,69 +94,68 @@ static void *tcp_worker_callback(tcp_server *worker) {
         // if OK then pass worker->buffer (serialized settings) to the worker thread
         // next step of validation will happen there
         comm_settings settings;
-        code = api_decode_comm_settings(worker->buffer, header.message_length, &settings);
+        code = api_decode_comm_settings(server->buffer, header.message_length, &settings);
         if (code != 0) {
-          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
           break;
         }
 
         if (header.type == MESSAGE_TYPE_TX_COMM_PARAMETERS) {
-          if (worker->sdr_tx_worker == NULL) {
-            client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          if (server->sdr_tx_worker == NULL) {
+            client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
           } else {
-            sdr_tx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+            sdr_tx_worker_set_comm_parameters(header.request_id, server->buffer, header.message_length, server->sdr_tx_worker);
           }
         } else if (header.type == MESSAGE_TYPE_RX_COMM_PARAMETERS) {
-          sdr_rx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_rx_worker);
+          sdr_rx_worker_set_comm_parameters(header.request_id, server->buffer, header.message_length, server->sdr_rx_worker);
         }
         break;
       }
       case MESSAGE_TYPE_TX_FRAME: {
-        if (header.message_length > worker->app_config->max_frame_size) {
-          LOG_ERROR("frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, worker->app_config->max_frame_size);
+        if (header.message_length > server->app_config->max_frame_size) {
+          LOG_ERROR("frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, server->app_config->max_frame_size);
           break;
         }
-        if (worker->sdr_tx_worker == NULL) {
-          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        if (server->sdr_tx_worker == NULL) {
+          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
           break;
         }
         // frame must be read fully before passing to sdr
         // this will ensure sdr won't underflow
-        sdr_tx_worker_send(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+        sdr_tx_worker_send(header.request_id, server->buffer, header.message_length, server->sdr_tx_worker);
         break;
       }
       case MESSAGE_TYPE_RX_START: {
-        sdr_rx_worker_start(header.request_id, worker->sdr_rx_worker);
+        sdr_rx_worker_start(header.request_id, server->sdr_rx_worker);
         break;
       }
       case MESSAGE_TYPE_RX_STOP: {
-        sdr_rx_worker_stop(header.request_id, worker->sdr_rx_worker);
+        sdr_rx_worker_stop(header.request_id, server->sdr_rx_worker);
         break;
       }
       case MESSAGE_TYPE_PING: {
-        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, server->tx_worker);
         break;
       }
       case MESSAGE_TYPE_SHUTDOWN: {
         LOG_INFO("[%d] client requested disconnect", id);
-        client_tx_worker_send_new(-1, worker->tx_worker);
-        worker->client_disconnected = true;
+        client_tx_worker_send_new(-1, server->tx_worker);
+        server->client_disconnected = true;
         break;
       }
       default: {
         LOG_ERROR("[%d] unsupported request: %d", id, header.type);
-        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+        client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
         break;
       }
     }
   }
 
   // do not leave sdr running without a client
-  sdr_rx_worker_stop(0, worker->sdr_rx_worker);
+  sdr_rx_worker_stop(0, server->sdr_rx_worker);
 
-  close(worker->client_socket);
+  close(server->client_socket);
 
-  worker->is_running = false;
   return (void *) 0;
 }
 
