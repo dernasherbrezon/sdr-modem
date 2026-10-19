@@ -941,7 +941,7 @@ static int app_config_validate_and_log(app_config *result) {
   if (result->sdr_buffer_len == 0) {
     result->sdr_buffer_len = 262144;
   }
-  LOG_INFO("buffer size: %d", result->sdr_buffer_len);
+  LOG_INFO("sdr buffer len: %d", result->sdr_buffer_len);
   if (result->port == 0) {
     result->port = 8091;
   }

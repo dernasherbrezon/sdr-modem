@@ -344,7 +344,7 @@ static char *plutosdr_find_default_uri(const iio_lib *lib) {
     return NULL;
   }
   if (code == 0) {
-    LOG_ERROR("no sdr contexts found");
+    LOG_ERROR("unable to find plutosdr");
     lib->iio_scan_context_destroy(scan_ctx);
     return NULL;
   }
@@ -519,17 +519,16 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
 
   if (settings->uri == NULL) {
     pluto->uri = plutosdr_find_default_uri(lib);
+    if (pluto->uri == NULL) {
+      plutosdr_destroy(pluto);
+      return -1;
+    }
   } else {
     pluto->uri = strdup(settings->uri);
   }
-  if (pluto->uri == NULL) {
-    LOG_ERROR("unable to find plutosdr context. specify plutosdr_uri explicitly");
-    plutosdr_destroy(pluto);
-    return -1;
-  }
   pluto->iio_ctx = lib->iio_create_context_from_uri(pluto->uri);
   if (pluto->iio_ctx == NULL) {
-    LOG_ERROR("unable to initialize context from: %s", pluto->uri);
+    LOG_ERROR("unable to initialize from: %s", pluto->uri);
     plutosdr_destroy(pluto);
     return -1;
   }
