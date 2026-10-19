@@ -804,10 +804,8 @@ void test_destroy_not_started() {
 
 void test_tx_not_supported() {
   create_ok(default_settings());
-  sdr_channel_config cfg = config(433000000, 2500000, 0);
-  TEST_ASSERT_EQUAL_INT(-1, device->set_tx_parameters(&cfg, device->plugin));
-  float complex input[BUFFER_LEN] = {0};
-  TEST_ASSERT_EQUAL_INT(-1, device->sdr_process_tx(input, BUFFER_LEN, device->plugin));
+  TEST_ASSERT_NULL(device->set_tx_parameters);
+  TEST_ASSERT_NULL(device->sdr_process_tx);
 }
 
 void tearDown() {
