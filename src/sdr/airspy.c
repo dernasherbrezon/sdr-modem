@@ -158,11 +158,6 @@ static int airspy_process_rx(float complex **output, size_t *output_len, void *p
   return 0;
 }
 
-static int airspy_process_tx(float complex *input, size_t input_len, void *plugin) {
-  LOG_ERROR("airspy doesn't support tx");
-  return -1;
-}
-
 static int airspy_set_agc(airspy *dev, uint8_t enabled) {
   int code = airspy_check(dev->lib->airspy_set_lna_agc(dev->device, enabled), "set lna agc", dev);
   if (code != 0) {
@@ -299,11 +294,6 @@ static int airspy_set_rx_parameters(sdr_channel_config *config, void *plugin) {
   }
   LOG_INFO("airspy rx: frequency=%" PRIu64 " sample_rate=%" PRIu64 " gain_mode=%s gain=%.1f", config->frequency, config->sample_rate, airspy_gain_mode_name(dev->gain_mode), config->gain);
   return 0;
-}
-
-static int airspy_set_tx_parameters(sdr_channel_config *config, void *plugin) {
-  LOG_ERROR("airspy doesn't support tx");
-  return -1;
 }
 
 static void airspy_destroy(void *plugin) {
@@ -449,10 +439,10 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
   }
   result->plugin = dev;
   result->sdr_process_rx = airspy_process_rx;
-  result->sdr_process_tx = airspy_process_tx;
+  result->sdr_process_tx = NULL;
   result->destroy = airspy_destroy;
   result->set_rx_parameters = airspy_set_rx_parameters;
-  result->set_tx_parameters = airspy_set_tx_parameters;
+  result->set_tx_parameters = NULL;
   result->start_rx = airspy_start_rx;
   result->stop_rx = airspy_stop_rx;
 

@@ -101,7 +101,11 @@ static void *tcp_worker_callback(tcp_server *worker) {
         }
 
         if (header.type == MESSAGE_TYPE_TX_COMM_PARAMETERS) {
-          sdr_tx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+          if (worker->sdr_tx_worker == NULL) {
+            client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
+          } else {
+            sdr_tx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_tx_worker);
+          }
         } else if (header.type == MESSAGE_TYPE_RX_COMM_PARAMETERS) {
           sdr_rx_worker_set_comm_parameters(header.request_id, worker->buffer, header.message_length, worker->sdr_rx_worker);
         }
@@ -110,6 +114,10 @@ static void *tcp_worker_callback(tcp_server *worker) {
       case MESSAGE_TYPE_TX_FRAME: {
         if (header.message_length > worker->app_config->max_frame_size) {
           LOG_ERROR("frame length %"PRIu32" is bigger than max allowed %"PRIu32, header.message_length, worker->app_config->max_frame_size);
+          break;
+        }
+        if (worker->sdr_tx_worker == NULL) {
+          client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;
         }
         // frame must be read fully before passing to sdr
@@ -225,10 +233,13 @@ int tcp_server_create(app_config *config, tcp_server **server) {
     tcp_server_destroy(result);
     return -1;
   }
-  code = sdr_tx_worker_create(config->max_frame_size, config->queue_size, result->tx_worker, result->sdr, &result->sdr_tx_worker);
-  if (code != 0) {
-    tcp_server_destroy(result);
-    return -1;
+  // some SDRs don't support TX
+  if (result->sdr->sdr_process_tx != NULL) {
+    code = sdr_tx_worker_create(config->max_frame_size, config->queue_size, result->tx_worker, result->sdr, &result->sdr_tx_worker);
+    if (code != 0) {
+      tcp_server_destroy(result);
+      return -1;
+    }
   }
   int opt = 1;
   if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
