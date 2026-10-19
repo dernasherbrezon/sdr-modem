@@ -35,6 +35,8 @@ void sdr_device_destroy(sdr_device *device) {
   if (device == NULL) {
     return;
   }
-  device->destroy(device->plugin);
+  if (device->plugin != NULL) {
+    device->destroy(device->plugin);
+  }
   free(device);
 }

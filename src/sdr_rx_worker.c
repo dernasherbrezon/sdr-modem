@@ -29,8 +29,8 @@ struct sdr_rx_worker_t {
   // accessed only from the dsp thread
   bool rx_enabled;
 
-  pthread_t dsp_thread;
-  bool dsp_thread_started;
+  pthread_t thread;
+  bool thread_started;
 };
 
 static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_worker *worker) {
@@ -183,14 +183,12 @@ int sdr_rx_worker_create(uint32_t sdr_buffer_len, client_tx_worker *tx_worker, s
   }
 
   // start processing
-  pthread_t dsp_thread;
-  code = pthread_create(&dsp_thread, NULL, &sdr_rx_worker_callback, result);
+  code = pthread_create(&result->thread, NULL, &sdr_rx_worker_callback, result);
   if (code != 0) {
     sdr_rx_worker_destroy(result);
     return -1;
   }
-  result->dsp_thread = dsp_thread;
-  result->dsp_thread_started = true;
+  result->thread_started = true;
 
   *worker = result;
   return 0;
@@ -208,14 +206,9 @@ void sdr_rx_worker_destroy(void *data) {
   if (worker->queue != NULL) {
     queue_interrupt(worker->queue);
   }
-  if (worker->dsp_thread_started) {
+  if (worker->thread_started) {
     // wait until thread terminates and only then destroy the worker
-    pthread_join(worker->dsp_thread, NULL);
-  }
-  //destroy the rx device
-  if (worker->sdr != NULL) {
-    worker->sdr->destroy(worker->sdr->plugin);
-    free(worker->sdr);
+    pthread_join(worker->thread, NULL);
   }
   // cleanup everything only when thread terminates
   if (worker->modem != NULL) {
