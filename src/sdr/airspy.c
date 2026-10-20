@@ -2,18 +2,15 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <math.h>
-#include <pthread.h>
 #include <string.h>
-#include <time.h>
 #include "../log.h"
+#include "../queue.h"
 
 // supported by r820t tuner
 #define AIRSPY_MIN_FREQUENCY 24000000ULL
 #define AIRSPY_MAX_FREQUENCY 1750000000ULL
-#define AIRSPY_DEFAULT_TIMEOUT_MS 10000
-// the device delivers large blocks (64k samples), thus the ring must hold several of them
-#define AIRSPY_MIN_RING_SAMPLES 262144
-#define AIRSPY_RING_BUFFERS 16
+// the queue is not blocking: when it is full the newest buffer is overwritten
+#define AIRSPY_QUEUE_SIZE 16
 
 struct airspy_t {
   airspy_lib *lib;
@@ -23,7 +20,6 @@ struct airspy_t {
   uint8_t lna_gain;
   uint8_t mixer_gain;
   uint8_t vga_gain;
-  unsigned int timeout_ms;
 
   uint32_t *sample_rates;
   size_t sample_rates_len;
@@ -31,18 +27,15 @@ struct airspy_t {
   uint64_t current_sample_rate;
 
   size_t sdr_buffer_len;
+  // filled by the libairspy streaming thread and drained by airspy_process_rx.
+  // Each message is exactly sdr_buffer_len samples. The queue is interrupted (poison pill) until start_rx and after stop_rx
+  queue *queue;
+  bool rx_started;
+  // device blocks are accumulated here until sdr_buffer_len samples are collected. Used only by the libairspy streaming thread
+  float complex *staging;
+  size_t staging_len;
+  // copy of the buffer taken from the queue
   float complex *output;
-
-  // ring buffer filled by the libairspy streaming thread and drained by airspy_process_rx
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
-  bool sync_initialized;
-  float complex *ring;
-  size_t ring_len;
-  size_t ring_head;
-  size_t ring_count;
-  uint64_t dropped_samples;
-  bool rx_enabled;
 };
 
 static int airspy_check(int code, const char *what, airspy *dev) {
@@ -71,30 +64,29 @@ static const char *airspy_gain_mode_name(airspy_gain_mode mode) {
 // runs in the libairspy streaming thread
 static int airspy_rx_callback(airspy_lib_transfer *transfer) {
   airspy *dev = (airspy *) transfer->ctx;
-  pthread_mutex_lock(&dev->mutex);
-  if (!dev->rx_enabled) {
-    pthread_mutex_unlock(&dev->mutex);
-    return 0;
-  }
-  size_t samples = transfer->sample_count > 0 ? (size_t) transfer->sample_count : 0;
-  dev->dropped_samples += transfer->dropped_samples;
-  if (transfer->sample_type != AIRSPY_LIB_SAMPLE_FLOAT32_IQ || samples > dev->ring_len - dev->ring_count) {
-    // never write partial blocks: it is better to lose the whole block than to glue unrelated parts together
-    dev->dropped_samples += samples;
-    pthread_mutex_unlock(&dev->mutex);
+  if (transfer->sample_type != AIRSPY_LIB_SAMPLE_FLOAT32_IQ || transfer->sample_count <= 0) {
     return 0;
   }
   const float complex *input = (const float complex *) transfer->samples;
-  size_t tail = (dev->ring_head + dev->ring_count) % dev->ring_len;
-  size_t first = dev->ring_len - tail;
-  if (first > samples) {
-    first = samples;
+  size_t remaining = (size_t) transfer->sample_count;
+  while (remaining > 0) {
+    size_t len = dev->sdr_buffer_len - dev->staging_len;
+    if (len > remaining) {
+      len = remaining;
+    }
+    memcpy(dev->staging + dev->staging_len, input, len * sizeof(float complex));
+    dev->staging_len += len;
+    input += len;
+    remaining -= len;
+    if (dev->staging_len == dev->sdr_buffer_len) {
+      queue_message message = {
+        .buffer = dev->staging,
+        .buffer_len = dev->sdr_buffer_len * sizeof(float complex),
+      };
+      queue_put(&message, dev->queue);
+      dev->staging_len = 0;
+    }
   }
-  memcpy(dev->ring + tail, input, first * sizeof(float complex));
-  memcpy(dev->ring, input + first, (samples - first) * sizeof(float complex));
-  dev->ring_count += samples;
-  pthread_cond_signal(&dev->cond);
-  pthread_mutex_unlock(&dev->mutex);
   return 0;
 }
 
@@ -102,57 +94,14 @@ static int airspy_process_rx(float complex **output, size_t *output_len, void *p
   airspy *dev = (airspy *) plugin;
   *output = NULL;
   *output_len = 0;
-
-  struct timespec deadline;
-  clock_gettime(CLOCK_REALTIME, &deadline);
-  deadline.tv_sec += dev->timeout_ms / 1000;
-  deadline.tv_nsec += (long) (dev->timeout_ms % 1000) * 1000000L;
-  if (deadline.tv_nsec >= 1000000000L) {
-    deadline.tv_sec++;
-    deadline.tv_nsec -= 1000000000L;
-  }
-
-  pthread_mutex_lock(&dev->mutex);
-  if (!dev->rx_enabled) {
-    pthread_mutex_unlock(&dev->mutex);
-    LOG_ERROR("rx was not started");
+  queue_message message;
+  queue_take(&message, dev->queue);
+  if (message.buffer == NULL) {
+    // poison pill: rx is not started or was stopped and everything was read
     return -1;
   }
-  while (dev->rx_enabled && dev->ring_count < dev->sdr_buffer_len) {
-    if (pthread_cond_timedwait(&dev->cond, &dev->mutex, &deadline) == ETIMEDOUT) {
-      break;
-    }
-  }
-  if (!dev->rx_enabled) {
-    // stopped while waiting
-    pthread_mutex_unlock(&dev->mutex);
-    return -1;
-  }
-  if (dev->ring_count < dev->sdr_buffer_len) {
-    pthread_mutex_unlock(&dev->mutex);
-    if (dev->lib->airspy_is_streaming(dev->device) != AIRSPY_LIB_TRUE) {
-      LOG_ERROR("airspy stopped streaming");
-      return -1;
-    }
-    // any code below -1 is treated by the caller as a recoverable timeout
-    return -ETIMEDOUT;
-  }
-
-  size_t first = dev->ring_len - dev->ring_head;
-  if (first > dev->sdr_buffer_len) {
-    first = dev->sdr_buffer_len;
-  }
-  memcpy(dev->output, dev->ring + dev->ring_head, first * sizeof(float complex));
-  memcpy(dev->output + first, dev->ring, (dev->sdr_buffer_len - first) * sizeof(float complex));
-  dev->ring_head = (dev->ring_head + dev->sdr_buffer_len) % dev->ring_len;
-  dev->ring_count -= dev->sdr_buffer_len;
-  uint64_t dropped = dev->dropped_samples;
-  dev->dropped_samples = 0;
-  pthread_mutex_unlock(&dev->mutex);
-
-  if (dropped > 0) {
-    LOG_WARN("airspy dropped %" PRIu64 " samples", dropped);
-  }
+  memcpy(dev->output, message.buffer, message.buffer_len);
+  queue_complete(dev->queue);
   *output = dev->output;
   *output_len = dev->sdr_buffer_len;
   return 0;
@@ -228,36 +177,29 @@ static int airspy_set_sample_rate(uint64_t sample_rate, airspy *dev) {
   return 0;
 }
 
+// start_rx, stop_rx and process_rx are expected to be called from the same thread, except stop_rx which can be also called during shutdown
 static void airspy_start_rx(void *plugin) {
   airspy *dev = (airspy *) plugin;
-  pthread_mutex_lock(&dev->mutex);
-  if (dev->rx_enabled) {
-    pthread_mutex_unlock(&dev->mutex);
+  if (dev->rx_started) {
     return;
   }
-  dev->ring_head = 0;
-  dev->ring_count = 0;
-  dev->dropped_samples = 0;
-  dev->rx_enabled = true;
-  pthread_mutex_unlock(&dev->mutex);
-
+  // discard data from the previous session and remove the poison pill
+  queue_reset(dev->queue);
+  dev->staging_len = 0;
   if (airspy_check(dev->lib->airspy_start_rx(dev->device, airspy_rx_callback, dev), "start rx", dev) != 0) {
-    pthread_mutex_lock(&dev->mutex);
-    dev->rx_enabled = false;
-    pthread_mutex_unlock(&dev->mutex);
+    // do not let airspy_process_rx wait for the data which will never come
+    queue_interrupt(dev->queue);
+    return;
   }
+  dev->rx_started = true;
 }
 
 static void airspy_stop_rx(void *plugin) {
   airspy *dev = (airspy *) plugin;
-  pthread_mutex_lock(&dev->mutex);
-  bool was_enabled = dev->rx_enabled;
-  dev->rx_enabled = false;
-  // wake up airspy_process_rx
-  pthread_cond_broadcast(&dev->cond);
-  pthread_mutex_unlock(&dev->mutex);
-  if (was_enabled) {
-    // must be called without the lock: it joins the streaming thread, which can be waiting in the callback for the lock
+  // wake up airspy_process_rx. It returns the remaining buffers first
+  queue_interrupt(dev->queue);
+  if (dev->rx_started) {
+    dev->rx_started = false;
     airspy_check(dev->lib->airspy_stop_rx(dev->device), "stop rx", dev);
   }
 }
@@ -302,18 +244,21 @@ static void airspy_destroy(void *plugin) {
   }
   airspy *dev = (airspy *) plugin;
   if (dev->device != NULL) {
-    if (dev->sync_initialized) {
-      airspy_stop_rx(dev);
-    }
+    airspy_stop_rx(dev);
     dev->lib->airspy_close(dev->device);
   }
-  if (dev->sync_initialized) {
-    pthread_cond_destroy(&dev->cond);
-    pthread_mutex_destroy(&dev->mutex);
+  if (dev->queue != NULL) {
+    destroy_queue(dev->queue);
   }
-  free(dev->ring);
-  free(dev->output);
-  free(dev->sample_rates);
+  if (dev->staging != NULL) {
+    free(dev->staging);
+  }
+  if (dev->output != NULL) {
+    free(dev->output);
+  }
+  if (dev->sample_rates != NULL) {
+    free(dev->sample_rates);
+  }
   free(dev);
 }
 
@@ -360,7 +305,7 @@ static int airspy_load_sample_rates(airspy *dev) {
 }
 
 int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airspy_lib *lib, sdr_device **output) {
-  if (sdr_buffer_len == 0 || airspy_validate_settings(settings) != 0) {
+  if (sdr_buffer_len == 0 || sdr_buffer_len > UINT32_MAX / sizeof(float complex) || airspy_validate_settings(settings) != 0) {
     return -1;
   }
   struct airspy_t *dev = malloc(sizeof(struct airspy_t));
@@ -369,35 +314,24 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
   }
   *dev = (struct airspy_t){0};
   dev->lib = lib;
-  dev->sdr_buffer_len = sdr_buffer_len;
   dev->gain_mode = settings->gain_mode;
   dev->lna_gain = settings->lna_gain;
   dev->mixer_gain = settings->mixer_gain;
   dev->vga_gain = settings->vga_gain;
-  dev->timeout_ms = settings->timeout_ms != 0 ? settings->timeout_ms : AIRSPY_DEFAULT_TIMEOUT_MS;
 
-  dev->ring_len = (size_t) sdr_buffer_len * AIRSPY_RING_BUFFERS;
-  if (dev->ring_len < AIRSPY_MIN_RING_SAMPLES) {
-    dev->ring_len = AIRSPY_MIN_RING_SAMPLES;
-  }
-  dev->ring = malloc(sizeof(float complex) * dev->ring_len);
+  dev->sdr_buffer_len = sdr_buffer_len;
+  dev->staging = malloc(sizeof(float complex) * sdr_buffer_len);
   dev->output = malloc(sizeof(float complex) * sdr_buffer_len);
-  if (dev->ring == NULL || dev->output == NULL) {
+  if (dev->staging == NULL || dev->output == NULL) {
     airspy_destroy(dev);
     return -ENOMEM;
   }
-  if (pthread_mutex_init(&dev->mutex, NULL) != 0) {
+  int code = create_queue(sizeof(float complex) * sdr_buffer_len, AIRSPY_QUEUE_SIZE, false, &dev->queue);
+  if (code != 0) {
     airspy_destroy(dev);
-    return -1;
+    return code;
   }
-  if (pthread_cond_init(&dev->cond, NULL) != 0) {
-    pthread_mutex_destroy(&dev->mutex);
-    airspy_destroy(dev);
-    return -1;
-  }
-  dev->sync_initialized = true;
 
-  int code;
   if (settings->serial_number == 0) {
     code = lib->airspy_open(&dev->device);
   } else {
@@ -417,7 +351,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
   code = airspy_load_sample_rates(dev);
   if (code != 0) {
     airspy_destroy(dev);
-    return code == -ENOMEM ? code : -1;
+    return -1;
   }
   code = airspy_check(lib->airspy_set_rf_bias(dev->device, settings->bias_tee ? 1 : 0), "set bias tee", dev);
   if (code != 0) {
@@ -446,9 +380,9 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
   result->start_rx = airspy_start_rx;
   result->stop_rx = airspy_stop_rx;
 
-  LOG_INFO("airspy: serial=%" PRIu64 " gain_mode=%s lna_gain=%u mixer_gain=%u vga_gain=%u bias_tee=%s timeout_ms=%u sample_rates=%zu",
+  LOG_INFO("airspy: serial=%" PRIu64 " gain_mode=%s lna_gain=%u mixer_gain=%u vga_gain=%u bias_tee=%s sample_rates=%zu",
            settings->serial_number, airspy_gain_mode_name(settings->gain_mode), settings->lna_gain, settings->mixer_gain, settings->vga_gain,
-           settings->bias_tee ? "true" : "false", dev->timeout_ms, dev->sample_rates_len);
+           settings->bias_tee ? "true" : "false", dev->sample_rates_len);
   *output = result;
   return 0;
 }

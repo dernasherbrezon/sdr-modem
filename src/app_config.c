@@ -320,10 +320,6 @@ static int app_config_load_airspy_from_file(config_t *libconfig, app_config *res
   if (setting != NULL) {
     result->airspy.bias_tee = config_setting_get_bool(setting) ? true : false;
   }
-  setting = config_lookup(libconfig, "airspy_timeout_ms");
-  if (setting != NULL) {
-    result->airspy.timeout_ms = config_setting_get_int(setting);
-  }
   // serial numbers are 64-bit, thus are specified as strings. hex is supported: "0x1234ABCD5678EF90"
   setting = config_lookup(libconfig, "airspy_serial");
   if (setting != NULL) {
@@ -528,7 +524,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_AIRSPY_MIXER_GAIN,
     OPT_AIRSPY_VGA_GAIN,
     OPT_AIRSPY_BIAS_TEE,
-    OPT_AIRSPY_TIMEOUT_MS,
     OPT_AIRSPY_SERIAL,
     OPT_RX_FILE,
     OPT_RX_FILE_FORMAT,
@@ -588,7 +583,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"airspy_mixer_gain", required_argument, NULL, OPT_AIRSPY_MIXER_GAIN},
     {"airspy_vga_gain", required_argument, NULL, OPT_AIRSPY_VGA_GAIN},
     {"airspy_bias_tee", required_argument, NULL, OPT_AIRSPY_BIAS_TEE},
-    {"airspy_timeout_ms", required_argument, NULL, OPT_AIRSPY_TIMEOUT_MS},
     {"airspy_serial", required_argument, NULL, OPT_AIRSPY_SERIAL},
     {"rx_file", required_argument, NULL, OPT_RX_FILE},
     {"rx_file_format", required_argument, NULL, OPT_RX_FILE_FORMAT},
@@ -715,9 +709,6 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_AIRSPY_BIAS_TEE:
         result->airspy.bias_tee = (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0);
-        break;
-      case OPT_AIRSPY_TIMEOUT_MS:
-        result->airspy.timeout_ms = (unsigned int) atoi(optarg);
         break;
       case OPT_AIRSPY_SERIAL:
         if (app_config_parse_airspy_number("airspy_serial", optarg, UINT64_MAX, &result->airspy.serial_number) != 0) {
@@ -993,9 +984,6 @@ static int app_config_validate_and_log(app_config *result) {
     }
     result->plutosdr.sample_rate = result->sample_rate;
   } else if (result->sdr_type == SDR_TYPE_AIRSPY) {
-    if (result->airspy.timeout_ms == 0) {
-      result->airspy.timeout_ms = 10000;
-    }
     result->airspy.sample_rate = result->sample_rate;
     if (is_cli_mode && result->direction == DIRECTION_TX) {
       LOG_ERROR("sdr_type=airspy doesn't support tx");

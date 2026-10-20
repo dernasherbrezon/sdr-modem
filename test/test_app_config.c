@@ -65,7 +65,6 @@ void test_airspy_enabled() {
   TEST_ASSERT_EQUAL_INT(12, config->airspy.mixer_gain);
   TEST_ASSERT_EQUAL_INT(13, config->airspy.vga_gain);
   TEST_ASSERT_TRUE(config->airspy.bias_tee);
-  TEST_ASSERT_EQUAL_INT(20000, config->airspy.timeout_ms);
   TEST_ASSERT_EQUAL_UINT64(0x1234ABCD5678EF90ULL, config->airspy.serial_number);
 }
 
@@ -75,7 +74,6 @@ void test_airspy_defaults() {
   int code = app_config_create(5, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(AIRSPY_GAIN_MODE_AUTO, config->airspy.gain_mode);
-  TEST_ASSERT_EQUAL_INT(10000, config->airspy.timeout_ms);
   TEST_ASSERT_EQUAL_UINT64(0, config->airspy.serial_number);
   TEST_ASSERT_FALSE(config->airspy.bias_tee);
 }
@@ -103,15 +101,14 @@ void test_airspy_gain_modes_from_cli() {
 void test_airspy_override_from_cli() {
   ignore_if_no_libairspy();
   char *argv[] = {"test_app_config", "--config", "airspy_enabled.conf", "--airspy_gain_mode", "linearity", "--airspy_lna_gain", "3",
-                  "--airspy_mixer_gain", "0", "--airspy_vga_gain", "15", "--airspy_bias_tee", "false", "--airspy_timeout_ms", "500",
+                  "--airspy_mixer_gain", "0", "--airspy_vga_gain", "15", "--airspy_bias_tee", "false",
                   "--airspy_serial", "12345", NULL};
-  TEST_ASSERT_EQUAL_INT(0, app_config_create(17, argv, &config));
+  TEST_ASSERT_EQUAL_INT(0, app_config_create(15, argv, &config));
   TEST_ASSERT_EQUAL_INT(AIRSPY_GAIN_MODE_LINEARITY, config->airspy.gain_mode);
   TEST_ASSERT_EQUAL_INT(3, config->airspy.lna_gain);
   TEST_ASSERT_EQUAL_INT(0, config->airspy.mixer_gain);
   TEST_ASSERT_EQUAL_INT(15, config->airspy.vga_gain);
   TEST_ASSERT_FALSE(config->airspy.bias_tee);
-  TEST_ASSERT_EQUAL_INT(500, config->airspy.timeout_ms);
   TEST_ASSERT_EQUAL_UINT64(12345, config->airspy.serial_number);
 }
 

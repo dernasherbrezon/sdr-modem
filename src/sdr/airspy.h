@@ -37,8 +37,6 @@ typedef struct {
   bool bias_tee;
   // 0 - use the first available device
   uint64_t serial_number;
-  // how long process_rx waits for the next buffer from the device
-  unsigned int timeout_ms;
   // default sample rate. 0 - leave as is
   uint64_t sample_rate;
 } airspy_settings;
