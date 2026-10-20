@@ -14,7 +14,7 @@ typedef struct {
   size_t buffer_len;
 } queue_message;
 
-int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue **queue);
+int queue_create(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue **queue);
 
 int queue_put(const queue_message *message, queue *queue);
 

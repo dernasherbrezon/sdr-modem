@@ -197,7 +197,7 @@ int sdr_rx_worker_create(uint32_t sdr_buffer_len, client_tx_worker *tx_worker, s
   result->request_id = 0;
   result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-  int code = create_queue(sdr_buffer_len, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
+  int code = queue_create(sdr_buffer_len, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
   if (code != 0) {
     sdr_rx_worker_destroy(result);
     return -1;

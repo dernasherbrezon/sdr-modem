@@ -23,13 +23,13 @@ static void take_expect_byte(uint8_t value) {
 }
 
 void test_create_invalid_args(void) {
-  TEST_ASSERT_NOT_EQUAL(0, create_queue(0, 2, true, &q));
-  TEST_ASSERT_NOT_EQUAL(0, create_queue(8, 0, true, &q));
+  TEST_ASSERT_NOT_EQUAL(0, queue_create(0, 2, true, &q));
+  TEST_ASSERT_NOT_EQUAL(0, queue_create(8, 0, true, &q));
   TEST_ASSERT_NULL(q);
 }
 
 void test_put_invalid_message(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(4, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(4, 2, true, &q));
   TEST_ASSERT_EQUAL_INT(-1, queue_put(NULL, q));
   uint8_t data[8] = {0};
   queue_message too_big = {.buffer = data, .buffer_len = sizeof(data)};
@@ -39,7 +39,7 @@ void test_put_invalid_message(void) {
 }
 
 void test_put_take_fifo(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 3, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 3, true, &q));
   put_byte(1, 0);
   put_byte(2, 0);
   put_byte(3, 0);
@@ -49,7 +49,7 @@ void test_put_take_fifo(void) {
 }
 
 void test_nonblocking_overwrites_last_when_full(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, false, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, false, &q));
   put_byte(1, 0);
   put_byte(2, 0);
   put_byte(3, 0);
@@ -69,7 +69,7 @@ static void *delayed_complete(void *arg) {
 }
 
 void test_blocking_put_waits_for_free_node(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 1, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 1, true, &q));
   put_byte(1, 0);
   pthread_t thread;
   TEST_ASSERT_EQUAL_INT(0, pthread_create(&thread, NULL, delayed_complete, NULL));
@@ -86,7 +86,7 @@ static void *delayed_interrupt(void *arg) {
 }
 
 void test_interrupt_wakes_take(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   pthread_t thread;
   TEST_ASSERT_EQUAL_INT(0, pthread_create(&thread, NULL, delayed_interrupt, NULL));
   queue_message out = {0};
@@ -97,7 +97,7 @@ void test_interrupt_wakes_take(void) {
 }
 
 void test_interrupt_wakes_blocked_put(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 1, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 1, true, &q));
   put_byte(1, 0);
   pthread_t thread;
   TEST_ASSERT_EQUAL_INT(0, pthread_create(&thread, NULL, delayed_interrupt, NULL));
@@ -106,13 +106,13 @@ void test_interrupt_wakes_blocked_put(void) {
 }
 
 void test_put_rejected_after_interrupt(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   queue_interrupt(q);
   put_byte(1, -1);
 }
 
 void test_take_drains_after_interrupt(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   put_byte(1, 0);
   queue_interrupt(q);
   take_expect_byte(1);
@@ -127,7 +127,7 @@ void test_interrupt_null(void) {
 }
 
 void test_peak_empty(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   queue_message message = {0};
   message.buffer = (void *) 1;
   queue_peak(&message, q);
@@ -135,7 +135,7 @@ void test_peak_empty(void) {
 }
 
 void test_peak_available(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   uint8_t data[] = {1, 2, 3, 4};
   queue_message in = {.type = 7, .request_id = 42, .buffer = data, .buffer_len = sizeof(data)};
   TEST_ASSERT_EQUAL_INT(0, queue_put(&in, q));
@@ -155,7 +155,7 @@ void test_peak_available(void) {
 }
 
 void test_peak_order_and_reuse(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   for (uint8_t i = 0; i < 5; i++) {
     uint8_t data = i;
     queue_message in = {.type = i, .request_id = i, .buffer = &data, .buffer_len = 1};
@@ -169,7 +169,7 @@ void test_peak_order_and_reuse(void) {
 }
 
 void test_peak_after_interrupt(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, false, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, false, &q));
   queue_interrupt(q);
   queue_message out = {0};
   queue_peak(&out, q);
@@ -177,7 +177,7 @@ void test_peak_after_interrupt(void) {
 }
 
 void test_reset_after_interrupt(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   put_byte(1, 0);
   put_byte(2, 0);
   queue_interrupt(q);
@@ -195,7 +195,7 @@ void test_reset_after_interrupt(void) {
 }
 
 void test_reset_keeps_free_nodes(void) {
-  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  TEST_ASSERT_EQUAL_INT(0, queue_create(8, 2, true, &q));
   // one node is filled and one is still free
   put_byte(1, 0);
   queue_reset(q);

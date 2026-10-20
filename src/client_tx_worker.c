@@ -163,7 +163,7 @@ int client_tx_worker_create(uint32_t buffer_size, uint16_t queue_size, client_tx
   *result = (struct client_tx_worker_t){0};
   result->client_socket = -1;
 
-  int code = create_queue(buffer_size, queue_size, true, &result->queue);
+  int code = queue_create(buffer_size, queue_size, true, &result->queue);
   if (code != 0) {
     client_tx_worker_destroy(result);
     return code;

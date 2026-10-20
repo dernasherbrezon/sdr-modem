@@ -104,7 +104,7 @@ int sdr_tx_worker_create(uint32_t max_frame_size, uint16_t queue_size, client_tx
   result->tx_worker = tx_worker;
   result->max_frame_size = max_frame_size;
 
-  int code = create_queue(max_frame_size, queue_size, true, &result->queue);
+  int code = queue_create(max_frame_size, queue_size, true, &result->queue);
   if (code != 0) {
     sdr_tx_worker_destroy(result);
     return code;
