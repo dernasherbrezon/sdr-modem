@@ -7,6 +7,19 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
 endif ()
 
+if (NOT PACKAGE_VERSION)
+    execute_process(
+            COMMAND git rev-parse --short HEAD
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE PACKAGE_VERSION
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+endif ()
+if (NOT PACKAGE_VERSION)
+    set(PACKAGE_VERSION "unknown")
+endif ()
+add_definitions(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
+
 add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/log.c

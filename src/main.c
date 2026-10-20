@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 
 #include "app_config.h"
@@ -19,6 +20,12 @@ void sdrmodem_stop_async(int signum) {
 
 int main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IOLBF, 0);
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0) {
+      printf("%s\n", PACKAGE_VERSION);
+      return EXIT_SUCCESS;
+    }
+  }
   app_config *app_config = NULL;
   int code = app_config_create(argc, argv, &app_config);
   if (code != 0) {
