@@ -176,6 +176,36 @@ void test_peak_after_interrupt(void) {
   TEST_ASSERT_NULL(out.buffer);
 }
 
+void test_reset_after_interrupt(void) {
+  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  put_byte(1, 0);
+  put_byte(2, 0);
+  queue_interrupt(q);
+  queue_reset(q);
+  // pending messages are dropped and the pill is removed
+  put_byte(3, 0);
+  put_byte(4, 0);
+  take_expect_byte(3);
+  take_expect_byte(4);
+  queue_interrupt(q);
+  queue_message out = {0};
+  out.buffer = (void *) 1;
+  queue_take(&out, q);
+  TEST_ASSERT_NULL(out.buffer);
+}
+
+void test_reset_keeps_free_nodes(void) {
+  TEST_ASSERT_EQUAL_INT(0, create_queue(8, 2, true, &q));
+  // one node is filled and one is still free
+  put_byte(1, 0);
+  queue_reset(q);
+  // both nodes are available: a blocking put would hang otherwise
+  put_byte(2, 0);
+  put_byte(3, 0);
+  take_expect_byte(2);
+  take_expect_byte(3);
+}
+
 void tearDown(void) {
   if (q != NULL) {
     destroy_queue(q);
@@ -203,5 +233,7 @@ int main(void) {
   RUN_TEST(test_peak_available);
   RUN_TEST(test_peak_order_and_reuse);
   RUN_TEST(test_peak_after_interrupt);
+  RUN_TEST(test_reset_after_interrupt);
+  RUN_TEST(test_reset_keeps_free_nodes);
   return UNITY_END();
 }

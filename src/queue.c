@@ -251,3 +251,19 @@ void queue_interrupt(queue *queue) {
   pthread_cond_broadcast(&queue->condition);
   pthread_mutex_unlock(&queue->mutex);
 }
+
+void queue_reset(queue *queue) {
+  pthread_mutex_lock(&queue->mutex);
+  if (queue->first_filled_node != NULL) {
+    if (queue->last_free_node == NULL) {
+      queue->first_free_node = queue->first_filled_node;
+    } else {
+      queue->last_free_node->next = queue->first_filled_node;
+    }
+    queue->last_free_node = queue->last_filled_node;
+    queue->first_filled_node = NULL;
+    queue->last_filled_node = NULL;
+  }
+  queue->poison_pill = 0;
+  pthread_mutex_unlock(&queue->mutex);
+}

@@ -28,6 +28,10 @@ void queue_complete(queue *queue);
 
 void queue_interrupt(queue *queue);
 
+// drops all pending messages and removes the poison pill, so that the queue can be reused after queue_interrupt.
+// Must not be called while a message is being processed (between queue_take/queue_peak and queue_complete)
+void queue_reset(queue *queue);
+
 void destroy_queue(queue *queue);
 
 #endif /* QUEUE_H_ */
