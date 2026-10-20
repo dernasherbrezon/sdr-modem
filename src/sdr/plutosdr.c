@@ -671,7 +671,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     return code;
   }
 
-  struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
+  sdr_device *result = malloc(sizeof(sdr_device));
   if (result == NULL) {
     plutosdr_destroy(pluto);
     return -ENOMEM;

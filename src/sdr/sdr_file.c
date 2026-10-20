@@ -292,7 +292,7 @@ int sdr_file_create(const sdr_file_settings *settings, uint32_t sdr_buffer_len, 
     }
   }
 
-  struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
+  sdr_device *result = malloc(sizeof(sdr_device));
   if (result == NULL) {
     sdr_file_destroy(device);
     return -ENOMEM;

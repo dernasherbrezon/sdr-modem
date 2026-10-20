@@ -366,7 +366,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
     }
   }
 
-  struct sdr_device_t *result = malloc(sizeof(struct sdr_device_t));
+  sdr_device *result = malloc(sizeof(sdr_device));
   if (result == NULL) {
     airspy_destroy(dev);
     return -ENOMEM;
