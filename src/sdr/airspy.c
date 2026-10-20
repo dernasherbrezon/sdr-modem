@@ -4,7 +4,6 @@
 #include <math.h>
 #include <string.h>
 #include "../log.h"
-#include "../queue.h"
 
 // supported by r820t tuner
 #define AIRSPY_MIN_FREQUENCY 24000000ULL
@@ -27,13 +26,13 @@ struct airspy_t {
   uint64_t current_sample_rate;
 
   size_t sdr_buffer_len;
-  // filled by the libairspy streaming thread and drained by airspy_process_rx.
-  // Each message is exactly sdr_buffer_len samples. The queue is interrupted (poison pill) until start_rx and after stop_rx
-  queue *queue;
-  bool rx_started;
   // device blocks are accumulated here until sdr_buffer_len samples are collected. Used only by the libairspy streaming thread
   float complex *staging;
   size_t staging_len;
+
+  void (*callback)(float complex *input, size_t input_len, void *ctx);
+
+  void *callback_ctx;
   // copy of the buffer taken from the queue
   float complex *output;
 };
@@ -79,32 +78,17 @@ static int airspy_rx_callback(airspy_lib_transfer *transfer) {
     input += len;
     remaining -= len;
     if (dev->staging_len == dev->sdr_buffer_len) {
-      queue_message message = {
-        .buffer = dev->staging,
-        .buffer_len = dev->sdr_buffer_len * sizeof(float complex),
-      };
-      queue_put(&message, dev->queue);
+      dev->callback(dev->staging, dev->sdr_buffer_len, dev->callback_ctx);
       dev->staging_len = 0;
     }
   }
   return 0;
 }
 
-static int airspy_process_rx(float complex **output, size_t *output_len, void *plugin) {
+void airspy_set_rx_callback(void (*callback)(float complex *input, size_t input_len, void *ctx), void *ctx, void *plugin) {
   airspy *dev = (airspy *) plugin;
-  *output = NULL;
-  *output_len = 0;
-  queue_message message;
-  queue_take(&message, dev->queue);
-  if (message.buffer == NULL) {
-    // poison pill: rx is not started or was stopped and everything was read
-    return -1;
-  }
-  memcpy(dev->output, message.buffer, message.buffer_len);
-  queue_complete(dev->queue);
-  *output = dev->output;
-  *output_len = dev->sdr_buffer_len;
-  return 0;
+  dev->callback_ctx = ctx;
+  dev->callback = callback;
 }
 
 static int airspy_set_agc(airspy *dev, uint8_t enabled) {
@@ -180,28 +164,13 @@ static int airspy_set_sample_rate(uint64_t sample_rate, airspy *dev) {
 // start_rx, stop_rx and process_rx are expected to be called from the same thread, except stop_rx which can be also called during shutdown
 static void airspy_start_rx(void *plugin) {
   airspy *dev = (airspy *) plugin;
-  if (dev->rx_started) {
-    return;
-  }
-  // discard data from the previous session and remove the poison pill
-  queue_reset(dev->queue);
   dev->staging_len = 0;
-  if (airspy_check(dev->lib->airspy_start_rx(dev->device, airspy_rx_callback, dev), "start rx", dev) != 0) {
-    // do not let airspy_process_rx wait for the data which will never come
-    queue_interrupt(dev->queue);
-    return;
-  }
-  dev->rx_started = true;
+  airspy_check(dev->lib->airspy_start_rx(dev->device, airspy_rx_callback, dev), "start rx", dev);
 }
 
 static void airspy_stop_rx(void *plugin) {
   airspy *dev = (airspy *) plugin;
-  // wake up airspy_process_rx. It returns the remaining buffers first
-  queue_interrupt(dev->queue);
-  if (dev->rx_started) {
-    dev->rx_started = false;
-    airspy_check(dev->lib->airspy_stop_rx(dev->device), "stop rx", dev);
-  }
+  airspy_check(dev->lib->airspy_stop_rx(dev->device), "stop rx", dev);
 }
 
 static int airspy_set_rx_parameters(sdr_channel_config *config, void *plugin) {
@@ -246,9 +215,6 @@ static void airspy_destroy(void *plugin) {
   if (dev->device != NULL) {
     airspy_stop_rx(dev);
     dev->lib->airspy_close(dev->device);
-  }
-  if (dev->queue != NULL) {
-    destroy_queue(dev->queue);
   }
   if (dev->staging != NULL) {
     free(dev->staging);
@@ -326,12 +292,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
     airspy_destroy(dev);
     return -ENOMEM;
   }
-  int code = create_queue(sizeof(float complex) * sdr_buffer_len, AIRSPY_QUEUE_SIZE, false, &dev->queue);
-  if (code != 0) {
-    airspy_destroy(dev);
-    return code;
-  }
-
+  int code = 0;
   if (settings->serial_number == 0) {
     code = lib->airspy_open(&dev->device);
   } else {
@@ -339,7 +300,6 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
   }
   if (code != AIRSPY_LIB_SUCCESS) {
     LOG_ERROR("unable to open airspy: %s (%d)", lib->airspy_error_name(code), code);
-    dev->device = NULL;
     airspy_destroy(dev);
     return -1;
   }
@@ -372,7 +332,8 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
     return -ENOMEM;
   }
   result->plugin = dev;
-  result->sdr_process_rx = airspy_process_rx;
+  result->sdr_set_rx_callback = airspy_set_rx_callback;
+  result->sdr_process_rx = NULL;
   result->sdr_process_tx = NULL;
   result->destroy = airspy_destroy;
   result->set_rx_parameters = airspy_set_rx_parameters;

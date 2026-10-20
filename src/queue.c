@@ -44,6 +44,7 @@ void destroy_nodes(struct queue_node *nodes) {
   }
 }
 
+//FIXME rename to match naming convention
 int create_queue(uint32_t buffer_size, uint16_t queue_size, bool blocking, queue **queue) {
   if (queue_size == 0) {
     LOG_ERROR("invalid queue size: %d", queue_size);

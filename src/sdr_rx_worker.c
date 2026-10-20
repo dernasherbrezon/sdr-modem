@@ -26,8 +26,11 @@ struct sdr_rx_worker_t {
   sdr_device *sdr;
   sdr_modem *modem;
 
+  pthread_mutex_t mutex;
+
   // accessed only from the dsp thread
   bool rx_enabled;
+  uint32_t request_id;
 
   pthread_t thread;
   bool thread_started;
@@ -84,12 +87,27 @@ static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_wo
   }
 }
 
+static void sdr_rx_callback(float complex *output, size_t output_len, void *ctx) {
+  sdr_rx_worker *worker = (sdr_rx_worker *) ctx;
+
+  int8_t *demod_output = NULL;
+  size_t demod_output_len = 0;
+  pthread_mutex_lock(&worker->mutex);
+  if (worker->modem != NULL) {
+    sdr_modem_demodulate(output, output_len, &demod_output, &demod_output_len, worker->modem);
+  }
+  pthread_mutex_unlock(&worker->mutex);
+  if (demod_output == NULL) {
+    return;
+  }
+
+  client_tx_worker_send_soft_bits(worker->request_id, demod_output, demod_output_len, worker->tx_worker);
+  worker->request_id++;
+}
+
 static void *sdr_rx_worker_callback(void *arg) {
   sdr_rx_worker *worker = (sdr_rx_worker *) arg;
   LOG_DEBUG("sdr_rx_worker is starting");
-  float complex *output = NULL;
-  size_t output_len = 0;
-  uint32_t request_id = 0;
   while (true) {
     queue_message message;
     if (worker->rx_enabled) {
@@ -103,13 +121,21 @@ static void *sdr_rx_worker_callback(void *arg) {
       }
     }
     if (message.buffer != NULL) {
+      pthread_mutex_lock(&worker->mutex);
       sdr_rx_worker_handle_message(&message, worker);
+      pthread_mutex_unlock(&worker->mutex);
       queue_complete(worker->queue);
     }
     if (!worker->rx_enabled) {
       continue;
     }
 
+    if (worker->sdr->sdr_process_rx == NULL) {
+      continue;
+    }
+
+    float complex *output = NULL;
+    size_t output_len = 0;
     int code = worker->sdr->sdr_process_rx(&output, &output_len, worker->sdr->plugin);
     if (code < -1) {
       // read timeout happened. it's ok.
@@ -120,17 +146,7 @@ static void *sdr_rx_worker_callback(void *arg) {
       break;
     }
 
-    int8_t *demod_output = NULL;
-    size_t demod_output_len = 0;
-    if (worker->modem != NULL) {
-      sdr_modem_demodulate(output, output_len, &demod_output, &demod_output_len, worker->modem);
-    }
-    if (demod_output == NULL) {
-      continue;
-    }
-
-    client_tx_worker_send_soft_bits(request_id, demod_output, demod_output_len, worker->tx_worker);
-    request_id++;
+    sdr_rx_callback(output, output_len, worker);
   }
   LOG_DEBUG("sdr_rx_worker stopped");
   return (void *) 0;
@@ -175,11 +191,17 @@ int sdr_rx_worker_create(uint32_t sdr_buffer_len, client_tx_worker *tx_worker, s
   result->sdr = sdr;
   result->tx_worker = tx_worker;
   result->sdr_buffer_len = sdr_buffer_len;
+  result->request_id = 0;
+  result->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
   int code = create_queue(sdr_buffer_len, SDR_RX_MESSAGE_QUEUE_SIZE, true, &result->queue);
   if (code != 0) {
     sdr_rx_worker_destroy(result);
     return -1;
+  }
+
+  if (sdr->sdr_set_rx_callback != NULL) {
+    sdr->sdr_set_rx_callback(sdr_rx_callback, result, sdr->plugin);
   }
 
   // start processing

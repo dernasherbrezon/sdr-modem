@@ -14,6 +14,8 @@ typedef struct {
 typedef struct {
   void *plugin;
 
+  void (*sdr_set_rx_callback)(void (*callback)(float complex *input, size_t input_len, void *ctx), void *ctx, void *plugin);
+
   int (*sdr_process_rx)(float complex **output, size_t *output_len, void *plugin);
 
   int (*sdr_process_tx)(float complex *input, size_t input_len, void *plugin);
