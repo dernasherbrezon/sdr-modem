@@ -80,6 +80,7 @@ add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/iio_lib_mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/airspy_lib_mock.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/utils.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_modem_client.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )
 
@@ -134,6 +135,10 @@ target_link_libraries(test_plutosdr sdr_modemLib sdr_modemTestLib)
 add_test(NAME test_airspy COMMAND test_airspy)
 add_executable(test_airspy ${CMAKE_CURRENT_SOURCE_DIR}/test/test_airspy.c)
 target_link_libraries(test_airspy sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS_INIT})
+
+add_test(NAME test_tcp_server COMMAND test_tcp_server)
+add_executable(test_tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_server.c)
+target_link_libraries(test_tcp_server sdr_modemLib sdr_modemTestLib ${CMAKE_THREAD_LIBS_INIT})
 
 file(GLOB TEST_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/resources/*)
 file(COPY ${TEST_RESOURCES} DESTINATION "${CMAKE_BINARY_DIR}")

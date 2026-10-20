@@ -80,7 +80,10 @@ static void *tcp_worker_callback(tcp_server *server) {
     if (header.message_length > server->buffer_length) {
       LOG_ERROR("message length %"PRIu32" is bigger than allowed %zu", header.message_length, server->buffer_length);
       client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);
-      continue;
+      // the payload is not read, so the stream cannot be resynchronized. drop the client
+      client_tx_worker_send_new(-1, server->tx_worker);
+      server->client_disconnected = true;
+      break;
     }
     code = tcp_utils_read_data(server->buffer, header.message_length, server->client_socket);
     if (code != 0) {

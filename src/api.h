@@ -66,6 +66,10 @@ int api_encode_message_header(const message_header *header, uint8_t *buffer, siz
 
 int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_settings *settings);
 
+int api_encode_comm_settings(const comm_settings *settings, uint8_t *buffer, size_t buffer_len, size_t *written);
+
+int api_decode_response(const uint8_t *buffer, size_t buffer_len, response *resp);
+
 int api_encode_response(const response *resp, uint8_t *buffer, size_t buffer_len, size_t *written);
 
 #endif /* API_H_ */

@@ -30,6 +30,17 @@ static uint64_t read_u64(const uint8_t *p) {
   return ((uint64_t) read_u32(p) << 32) | (uint64_t) read_u32(p + 4);
 }
 
+static void write_u64(uint8_t *p, uint64_t value) {
+  write_u32(p, (uint32_t) (value >> 32));
+  write_u32(p + 4, (uint32_t) value);
+}
+
+static void write_f32(uint8_t *p, float value) {
+  uint32_t bits;
+  memcpy(&bits, &value, sizeof(bits));
+  write_u32(p, bits);
+}
+
 static float read_f32(const uint8_t *p) {
   uint32_t bits = read_u32(p);
   float result;
@@ -61,6 +72,15 @@ int api_encode_response(const response *resp, uint8_t *buffer, size_t buffer_len
   buffer[0] = resp->status;
   buffer[1] = resp->details;
   *written = API_RESPONSE_SIZE;
+  return 0;
+}
+
+int api_decode_response(const uint8_t *buffer, size_t buffer_len, response *resp) {
+  if (buffer == NULL || resp == NULL || buffer_len < API_RESPONSE_SIZE) {
+    return -1;
+  }
+  resp->status = buffer[0];
+  resp->details = buffer[1];
   return 0;
 }
 
@@ -160,5 +180,73 @@ int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_sett
   }
   decoded.modem_settings = result;
   *settings = decoded;
+  return 0;
+}
+
+int api_encode_comm_settings(const comm_settings *settings, uint8_t *buffer, size_t buffer_len, size_t *written) {
+  if (settings == NULL || buffer == NULL || written == NULL) {
+    return -1;
+  }
+  const sdr_modem_settings *modem = &settings->modem_settings;
+  size_t modem_len;
+  switch (modem->modem_type) {
+    case MODEM_TYPE_GFSK:
+      modem_len = API_GFSK_SIZE;
+      break;
+    case MODEM_TYPE_BPSK:
+    case MODEM_TYPE_DPSK:
+    case MODEM_TYPE_SDPSK:
+      modem_len = API_PSK_SIZE;
+      break;
+    case MODEM_TYPE_PSK_PM:
+      modem_len = API_PSK_PM_SIZE;
+      break;
+    default:
+      return -1;
+  }
+  size_t total = API_SDR_SIZE + 1 + modem_len;
+  if (buffer_len < total) {
+    return -1;
+  }
+  write_u64(buffer, settings->sdr_settings.frequency);
+  write_u64(buffer + 8, settings->sdr_settings.sample_rate);
+  write_f32(buffer + 16, settings->sdr_settings.gain);
+
+  buffer[API_SDR_SIZE] = modem->modem_type;
+  uint8_t *p = buffer + API_SDR_SIZE + 1;
+  switch (modem->modem_type) {
+    case MODEM_TYPE_GFSK:
+      write_u64(p, modem->modem.gfsk.sample_rate);
+      write_u32(p + 8, modem->modem.gfsk.baud_rate);
+      write_u64(p + 12, (uint64_t) modem->modem.gfsk.deviation);
+      write_u32(p + 20, modem->modem.gfsk.bandwidth);
+      write_f32(p + 24, modem->modem.gfsk.bt);
+      p[28] = modem->modem.gfsk.use_dc_block;
+      write_u64(p + 29, modem->modem.gfsk.syncword);
+      write_u32(p + 37, modem->modem.gfsk.syncword_bits);
+      break;
+    case MODEM_TYPE_PSK_PM:
+      write_u64(p, modem->modem.psk_pm.sample_rate);
+      write_u32(p + 8, modem->modem.psk_pm.subcarrier_frequency);
+      write_f32(p + 12, modem->modem.psk_pm.carrier_pll_bandwidth);
+      write_u32(p + 16, modem->modem.psk_pm.baud_rate);
+      write_u32(p + 20, modem->modem.psk_pm.subcarrier_bandwidth);
+      write_f32(p + 24, modem->modem.psk_pm.rrc_beta);
+      p[28] = modem->modem.psk_pm.rrc_delay;
+      write_f32(p + 29, modem->modem.psk_pm.costas_bandwidth);
+      p[33] = modem->modem.psk_pm.symsync_filter_bank_size;
+      write_f32(p + 34, modem->modem.psk_pm.modulation_index);
+      break;
+    default:
+      write_u64(p, modem->modem.psk.sample_rate);
+      write_u32(p + 8, modem->modem.psk.baud_rate);
+      write_u32(p + 12, modem->modem.psk.bandwidth);
+      write_f32(p + 16, modem->modem.psk.rrc_beta);
+      p[20] = modem->modem.psk.rrc_delay;
+      write_f32(p + 21, modem->modem.psk.costas_bandwidth);
+      p[25] = modem->modem.psk.symsync_filter_bank_size;
+      break;
+  }
+  *written = total;
   return 0;
 }
