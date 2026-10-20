@@ -8,8 +8,6 @@
 // supported by r820t tuner
 #define AIRSPY_MIN_FREQUENCY 24000000ULL
 #define AIRSPY_MAX_FREQUENCY 1750000000ULL
-// the queue is not blocking: when it is full the newest buffer is overwritten
-#define AIRSPY_QUEUE_SIZE 16
 
 struct airspy_t {
   airspy_lib *lib;
@@ -33,8 +31,6 @@ struct airspy_t {
   void (*callback)(float complex *input, size_t input_len, void *ctx);
 
   void *callback_ctx;
-  // copy of the buffer taken from the queue
-  float complex *output;
 };
 
 static int airspy_check(int code, const char *what, airspy *dev) {
@@ -85,7 +81,7 @@ static int airspy_rx_callback(airspy_lib_transfer *transfer) {
   return 0;
 }
 
-void airspy_set_rx_callback(void (*callback)(float complex *input, size_t input_len, void *ctx), void *ctx, void *plugin) {
+static void airspy_set_rx_callback(void (*callback)(float complex *input, size_t input_len, void *ctx), void *ctx, void *plugin) {
   airspy *dev = (airspy *) plugin;
   dev->callback_ctx = ctx;
   dev->callback = callback;
@@ -161,7 +157,7 @@ static int airspy_set_sample_rate(uint64_t sample_rate, airspy *dev) {
   return 0;
 }
 
-// start_rx, stop_rx and process_rx are expected to be called from the same thread, except stop_rx which can be also called during shutdown
+// start_rx and stop_rx are expected to be called from the same thread, except stop_rx which can be also called during shutdown
 static void airspy_start_rx(void *plugin) {
   airspy *dev = (airspy *) plugin;
   dev->staging_len = 0;
@@ -218,9 +214,6 @@ static void airspy_destroy(void *plugin) {
   }
   if (dev->staging != NULL) {
     free(dev->staging);
-  }
-  if (dev->output != NULL) {
-    free(dev->output);
   }
   if (dev->sample_rates != NULL) {
     free(dev->sample_rates);
@@ -287,8 +280,7 @@ int airspy_create(const airspy_settings *settings, uint32_t sdr_buffer_len, airs
 
   dev->sdr_buffer_len = sdr_buffer_len;
   dev->staging = malloc(sizeof(float complex) * sdr_buffer_len);
-  dev->output = malloc(sizeof(float complex) * sdr_buffer_len);
-  if (dev->staging == NULL || dev->output == NULL) {
+  if (dev->staging == NULL) {
     airspy_destroy(dev);
     return -ENOMEM;
   }

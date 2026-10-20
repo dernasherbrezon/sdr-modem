@@ -57,13 +57,18 @@ static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_wo
         client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
       }
-      if (worker->modem != NULL) {
-        sdr_modem_destroy(worker->modem);
-      }
+      // the lock protects only the modem swap: the sdr thread uses the modem in the callback
+      pthread_mutex_lock(&worker->mutex);
+      sdr_modem *old_modem = worker->modem;
       worker->modem = new_modem;
+      pthread_mutex_unlock(&worker->mutex);
+      if (old_modem != NULL) {
+        sdr_modem_destroy(old_modem);
+      }
       client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
       break;
     }
+    // start_rx and stop_rx must be called without the lock: stop_rx waits for the sdr thread, which can be blocked in the callback on the same lock
     case SDR_RX_START: {
       if (!worker->rx_enabled) {
         worker->sdr->start_rx(worker->sdr->plugin);
@@ -121,9 +126,7 @@ static void *sdr_rx_worker_callback(void *arg) {
       }
     }
     if (message.buffer != NULL) {
-      pthread_mutex_lock(&worker->mutex);
       sdr_rx_worker_handle_message(&message, worker);
-      pthread_mutex_unlock(&worker->mutex);
       queue_complete(worker->queue);
     }
     if (!worker->rx_enabled) {

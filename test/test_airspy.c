@@ -1,19 +1,44 @@
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <math.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
 #include <unity.h>
 #include "../src/sdr/airspy.h"
 #include "airspy_lib_mock.h"
 
 #define BUFFER_LEN 8
-#define QUEUE_SIZE 16
 
 sdr_device *device = NULL;
 airspy_lib *lib = NULL;
+
+// what the code under test pushed via rx callback. Samples follow the sequence produced by deliver_sequence
+typedef struct {
+  int calls;
+  size_t samples;
+  // next expected sample value
+  int expected_next;
+  // buffers of the length other than BUFFER_LEN
+  int wrong_len;
+  // samples which differ from the expected sequence
+  int mismatches;
+} collector;
+
+static collector received;
+
+// runs in the thread which delivers the data. Assertions are made by the test thread
+static void collect_callback(float complex *input, size_t input_len, void *ctx) {
+  collector *c = (collector *) ctx;
+  c->calls++;
+  if (input_len != BUFFER_LEN) {
+    c->wrong_len++;
+  }
+  for (size_t i = 0; i < input_len; i++) {
+    float expected = (float) c->expected_next++;
+    if (crealf(input[i]) != expected || cimagf(input[i]) != -expected) {
+      c->mismatches++;
+    }
+  }
+  c->samples += input_len;
+}
 
 static airspy_settings default_settings(void) {
   return (airspy_settings) {
@@ -455,31 +480,24 @@ void test_rx_sample_rate_retried_after_failure() {
 
 static void start_rx(void) {
   create_ok(default_settings());
+  device->sdr_set_rx_callback(collect_callback, &received, device->plugin);
   device->start_rx(device->plugin);
 }
 
-static void assert_block(int start, int len) {
-  float complex *output = NULL;
-  size_t output_len = 0;
-  TEST_ASSERT_EQUAL_INT(0, device->sdr_process_rx(&output, &output_len, device->plugin));
-  TEST_ASSERT_EQUAL_size_t(len, output_len);
-  for (int i = 0; i < len; i++) {
-    TEST_ASSERT_EQUAL_FLOAT((float) (start + i), crealf(output[i]));
-    TEST_ASSERT_EQUAL_FLOAT((float) (-(start + i)), cimagf(output[i]));
-  }
+static void assert_received(int calls, size_t samples) {
+  TEST_ASSERT_EQUAL_INT(calls, received.calls);
+  TEST_ASSERT_EQUAL_size_t(samples, received.samples);
+  TEST_ASSERT_EQUAL_INT_MESSAGE(0, received.wrong_len, "callback was called with a buffer of unexpected length");
+  TEST_ASSERT_EQUAL_INT_MESSAGE(0, received.mismatches, "samples were lost, duplicated or reordered");
 }
 
-static void assert_stopped(void) {
-  float complex *output = (float complex *) 0x1;
-  size_t output_len = 100;
-  TEST_ASSERT_EQUAL_INT(-1, device->sdr_process_rx(&output, &output_len, device->plugin));
-  TEST_ASSERT_NULL(output);
-  TEST_ASSERT_EQUAL_size_t(0, output_len);
-}
-
-void test_rx_not_started() {
+void test_rx_callback_interface() {
   create_ok(default_settings());
-  assert_stopped();
+  // push model: data is delivered via callback, there is nothing to pull
+  TEST_ASSERT_NOT_NULL(device->sdr_set_rx_callback);
+  TEST_ASSERT_NULL(device->sdr_process_rx);
+  TEST_ASSERT_NOT_NULL(device->start_rx);
+  TEST_ASSERT_NOT_NULL(device->stop_rx);
 }
 
 void test_rx_success() {
@@ -487,49 +505,70 @@ void test_rx_success() {
   TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->start_rx_calls);
   // device blocks are smaller than the buffer: accumulated
   deliver_sequence(0, 3);
+  assert_received(0, 0);
   deliver_sequence(3, 5);
-  assert_block(0, BUFFER_LEN);
+  assert_received(1, BUFFER_LEN);
+  // device block is exactly the buffer
+  deliver_sequence(BUFFER_LEN, BUFFER_LEN);
+  assert_received(2, BUFFER_LEN * 2);
   // device blocks are not aligned with the buffer
-  deliver_sequence(BUFFER_LEN, BUFFER_LEN * 2 + 4);
-  assert_block(BUFFER_LEN, BUFFER_LEN);
-  assert_block(BUFFER_LEN * 2, BUFFER_LEN);
+  deliver_sequence(BUFFER_LEN * 2, BUFFER_LEN * 2 + 4);
+  assert_received(4, BUFFER_LEN * 4);
   // the tail is not lost
-  deliver_sequence(BUFFER_LEN * 3 + 4, 4);
-  assert_block(BUFFER_LEN * 3, BUFFER_LEN);
+  deliver_sequence(BUFFER_LEN * 4 + 4, 4);
+  assert_received(5, BUFFER_LEN * 5);
 }
 
-void test_rx_large_blocks() {
+void test_rx_large_block() {
   start_rx();
-  int total = 100000 * BUFFER_LEN;
-  // large device block fills many buffers, but queue holds only some of them. Only check that the device is not blocked
-  deliver_sequence(0, total);
-  for (int i = 0; i < QUEUE_SIZE - 1; i++) {
-    assert_block(i * BUFFER_LEN, BUFFER_LEN);
-  }
+  int buffers = 100000;
+  // single device block spans many buffers
+  deliver_sequence(0, buffers * BUFFER_LEN);
+  assert_received(buffers, (size_t) buffers * BUFFER_LEN);
 }
 
-void test_rx_partial_buffer_is_not_returned() {
+void test_rx_many_small_blocks() {
+  start_rx();
+  for (int i = 0; i < BUFFER_LEN * 10; i++) {
+    deliver_sequence(i, 1);
+  }
+  assert_received(10, BUFFER_LEN * 10);
+}
+
+void test_rx_partial_buffer_is_not_delivered() {
   start_rx();
   deliver_sequence(0, BUFFER_LEN - 1);
+  assert_received(0, 0);
   device->stop_rx(device->plugin);
-  assert_stopped();
+  // stop doesn't flush the incomplete buffer
+  assert_received(0, 0);
 }
 
-void test_rx_overflow_does_not_block_device() {
+void test_rx_callback_receives_registered_context() {
+  create_ok(default_settings());
+  collector mine = {0};
+  device->sdr_set_rx_callback(collect_callback, &mine, device->plugin);
+  device->start_rx(device->plugin);
+  deliver_sequence(0, BUFFER_LEN);
+  TEST_ASSERT_EQUAL_INT(1, mine.calls);
+  TEST_ASSERT_EQUAL_INT(0, mine.mismatches);
+  TEST_ASSERT_EQUAL_INT(0, mine.wrong_len);
+}
+
+void test_rx_callback_can_be_replaced() {
   start_rx();
-  // the queue is not blocking: the callback must return even if nobody reads
-  for (int i = 0; i < QUEUE_SIZE * 2; i++) {
-    deliver_sequence(i * BUFFER_LEN, BUFFER_LEN);
-  }
-  // the oldest blocks are intact
-  for (int i = 0; i < QUEUE_SIZE - 1; i++) {
-    assert_block(i * BUFFER_LEN, BUFFER_LEN);
-  }
-  // the last one is overwritten with the newest data
-  assert_block((QUEUE_SIZE * 2 - 1) * BUFFER_LEN, BUFFER_LEN);
-  // and the queue is usable again
-  deliver_sequence(1000, BUFFER_LEN);
-  assert_block(1000, BUFFER_LEN);
+  deliver_sequence(0, BUFFER_LEN);
+  assert_received(1, BUFFER_LEN);
+  device->stop_rx(device->plugin);
+
+  collector second = {.expected_next = BUFFER_LEN};
+  device->sdr_set_rx_callback(collect_callback, &second, device->plugin);
+  device->start_rx(device->plugin);
+  deliver_sequence(BUFFER_LEN, BUFFER_LEN);
+  // the new callback receives the data and the old one doesn't
+  TEST_ASSERT_EQUAL_INT(1, second.calls);
+  TEST_ASSERT_EQUAL_INT(0, second.mismatches);
+  assert_received(1, BUFFER_LEN);
 }
 
 void test_rx_device_reported_dropped_samples() {
@@ -537,18 +576,18 @@ void test_rx_device_reported_dropped_samples() {
   float complex samples[BUFFER_LEN] = {0};
   // dropped samples are ignored, the data still flows
   airspy_lib_mock_deliver(samples, BUFFER_LEN, 12345, AIRSPY_LIB_SAMPLE_FLOAT32_IQ);
-  float complex *output = NULL;
-  size_t output_len = 0;
-  TEST_ASSERT_EQUAL_INT(0, device->sdr_process_rx(&output, &output_len, device->plugin));
-  TEST_ASSERT_EQUAL_size_t(BUFFER_LEN, output_len);
+  TEST_ASSERT_EQUAL_INT(1, received.calls);
+  TEST_ASSERT_EQUAL_size_t(BUFFER_LEN, received.samples);
 }
 
 void test_rx_unexpected_sample_type_is_dropped() {
   start_rx();
   float complex samples[BUFFER_LEN] = {0};
   airspy_lib_mock_deliver(samples, BUFFER_LEN, 0, 2 /* int16 iq */);
+  assert_received(0, 0);
+  // and the staging buffer is not polluted
   deliver_sequence(0, BUFFER_LEN);
-  assert_block(0, BUFFER_LEN);
+  assert_received(1, BUFFER_LEN);
 }
 
 void test_rx_empty_and_negative_blocks() {
@@ -556,110 +595,59 @@ void test_rx_empty_and_negative_blocks() {
   float complex samples[BUFFER_LEN] = {0};
   airspy_lib_mock_deliver(samples, 0, 0, AIRSPY_LIB_SAMPLE_FLOAT32_IQ);
   airspy_lib_mock_deliver(samples, -5, 0, AIRSPY_LIB_SAMPLE_FLOAT32_IQ);
+  assert_received(0, 0);
   deliver_sequence(0, BUFFER_LEN);
-  assert_block(0, BUFFER_LEN);
+  assert_received(1, BUFFER_LEN);
 }
 
-static void *delayed_deliver(void *arg) {
-  usleep(100 * 1000);
-  deliver_sequence(0, BUFFER_LEN);
-  return NULL;
-}
-
-void test_rx_waits_for_data() {
+void test_rx_stop() {
   start_rx();
-  pthread_t thread;
-  TEST_ASSERT_EQUAL_INT(0, pthread_create(&thread, NULL, delayed_deliver, NULL));
-  assert_block(0, BUFFER_LEN);
-  pthread_join(thread, NULL);
-}
-
-static void *delayed_stop(void *arg) {
-  usleep(100 * 1000);
+  deliver_sequence(0, BUFFER_LEN);
   device->stop_rx(device->plugin);
-  return NULL;
-}
-
-void test_rx_stop_wakes_up_waiting_reader() {
-  start_rx();
-  pthread_t thread;
-  TEST_ASSERT_EQUAL_INT(0, pthread_create(&thread, NULL, delayed_stop, NULL));
-  // would block forever without the poison pill
-  assert_stopped();
-  pthread_join(thread, NULL);
   TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->stop_rx_calls);
-}
-
-void test_rx_stop_drains_queue_first() {
-  start_rx();
-  deliver_sequence(0, BUFFER_LEN);
+  // no callbacks after stop
   deliver_sequence(BUFFER_LEN, BUFFER_LEN);
-  device->stop_rx(device->plugin);
-  TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->stop_rx_calls);
-  assert_block(0, BUFFER_LEN);
-  assert_block(BUFFER_LEN, BUFFER_LEN);
-  assert_stopped();
+  assert_received(1, BUFFER_LEN);
 }
 
-void test_rx_stop_without_start() {
-  create_ok(default_settings());
-  device->stop_rx(device->plugin);
-  TEST_ASSERT_EQUAL_INT(0, airspy_lib_mock_get_stats()->stop_rx_calls);
-}
-
-void test_rx_start_and_stop_are_idempotent() {
-  start_rx();
-  device->start_rx(device->plugin);
-  TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->start_rx_calls);
-  device->stop_rx(device->plugin);
-  device->stop_rx(device->plugin);
-  TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->stop_rx_calls);
-}
-
-void test_rx_restart_discards_old_data() {
+void test_rx_restart_discards_partial_buffer() {
   start_rx();
   // 3 full buffers and a partial one
   deliver_sequence(0, BUFFER_LEN * 3 + 2);
+  assert_received(3, BUFFER_LEN * 3);
   device->stop_rx(device->plugin);
   device->start_rx(device->plugin);
   TEST_ASSERT_EQUAL_INT(2, airspy_lib_mock_get_stats()->start_rx_calls);
-  // stale data from the previous session must not be returned
+  // stale samples from the previous session must not be mixed into the new buffer
+  received.expected_next = 500;
   deliver_sequence(500, BUFFER_LEN);
-  assert_block(500, BUFFER_LEN);
+  assert_received(4, BUFFER_LEN * 4);
 }
 
 void test_rx_start_failure() {
   create_ok(default_settings());
+  device->sdr_set_rx_callback(collect_callback, &received, device->plugin);
   airspy_lib_mock_fail("airspy_start_rx");
   device->start_rx(device->plugin);
-  // must not wait for the data which will never come
-  assert_stopped();
-  // no streaming - nothing to stop
-  device->stop_rx(device->plugin);
-  TEST_ASSERT_EQUAL_INT(0, airspy_lib_mock_get_stats()->stop_rx_calls);
+  TEST_ASSERT_EQUAL_INT(0, airspy_lib_mock_get_stats()->start_rx_calls);
+  deliver_sequence(0, BUFFER_LEN);
+  assert_received(0, 0);
   // can be started again when the problem is gone
   airspy_lib_mock_fail(NULL);
   device->start_rx(device->plugin);
   deliver_sequence(0, BUFFER_LEN);
-  assert_block(0, BUFFER_LEN);
+  assert_received(1, BUFFER_LEN);
 }
 
 void test_rx_stop_failure() {
   start_rx();
   airspy_lib_mock_fail("airspy_stop_rx");
+  // error is logged only. The device must stay usable
   device->stop_rx(device->plugin);
-  // reader is released regardless of the library result
-  assert_stopped();
-}
-
-void test_rx_data_after_stop_is_ignored() {
-  start_rx();
-  // a block which was already in flight when stop was requested
+  TEST_ASSERT_EQUAL_INT(0, airspy_lib_mock_get_stats()->stop_rx_calls);
+  airspy_lib_mock_fail(NULL);
   device->stop_rx(device->plugin);
-  deliver_sequence(0, BUFFER_LEN);
-  device->start_rx(device->plugin);
-  deliver_sequence(500, BUFFER_LEN);
-  assert_block(500, BUFFER_LEN);
+  TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->stop_rx_calls);
 }
 
 void test_destroy_stops_rx_and_closes_device() {
@@ -678,9 +666,7 @@ void test_destroy_not_started() {
   device->destroy(device->plugin);
   free(device);
   device = NULL;
-  const airspy_lib_mock_stats *stats = airspy_lib_mock_get_stats();
-  TEST_ASSERT_EQUAL_INT(0, stats->stop_rx_calls);
-  TEST_ASSERT_EQUAL_INT(1, stats->close_calls);
+  TEST_ASSERT_EQUAL_INT(1, airspy_lib_mock_get_stats()->close_calls);
 }
 
 // tx /////////////////////////////////////////////////////////////
@@ -704,6 +690,7 @@ void tearDown() {
 }
 
 void setUp() {
+  received = (collector) {0};
 }
 
 int main(void) {
@@ -737,23 +724,20 @@ int main(void) {
   RUN_TEST(test_rx_device_specific_sample_rates);
   RUN_TEST(test_rx_write_failures);
   RUN_TEST(test_rx_sample_rate_retried_after_failure);
-  RUN_TEST(test_rx_not_started);
+  RUN_TEST(test_rx_callback_interface);
   RUN_TEST(test_rx_success);
-  RUN_TEST(test_rx_large_blocks);
-  RUN_TEST(test_rx_partial_buffer_is_not_returned);
-  RUN_TEST(test_rx_overflow_does_not_block_device);
+  RUN_TEST(test_rx_large_block);
+  RUN_TEST(test_rx_many_small_blocks);
+  RUN_TEST(test_rx_partial_buffer_is_not_delivered);
+  RUN_TEST(test_rx_callback_receives_registered_context);
+  RUN_TEST(test_rx_callback_can_be_replaced);
   RUN_TEST(test_rx_device_reported_dropped_samples);
   RUN_TEST(test_rx_unexpected_sample_type_is_dropped);
   RUN_TEST(test_rx_empty_and_negative_blocks);
-  RUN_TEST(test_rx_waits_for_data);
-  RUN_TEST(test_rx_stop_wakes_up_waiting_reader);
-  RUN_TEST(test_rx_stop_drains_queue_first);
-  RUN_TEST(test_rx_stop_without_start);
-  RUN_TEST(test_rx_start_and_stop_are_idempotent);
-  RUN_TEST(test_rx_restart_discards_old_data);
+  RUN_TEST(test_rx_stop);
+  RUN_TEST(test_rx_restart_discards_partial_buffer);
   RUN_TEST(test_rx_start_failure);
   RUN_TEST(test_rx_stop_failure);
-  RUN_TEST(test_rx_data_after_stop_is_ignored);
   RUN_TEST(test_destroy_stops_rx_and_closes_device);
   RUN_TEST(test_destroy_not_started);
   RUN_TEST(test_tx_not_supported);

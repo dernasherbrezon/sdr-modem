@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "dsp/sdr_modem.h"
 #include "sdr_utils.h"
@@ -12,7 +13,7 @@
 struct cli_t {
   int direction;
 
-  sdr_device *device;
+  sdr_device *sdr;
   sdr_modem *modem;
 
   FILE *output_file;
@@ -21,7 +22,10 @@ struct cli_t {
   uint8_t *input_temp;
   size_t input_temp_size;
 
+  // set from the signal handler (cli_stop), so it must stay sig_atomic_t. Also stops the pull loops
   volatile sig_atomic_t do_exit;
+  // self-pipe: wakes up the main thread in the push mode. write() is async-signal-safe, pthread_mutex_* and pthread_cond_* are not
+  int wake_pipe[2];
 };
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
@@ -84,8 +88,19 @@ int cli_create(app_config *config, cli **output) {
   }
   // init all fields with 0 so that destroy_* method would work
   *result = (struct cli_t){0};
+  // 0 is a valid descriptor, so destroy must not see it
+  result->wake_pipe[0] = -1;
+  result->wake_pipe[1] = -1;
   result->do_exit = 0;
   result->direction = config->direction;
+
+  if (pipe(result->wake_pipe) != 0) {
+    LOG_ERROR("unable to create pipe: %s", strerror(errno));
+    result->wake_pipe[0] = -1;
+    result->wake_pipe[1] = -1;
+    cli_destroy(result);
+    return -1;
+  }
 
   int code = cli_create_modem(config, result);
   if (code != 0) {
@@ -93,7 +108,7 @@ int cli_create(app_config *config, cli **output) {
     return -1;
   }
 
-  code = sdr_device_create(config, &result->device);
+  code = sdr_device_create(config, &result->sdr);
   if (code != 0) {
     cli_destroy(result);
     return -1;
@@ -105,7 +120,7 @@ int cli_create(app_config *config, cli **output) {
       .frequency = config->frequency,
       .gain = config->gain
     };
-    code = result->device->set_rx_parameters(&channel_config, result->device->plugin);
+    code = result->sdr->set_rx_parameters(&channel_config, result->sdr->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set rx parameters");
       cli_destroy(result);
@@ -123,7 +138,7 @@ int cli_create(app_config *config, cli **output) {
       .frequency = config->frequency,
       .gain = config->power
     };
-    code = result->device->set_tx_parameters(&channel_config, result->device->plugin);
+    code = result->sdr->set_tx_parameters(&channel_config, result->sdr->plugin);
     if (code != 0) {
       LOG_ERROR("unable to set tx parameters");
       cli_destroy(result);
@@ -147,25 +162,61 @@ int cli_create(app_config *config, cli **output) {
   return 0;
 }
 
+// called by the sdr thread. Modem and output_file are used only here while the streaming is active
+static void cli_rx_callback(float complex *input, size_t input_len, void *ctx) {
+  cli *cli = (struct cli_t *) ctx;
+  if (cli->do_exit) {
+    return;
+  }
+  int8_t *demod_output = NULL;
+  size_t demod_output_len = 0;
+  sdr_modem_demodulate(input, input_len, &demod_output, &demod_output_len, cli->modem);
+  size_t actually_written = fwrite(demod_output, sizeof(int8_t), demod_output_len, cli->output_file);
+  if (actually_written != demod_output_len) {
+    LOG_ERROR("unable to write output: %s", strerror(errno));
+    cli_stop(cli);
+  }
+}
+
+static void cli_wait_for_stop(cli *cli) {
+  char b;
+  while (!cli->do_exit) {
+    // blocks until cli_stop writes into the pipe. EINTR happens when the signal handler runs on this thread
+    ssize_t code = read(cli->wake_pipe[0], &b, 1);
+    if (code == 0 || (code < 0 && errno != EINTR)) {
+      break;
+    }
+  }
+}
+
 int cli_process(cli *cli) {
   if (cli->direction == DIRECTION_RX) {
-    cli->device->start_rx(cli->device->plugin);
+    if (cli->sdr->sdr_set_rx_callback != NULL) {
+      // push model: the sdr thread calls cli_rx_callback, main thread just waits for termination
+      cli->sdr->sdr_set_rx_callback(cli_rx_callback, cli, cli->sdr->plugin);
+      cli->sdr->start_rx(cli->sdr->plugin);
+      cli_wait_for_stop(cli);
+      // blocks until the sdr thread is finished, so no callbacks after this point
+      cli->sdr->stop_rx(cli->sdr->plugin);
+      return 0;
+    }
+    cli->sdr->start_rx(cli->sdr->plugin);
     while (!cli->do_exit) {
       float complex *output = NULL;
       size_t output_len = 0;
-      int code = cli->device->sdr_process_rx(&output, &output_len, cli->device->plugin);
+      int code = cli->sdr->sdr_process_rx(&output, &output_len, cli->sdr->plugin);
       if (code != 0) {
         break;
       }
-      int8_t *demodulated = NULL;
-      size_t demodulated_len = 0;
-      sdr_modem_demodulate(output, output_len, &demodulated, &demodulated_len, cli->modem);
-      size_t actually_written = fwrite(demodulated, sizeof(int8_t), demodulated_len, cli->output_file);
-      if (actually_written != demodulated_len) {
+      int8_t *demod_output = NULL;
+      size_t demod_output_len = 0;
+      sdr_modem_demodulate(output, output_len, &demod_output, &demod_output_len, cli->modem);
+      size_t actually_written = fwrite(demod_output, sizeof(int8_t), demod_output_len, cli->output_file);
+      if (actually_written != demod_output_len) {
         break;
       }
     }
-    cli->device->stop_rx(cli->device->plugin);
+    cli->sdr->stop_rx(cli->sdr->plugin);
   } else {
     while (!cli->do_exit) {
       size_t actually_read = fread(cli->input_temp, sizeof(uint8_t), cli->input_temp_size, cli->input_file);
@@ -175,7 +226,7 @@ int cli_process(cli *cli) {
       float complex *output = NULL;
       size_t output_len = 0;
       sdr_modem_modulate(cli->input_temp, actually_read, &output, &output_len, cli->modem);
-      int code = cli->device->sdr_process_tx(output, output_len, cli->device->plugin);
+      int code = cli->sdr->sdr_process_tx(output, output_len, cli->sdr->plugin);
       if (code != 0) {
         return -1;
       }
@@ -184,20 +235,25 @@ int cli_process(cli *cli) {
   return 0;
 }
 
+// can be called from the signal handler: only async-signal-safe calls here
 void cli_stop(cli *cli) {
   if (cli == NULL) {
     return;
   }
   cli->do_exit = 1;
+  if (cli->wake_pipe[1] >= 0) {
+    ssize_t ignored = write(cli->wake_pipe[1], "x", 1);
+    (void) ignored;
+  }
 }
 
 void cli_destroy(cli *cli) {
   if (cli == NULL) {
     return;
   }
-  if (cli->device != NULL) {
-    cli->device->destroy(cli->device->plugin);
-    free(cli->device);
+  if (cli->sdr != NULL) {
+    cli->sdr->destroy(cli->sdr->plugin);
+    free(cli->sdr);
   }
   if (cli->output_file != NULL) {
     fclose(cli->output_file);
@@ -210,6 +266,12 @@ void cli_destroy(cli *cli) {
   }
   if (cli->input_temp != NULL) {
     free(cli->input_temp);
+  }
+  if (cli->wake_pipe[0] >= 0) {
+    close(cli->wake_pipe[0]);
+  }
+  if (cli->wake_pipe[1] >= 0) {
+    close(cli->wake_pipe[1]);
   }
   free(cli);
 }
