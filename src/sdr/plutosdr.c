@@ -318,7 +318,6 @@ static int plutosdr_set_sample_rate(uint64_t sample_rate, struct iio_channel *ch
   if (code != 0) {
     return code;
   }
-  //FIXME test going down to filter_fir and then up above min rate
   code = plutosdr_write_lli(chn, "rf_bandwidth", (long long) sample_rate, iio);
   if (fir_filter_taps == NULL) {
     // ensure filter disabled if not needed

@@ -965,7 +965,7 @@ static int app_config_validate_and_log(app_config *result) {
     LOG_INFO("direction: %s", result->direction == DIRECTION_RX ? "rx" : "tx");
   }
 
-  if (result->direction == DIRECTION_TX) {
+  if (!is_cli_mode || result->direction == DIRECTION_TX) {
     if (result->max_frame_size == 0) {
       LOG_ERROR("max_frame_size is missing");
       return -1;
