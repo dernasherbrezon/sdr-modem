@@ -70,8 +70,8 @@ void test_airspy_enabled() {
 
 void test_airspy_defaults() {
   ignore_if_no_libairspy();
-  char *argv[] = {"test_app_config", "--bind_address", "127.0.0.1", "--sdr_type", "airspy", NULL};
-  int code = app_config_create(5, argv, &config);
+  char *argv[] = {"test_app_config", "--bind_address", "127.0.0.1", "--sdr_type", "airspy", "--max_frame_size", "2048", NULL};
+  int code = app_config_create(7, argv, &config);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(AIRSPY_GAIN_MODE_AUTO, config->airspy.gain_mode);
   TEST_ASSERT_EQUAL_UINT64(0, config->airspy.serial_number);
@@ -90,8 +90,8 @@ void test_airspy_gain_modes_from_cli() {
       {"manual", AIRSPY_GAIN_MODE_MANUAL},
   };
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    char *argv[] = {"test_app_config", "--bind_address", "127.0.0.1", "--sdr_type", "airspy", "--airspy_gain_mode", (char *) cases[i].name, NULL};
-    TEST_ASSERT_EQUAL_INT(0, app_config_create(7, argv, &config));
+    char *argv[] = {"test_app_config", "--bind_address", "127.0.0.1", "--sdr_type", "airspy", "--max_frame_size", "2048", "--airspy_gain_mode", (char *) cases[i].name, NULL};
+    TEST_ASSERT_EQUAL_INT(0, app_config_create(9, argv, &config));
     TEST_ASSERT_EQUAL_INT(cases[i].mode, config->airspy.gain_mode);
     app_config_destroy(config);
     config = NULL;
