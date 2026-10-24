@@ -15,7 +15,6 @@ float complex *input = NULL;
 void test_interpolation_across_calls() {
   int code = halfband_interp_create(2, 0.4f, 60.0f, 64, &filter);
   TEST_ASSERT_EQUAL_INT(0, code);
-  TEST_ASSERT_EQUAL_INT(256, halfband_interp_max_output_buffer_length(filter));
 
   setup_input_complex_data(&input, 0, 40);
 

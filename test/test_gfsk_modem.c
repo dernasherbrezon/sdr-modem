@@ -22,9 +22,12 @@
 #define SKIP_BITS MAX_BIT_LAG
 // noiseless loopback: everything from the sync word on should be recovered
 #define MAX_MISMATCH_RATIO 0.02
+// the modulator appends the tx pulse delay and the resampler delay to the frame
+#define MAX_TX_FLUSH_SYMBOLS 64
 
 // ais training sequence + hdlc flag, on-air
 static const uint32_t SYNC_WORD = 0xCCCCCCFE;
+static const uint8_t SYNC_WORD_BYTES[] = {0xCC, 0xCC, 0xCC, 0xFE};
 #define SYNC_WORD_BITS (sizeof(SYNC_WORD) * 8)
 // nrzi can invert the polarity of the whole burst
 static const uint8_t SYNC_WORD_INVERTED[] = {0x33, 0x33, 0x33, 0x01};
@@ -52,10 +55,13 @@ static unsigned int input_bit(size_t index) {
 
 // fraction of demodulated hard decisions that differ from the input bits, assuming the output is
 // delayed by lag bits
-static double mismatch_ratio(const int8_t *output, size_t output_len, size_t lag) {
+static double mismatch_ratio(const int8_t *output, size_t output_len, size_t lag, size_t skip_bits) {
   size_t total = 0;
   size_t mismatches = 0;
-  for (size_t i = SKIP_BITS; i < output_len; i++) {
+  for (size_t i = skip_bits; i < output_len; i++) {
+    if (i < lag) {
+      continue;
+    }
     size_t expected_index = i - lag;
     if (expected_index >= INPUT_LEN * 8) {
       break;
@@ -70,10 +76,10 @@ static double mismatch_ratio(const int8_t *output, size_t output_len, size_t lag
   return (double) mismatches / (double) total;
 }
 
-static double best_mismatch_ratio(const int8_t *output, size_t output_len) {
+static double best_mismatch_ratio(const int8_t *output, size_t output_len, size_t skip_bits) {
   double best = 1.0;
   for (size_t lag = 0; lag <= MAX_BIT_LAG; lag++) {
-    double ratio = mismatch_ratio(output, output_len, lag);
+    double ratio = mismatch_ratio(output, output_len, lag, skip_bits);
     if (ratio < best) {
       best = ratio;
     }
@@ -92,7 +98,7 @@ static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double
   TEST_ASSERT_EQUAL_INT(0, code);
 
   setup_random_input(&mod_input, INPUT_LEN);
-  memcpy(mod_input, &SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(mod_input, SYNC_WORD_BYTES, sizeof(SYNC_WORD_BYTES));
 
   float complex *modulated = NULL;
   size_t modulated_len = 0;
@@ -101,9 +107,10 @@ static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double
   TEST_ASSERT(modulated_len > 0);
   TEST_ASSERT(modulated_len <= max_samples);
   // roughly sample_rate / baud_rate samples per bit. resampler and its filter can be off by a
-  // few samples
+  // few samples. the frame is followed by the tail that flushes the tx pulse and resampler
   uint64_t expected_len = (uint64_t) INPUT_LEN * 8 * sample_rate / BAUD_RATE;
-  TEST_ASSERT_UINT64_WITHIN(expected_len / 50 + 32, expected_len, modulated_len);
+  uint64_t tail_len = (uint64_t) MAX_TX_FLUSH_SYMBOLS * sample_rate / BAUD_RATE;
+  TEST_ASSERT_UINT64_WITHIN(expected_len / 50 + 32 + tail_len, expected_len + tail_len / 2, modulated_len);
 
   if (carrier_offset_hz != 0.0) {
     // sdr and transmitter clocks are not perfectly in sync: shows up as dc in the frequency
@@ -116,11 +123,12 @@ static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double
   size_t output_len = 0;
   gfsk_modem_demodulate(modulated, modulated_len, &output, &output_len, demod);
   TEST_ASSERT(output != NULL);
-  TEST_ASSERT_GREATER_THAN_size_t(SKIP_BITS + 100, output_len);
-  // can't recover more symbols than were sent
-  TEST_ASSERT(output_len <= INPUT_LEN * 8 + 1);
+  size_t skip_bits = SKIP_BITS;
+  TEST_ASSERT_GREATER_THAN_size_t(skip_bits + 100, output_len);
+  // can't recover more symbols than were sent, plus the ones that flush the tx pulse and resampler
+  TEST_ASSERT(output_len <= INPUT_LEN * 8 + MAX_TX_FLUSH_SYMBOLS);
 
-  TEST_ASSERT_TRUE_MESSAGE(best_mismatch_ratio(output, output_len) <= MAX_MISMATCH_RATIO, "too many bit errors");
+  TEST_ASSERT_TRUE_MESSAGE(best_mismatch_ratio(output, output_len, skip_bits) <= MAX_MISMATCH_RATIO, "too many bit errors");
 }
 
 static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz) {
@@ -205,7 +213,7 @@ void test_soft_symbols_normalized_by_sync_word() {
   TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, max_samples, &demod));
 
   uint8_t input[4 + 16 + 16 + 8];
-  memcpy(input, &SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(input, SYNC_WORD_BYTES, sizeof(SYNC_WORD_BYTES));
   memset(input + 4, 0xFF, 16);
   memset(input + 4 + 16, 0x00, 16);
   // flush the demodulator lag
@@ -285,6 +293,10 @@ static double burst_mismatch_ratio(const int8_t *output, size_t output_len, cons
   return best;
 }
 
+// a sync word within 2048 symbols of the previous one is accepted only if it is stronger (see
+// GFSK_MODEM_BURST_SYMBOLS), so the bursts are further apart than that
+#define GAP_EXTRA 8000
+
 // bursts separated by noise, each with its own carrier offset, amplitude, timing and polarity:
 // every one of them is estimated from its own sync word
 void test_bursts() {
@@ -297,7 +309,7 @@ void test_bursts() {
   setup_random_input(&mod_input, 2 * INPUT_LEN);
   uint8_t *first = mod_input;
   uint8_t *second = mod_input + INPUT_LEN;
-  memcpy(first, &SYNC_WORD, sizeof(SYNC_WORD));
+  memcpy(first, SYNC_WORD_BYTES, sizeof(SYNC_WORD_BYTES));
   memcpy(second, SYNC_WORD_INVERTED, sizeof(SYNC_WORD_INVERTED));
 
   float sigma = 0.05f;
@@ -306,7 +318,7 @@ void test_bursts() {
   TEST_ASSERT_NOT_NULL(signal);
   size_t len = append_noise(signal, 0, 1000, sigma);
   len = append_burst(first, INPUT_LEN, 300.0, 1.0f, sigma, sample_rate, signal, len);
-  len = append_noise(signal, len, 3001, sigma);
+  len = append_noise(signal, len, 3001 + GAP_EXTRA, sigma);
   len = append_burst(second, INPUT_LEN, -500.0, 0.5f, sigma, sample_rate, signal, len);
   len = append_noise(signal, len, 3000, sigma);
   TEST_ASSERT(len <= signal_len);
@@ -335,6 +347,57 @@ void test_bursts() {
   TEST_ASSERT_TRUE_MESSAGE(second_ratio <= MAX_MISMATCH_RATIO, "second burst not recovered");
 }
 
+// the payload repeats a pattern that looks like the sync word (correlates above the threshold, but
+// weaker than the real one): it must not re-time the burst and drop or add bits
+void test_false_sync_word_in_payload() {
+  uint64_t sample_rate = 8 * BAUD_RATE;
+  gfsk_modem_settings settings = default_settings(sample_rate, BAUD_RATE / 4, SYNC_WORD_BITS);
+  // "FAF320", the same shape as the one seen on air: payload with a repetitive pattern
+  settings.syncword = 0xFAF320;
+  settings.syncword_bits = 24;
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, INPUT_LEN, &mod));
+  uint32_t max_samples = (uint32_t) gfsk_modem_max_modulation_buffer_length(mod);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, max_samples, &demod));
+
+  const uint8_t frame[] = {0xFA, 0xF3, 0x20, 0xB0, 0x02, 0x08, 0x0F, 0x00, 0x0A, 0x2A, 0x58, 0x2A, 0x5A, 0x00, 0x81, 0x8A,
+                           0xAE, 0x0A, 0xAE, 0x33, 0x54, 0x5F, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  float complex *modulated = NULL;
+  size_t modulated_len = 0;
+  gfsk_modem_modulate(frame, sizeof(frame), &modulated, &modulated_len, mod);
+  TEST_ASSERT(modulated != NULL);
+
+  // the demodulator is ~50 symbols behind: silence after the frame pushes the last symbols out
+  size_t silence_len = 96 * (sample_rate / BAUD_RATE);
+  TEST_ASSERT(modulated_len + silence_len <= max_samples);
+  float complex *input = calloc(modulated_len + silence_len, sizeof(float complex));
+  TEST_ASSERT_NOT_NULL(input);
+  memcpy(input, modulated, sizeof(float complex) * modulated_len);
+
+  int8_t *output = NULL;
+  size_t output_len = 0;
+  gfsk_modem_demodulate(input, modulated_len + silence_len, &output, &output_len, demod);
+  free(input);
+  TEST_ASSERT(output != NULL);
+  // the output is not trimmed to the sync word, so it is searched for. all of the frame is there,
+  // including its last bits that are in the tx pulse filter
+  size_t frame_bits = sizeof(frame) * 8;
+  size_t start = 0;
+  for (; start + frame_bits <= output_len; start++) {
+    size_t mismatches = 0;
+    for (size_t i = 0; i < frame_bits; i++) {
+      unsigned int expected = (frame[i / 8] >> (7 - (i % 8))) & 1U;
+      if (expected != (output[start + i] >= 0 ? 1U : 0U)) {
+        mismatches++;
+      }
+    }
+    if (mismatches == 0) {
+      break;
+    }
+  }
+  TEST_ASSERT_TRUE_MESSAGE(start + frame_bits <= output_len, "frame not recovered");
+}
+
 // modulated tone frequency must match the configured deviation: a stream of 1 bits at +deviation
 void test_modulation_deviation() {
   gfsk_modem_settings settings = default_settings(8 * BAUD_RATE, 3000, SYNC_WORD_BITS);
@@ -344,7 +407,9 @@ void test_modulation_deviation() {
   float complex *output = NULL;
   size_t output_len = 0;
   gfsk_modem_modulate(ones, sizeof(ones), &output, &output_len, mod);
-  TEST_ASSERT_EQUAL_size_t(64 * 8 * 8, output_len);
+  // the frame and the symbols that flush the tx pulse and the resampler
+  TEST_ASSERT_GREATER_THAN_size_t(64 * 8 * 8 + 6 * 8 - 1, output_len);
+  TEST_ASSERT_LESS_THAN_size_t(64 * 8 * 8 + MAX_TX_FLUSH_SYMBOLS * 8, output_len);
   // steady state: skip the leading transient
   float complex *tail = output + output_len / 2;
   double sum = 0;
@@ -465,5 +530,6 @@ int main(void) {
   RUN_TEST(test_create_invalid_syncword);
   RUN_TEST(test_create_smallest_sps);
   RUN_TEST(test_invalid_buffers);
+  RUN_TEST(test_false_sync_word_in_payload);
   return UNITY_END();
 }

@@ -19,6 +19,12 @@ int halfband_interp_create(unsigned int num_stages, float fc, float stopband_att
 void halfband_interp_process(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
                              halfband_interp *filter);
 
+// same as halfband_interp_process, but then pushes zeros until the filter delay is out, so that the
+// end of the input is not left in the filter. output_len is (input_len + flush) * 2^num_stages, where
+// flush is halfband_interp_get_delay. the carrier stops after the input
+void halfband_interp_process_flush(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
+                                   halfband_interp *filter);
+
 size_t halfband_interp_max_output_buffer_length(halfband_interp *filter);
 
 void halfband_interp_destroy(halfband_interp *filter);

@@ -298,7 +298,7 @@ int sdr_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_m
 void sdr_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
   modem->modulate(input, input_len, output, output_len, modem->modem);
   if (modem->halfband_tx != NULL && *output != NULL) {
-    halfband_interp_process(*output, *output_len, output, output_len, modem->halfband_tx);
+    halfband_interp_process_flush(*output, *output_len, output, output_len, modem->halfband_tx);
   }
   if (modem->debug_freq_offset_file != NULL && *output != NULL) {
     fwrite(*output, sizeof(float complex), *output_len, modem->debug_freq_offset_file);

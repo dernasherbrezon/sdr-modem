@@ -18,6 +18,8 @@ struct gfsk_correlator_t {
   unsigned int sps;
   float threshold;
   size_t max_input_buffer_length;
+  // samples after the sync word during which only a stronger sync word re-times the burst
+  size_t burst_len;
 
   size_t template_len;
   size_t peak_search_len;
@@ -43,6 +45,11 @@ struct gfsk_correlator_t {
   bool peak_search;
   size_t peak_index;
   float peak_value;
+  // the burst being sampled. a sync word
+  // inside the payload (random data can look like it) must not re-time the burst, so before
+  // burst_end_index only a stronger correlation than burst_peak starts a new one
+  float burst_peak;
+  size_t burst_end_index;
 
   // per burst estimates from the sync word
   // position of the next symbol to output
@@ -127,7 +134,7 @@ static int gfsk_correlator_create_template(float bt, unsigned int filter_delay, 
   return 0;
 }
 
-int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, uint64_t syncword, size_t syncword_bits, float threshold, size_t max_input_buffer_length, gfsk_correlator **correlator) {
+int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay, const float *rx_filter, size_t rx_filter_len, uint64_t syncword, size_t syncword_bits, float threshold, size_t burst_symbols, size_t max_input_buffer_length, gfsk_correlator **correlator) {
   if (sps < 2 || sps % 2 != 0) {
     LOG_ERROR("gfsk correlator: samples per symbol must be even and at least 2: %u", sps);
     return -EINVAL;
@@ -145,6 +152,7 @@ int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay
   result->sps = sps;
   result->threshold = threshold;
   result->max_input_buffer_length = max_input_buffer_length;
+  result->burst_len = burst_symbols * sps;
   result->template_len = syncword_bits * sps;
   result->peak_search_len = GFSK_CORRELATOR_PEAK_SEARCH_SYMBOLS * sps;
   result->sampler_lag = result->template_len + result->peak_search_len + sps;
@@ -235,6 +243,8 @@ static void gfsk_correlator_sync(gfsk_correlator *correlator) {
   correlator->sample_position = (double) correlator->peak_index + (double) fraction - (double) (correlator->template_len - 1) + (double) (correlator->sps / 2);
   correlator->holdoff_index = correlator->peak_index + correlator->template_len;
   correlator->peak_search = false;
+  correlator->burst_peak = correlator->peak_value;
+  correlator->burst_end_index = correlator->peak_index + correlator->burst_len;
 }
 
 static void gfsk_correlator_output_symbol(gfsk_correlator *correlator, size_t *num_symbols) {
@@ -269,7 +279,8 @@ void gfsk_correlator_process(const float *input, size_t input_len, int8_t **outp
       float correlation = 0.0f;
       float mean = 0.0f;
       float value = fabsf(gfsk_correlator_correlate(correlator, index, &correlation, &mean));
-      if (value >= correlator->threshold && (!correlator->peak_search || value > correlator->peak_value)) {
+      float min_value = index < correlator->burst_end_index ? correlator->burst_peak : 0.0f;
+      if (value >= correlator->threshold && value > min_value && (!correlator->peak_search || value > correlator->peak_value)) {
         correlator->peak_search = true;
         correlator->peak_index = index;
         correlator->peak_value = value;
@@ -289,6 +300,7 @@ void gfsk_correlator_process(const float *input, size_t input_len, int8_t **outp
   correlator->correlator_index -= shift;
   correlator->sample_position -= (double) shift;
   correlator->holdoff_index = correlator->holdoff_index > shift ? correlator->holdoff_index - shift : 0;
+  correlator->burst_end_index = correlator->burst_end_index > shift ? correlator->burst_end_index - shift : 0;
   if (correlator->peak_search) {
     correlator->peak_index -= shift;
   }

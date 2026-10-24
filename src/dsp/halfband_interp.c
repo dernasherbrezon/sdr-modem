@@ -1,6 +1,7 @@
 #include "halfband_interp.h"
 #include <errno.h>
 #include <stdio.h>
+#include <math.h>
 #include <liquid/liquid.h>
 #include "../log.h"
 
@@ -8,6 +9,7 @@ struct halfband_interp_t {
     msresamp2_crcf resampler;
     unsigned int interpolation;
     size_t max_input_buffer_length;
+    size_t tail_length;
 
     float complex *output;
     size_t output_len;
@@ -29,8 +31,10 @@ int halfband_interp_create(unsigned int num_stages, float fc, float stopband_att
         return -EINVAL;
     }
 
+    // the delay is in input samples, and the impulse response is as long after its peak as before it
+    result->tail_length = (size_t) ceil(2.0 * (double) msresamp2_crcf_get_delay(result->resampler)) + 1;
     result->max_input_buffer_length = max_input_buffer_length;
-    result->output_len = (size_t) max_input_buffer_length * result->interpolation;
+    result->output_len = ((size_t) max_input_buffer_length + result->tail_length) * result->interpolation;
     result->output = malloc(sizeof(float complex) * result->output_len);
     if (result->output == NULL) {
         halfband_interp_destroy(result);
@@ -58,6 +62,21 @@ void halfband_interp_process(const float complex *input, size_t input_len, float
 
     *output = filter->output;
     *output_len = input_len * filter->interpolation;
+}
+
+void halfband_interp_process_flush(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
+                                   halfband_interp *filter) {
+    halfband_interp_process(input, input_len, output, output_len, filter);
+    if (*output == NULL) {
+        return;
+    }
+    float complex zero = 0.0f;
+    for (size_t i = input_len; i < input_len + filter->tail_length; i++) {
+        msresamp2_crcf_execute(filter->resampler,
+                               (liquid_float_complex *) &zero,
+                               (liquid_float_complex *) (filter->output + i * filter->interpolation));
+    }
+    *output_len = (input_len + filter->tail_length) * filter->interpolation;
 }
 
 size_t halfband_interp_max_output_buffer_length(halfband_interp *filter) {
