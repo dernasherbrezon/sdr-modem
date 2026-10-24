@@ -144,7 +144,6 @@ static void *sdr_rx_worker_callback(void *arg) {
       // read timeout happened. it's ok.
       continue;
     }
-    // terminate only when fully read from socket
     if (code != 0 && output_len == 0) {
       break;
     }
@@ -225,9 +224,6 @@ void sdr_rx_worker_destroy(void *data) {
   }
   sdr_rx_worker *worker = (sdr_rx_worker *) data;
   LOG_DEBUG("sdr_rx_worker is stopping");
-  if (worker->sdr != NULL) {
-    worker->sdr->stop_rx(worker->sdr->plugin);
-  }
   if (worker->queue != NULL) {
     queue_interrupt(worker->queue);
   }
