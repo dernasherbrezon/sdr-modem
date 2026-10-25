@@ -231,6 +231,9 @@ int cli_process(cli *cli) {
         return -1;
       }
     }
+    if (cli->sdr->sdr_flush_tx != NULL) {
+      cli->sdr->sdr_flush_tx(cli->sdr->plugin);
+    }
   }
   return 0;
 }

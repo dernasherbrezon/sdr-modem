@@ -9,6 +9,8 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <unistd.h>
+
 #include "../log.h"
 
 #define FIR_BUF_SIZE    8192
@@ -63,7 +65,7 @@ struct plutosdr_t {
   plutosdr_range sample_rate;
 
   long long current_sample_rate;
-
+  unsigned int timeout_ms;
   char *uri;
 
   float complex *output;
@@ -72,6 +74,11 @@ struct plutosdr_t {
   iio_lib *lib;
   iio_gain_mode gain_control_mode;
 };
+
+static void plutosdr_flush_tx(void *plugin) {
+  plutosdr *pluto = (plutosdr *) plugin;
+  usleep(pluto->timeout_ms * 1000);
+}
 
 static int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
   plutosdr *iio = (plutosdr *) plugin;
@@ -515,6 +522,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   *pluto = (struct plutosdr_t){0};
   pluto->lib = lib;
   pluto->sdr_buffer_len = sdr_buffer_len;
+  pluto->timeout_ms = settings->timeout_ms;
 
   if (settings->uri == NULL) {
     pluto->uri = plutosdr_find_default_uri(lib);
@@ -683,6 +691,7 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   result->set_tx_parameters = plutosdr_set_tx_parameters;
   result->start_rx = plutosdr_start_rx;
   result->stop_rx = plutosdr_stop_rx;
+  result->sdr_flush_tx = plutosdr_flush_tx;
 
   LOG_INFO("plutosdr: uri=%s gain_control_mode=%d tx_powerdown=%s timeout_ms=%u frequency=%.0f~%.0f sample_rate=%.0f~%.0f gain=%.0f~%.0f power=%.2f~%.2f",
            pluto->uri, settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms,

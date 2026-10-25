@@ -975,7 +975,7 @@ static int app_config_validate_and_log(app_config *result) {
 
   if (result->sdr_type == SDR_TYPE_PLUTOSDR) {
     if (result->plutosdr.timeout_ms == 0) {
-      result->plutosdr.timeout_ms = 10000;
+      result->plutosdr.timeout_ms = 1000;
     }
     if (result->plutosdr.uri != NULL && result->plutosdr.uri[0] == '\0') {
       // empty uri means the first available context will be used
