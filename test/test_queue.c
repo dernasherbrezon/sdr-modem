@@ -61,7 +61,7 @@ void test_nonblocking_overwrites_last_when_full(void) {
 }
 
 static void *delayed_complete(void *arg) {
-  usleep(100 * 1000);
+  sleep(100);
   queue_message out = {0};
   queue_take(&out, q);
   queue_complete(q);
@@ -80,7 +80,7 @@ void test_blocking_put_waits_for_free_node(void) {
 }
 
 static void *delayed_interrupt(void *arg) {
-  usleep(100 * 1000);
+  sleep(100);
   queue_interrupt(q);
   return NULL;
 }

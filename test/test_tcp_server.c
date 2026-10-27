@@ -95,7 +95,7 @@ static void deliver_noise(size_t buffers) {
 // the server notices the disconnect asynchronously
 static void wait_for_stop_rx(void) {
   for (int i = 0; i < 100 && airspy_lib_mock_get_stats()->stop_rx_calls == 0; i++) {
-    usleep(50 * 1000);
+    sleep(50);
   }
   TEST_ASSERT_GREATER_THAN_INT(0, airspy_lib_mock_get_stats()->stop_rx_calls);
 }
