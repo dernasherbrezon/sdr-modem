@@ -448,7 +448,12 @@ static int plutosdr_set_tx_parameters(sdr_channel_config *config, void *plugin) 
     LOG_ERROR("power is outside of supported range: %.0f", config->gain);
     return -1;
   }
-  int code = plutosdr_write_lli(pluto->tx0_lo, "frequency", (long long) config->frequency, pluto);
+  // the previous tx session or tx_powerdown setting could have left the tx lo powered down
+  int code = plutosdr_write_lli(pluto->tx0_lo, "powerdown", 0, pluto);
+  if (code != 0) {
+    return code;
+  }
+  code = plutosdr_write_lli(pluto->tx0_lo, "frequency", (long long) config->frequency, pluto);
   if (code != 0) {
     return code;
   }
@@ -492,6 +497,12 @@ static void plutosdr_destroy(void *plugin) {
   }
   if (pluto->tx0_q != NULL) {
     pluto->lib->iio_channel_disable(pluto->tx0_q);
+  }
+  // TODO potentially TX OFF state
+  // ad9361 keeps its state after the context is destroyed: without this the tx lo keeps radiating the carrier.
+  // errors are logged and ignored, there is nothing more to do during the shutdown
+  if (pluto->tx0_lo != NULL) {
+    plutosdr_write_lli(pluto->tx0_lo, "powerdown", 1, pluto);
   }
   if (pluto->rx_buffer != NULL) {
     pluto->lib->iio_buffer_destroy(pluto->rx_buffer);
@@ -622,14 +633,6 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     plutosdr_destroy(pluto);
     return code;
   }
-  if (settings->sample_rate != 0 && settings->sample_rate != pluto->current_sample_rate) {
-    code = plutosdr_set_sample_rate(settings->sample_rate, pluto->rx0_chn, pluto);
-    if (code != 0) {
-      plutosdr_destroy(pluto);
-      return code;
-    }
-    pluto->current_sample_rate = settings->sample_rate;
-  }
 
   // TX chain //////////////////////////////
   pluto->tx = pluto->lib->iio_context_find_device(pluto->iio_ctx, "cf-ad9361-dds-core-lpc");
@@ -676,6 +679,15 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   if (code != 0) {
     plutosdr_destroy(pluto);
     return code;
+  }
+
+  if (settings->sample_rate != 0 && settings->sample_rate != pluto->current_sample_rate) {
+    code = plutosdr_set_sample_rate(settings->sample_rate, pluto->rx0_chn, pluto);
+    if (code != 0) {
+      plutosdr_destroy(pluto);
+      return code;
+    }
+    pluto->current_sample_rate = settings->sample_rate;
   }
 
   sdr_device *result = malloc(sizeof(sdr_device));

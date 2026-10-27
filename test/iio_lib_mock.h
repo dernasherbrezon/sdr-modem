@@ -20,6 +20,8 @@ typedef struct {
   // rx and tx local oscillators are the same object in the mock
   long long frequency;
   int frequency_writes;
+  // last written value
+  long long powerdown;
   int powerdown_writes;
   char gain_control_mode[32];
 } iio_lib_mock_stats;

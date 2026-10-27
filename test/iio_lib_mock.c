@@ -134,6 +134,7 @@ int iio_channel_attr_write_longlong(const struct iio_channel *chn, const char *a
     iio_lib_mock_stats_data.frequency = val;
     iio_lib_mock_stats_data.frequency_writes++;
   } else if (strcmp(attr, "powerdown") == 0) {
+    iio_lib_mock_stats_data.powerdown = val;
     iio_lib_mock_stats_data.powerdown_writes++;
   }
   return 0;

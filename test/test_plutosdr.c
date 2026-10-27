@@ -443,6 +443,48 @@ void test_tx_powerdown() {
   TEST_ASSERT_EQUAL_INT(1, iio_lib_mock_get_stats()->powerdown_writes);
 }
 
+void test_tx_enables_lo_after_powerdown() {
+  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
+  plutosdr_settings settings = {.tx_powerdown = true, .gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local"};
+  TEST_ASSERT_EQUAL_INT(0, plutosdr_create(&settings, BUFFER_LEN, lib, &device));
+  TEST_ASSERT_EQUAL_INT64(1, iio_lib_mock_get_stats()->powerdown);
+  sdr_channel_config cfg = config(433000000, 3000000, -10);
+  TEST_ASSERT_EQUAL_INT(0, device->set_tx_parameters(&cfg, device->plugin));
+  TEST_ASSERT_EQUAL_INT(2, iio_lib_mock_get_stats()->powerdown_writes);
+  TEST_ASSERT_EQUAL_INT64(0, iio_lib_mock_get_stats()->powerdown);
+}
+
+void test_tx_lo_enable_failure() {
+  TEST_ASSERT_EQUAL_INT(0, create_device(0, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
+  iio_lib_mock_fail_write("powerdown");
+  sdr_channel_config cfg = config(433000000, 3000000, -10);
+  TEST_ASSERT_TRUE(device->set_tx_parameters(&cfg, device->plugin) < 0);
+  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_get_stats()->frequency_writes);
+}
+
+void test_destroy_stops_tx_carrier() {
+  TEST_ASSERT_EQUAL_INT(0, create_device(0, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
+  sdr_channel_config cfg = config(433000000, 3000000, -10);
+  TEST_ASSERT_EQUAL_INT(0, device->set_tx_parameters(&cfg, device->plugin));
+  TEST_ASSERT_EQUAL_INT64(0, iio_lib_mock_get_stats()->powerdown);
+  TEST_ASSERT_EQUAL_FLOAT(-10, iio_lib_mock_get_stats()->hardwaregain[1]);
+
+  device->destroy(device->plugin);
+  free(device);
+  device = NULL;
+  // the device keeps transmitting after the context is closed unless tx is explicitly shut down
+  TEST_ASSERT_EQUAL_INT64(1, iio_lib_mock_get_stats()->powerdown);
+  TEST_ASSERT_EQUAL_FLOAT(-89.75, iio_lib_mock_get_stats()->hardwaregain[1]);
+}
+
+void test_destroy_without_tx_session() {
+  TEST_ASSERT_EQUAL_INT(0, create_device(0, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
+  device->destroy(device->plugin);
+  free(device);
+  device = NULL;
+  TEST_ASSERT_EQUAL_INT64(1, iio_lib_mock_get_stats()->powerdown);
+}
+
 void tearDown() {
   if (device != NULL) {
     device->destroy(device->plugin);
@@ -494,5 +536,9 @@ int main(void) {
   RUN_TEST(test_tx_power_write_failure);
   RUN_TEST(test_tx_applies_with_any_rx_gain_mode);
   RUN_TEST(test_tx_powerdown);
+  RUN_TEST(test_tx_enables_lo_after_powerdown);
+  RUN_TEST(test_tx_lo_enable_failure);
+  RUN_TEST(test_destroy_stops_tx_carrier);
+  RUN_TEST(test_destroy_without_tx_session);
   return UNITY_END();
 }
