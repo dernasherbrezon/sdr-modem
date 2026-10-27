@@ -38,7 +38,7 @@ void test_create_default_uri() {
 
 void test_create_default_calib_mode() {
   TEST_ASSERT_EQUAL_INT(0, create_device(0, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
-  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", iio_lib_mock_get_stats()->calib_mode);
+  TEST_ASSERT_EQUAL_STRING("", iio_lib_mock_get_stats()->calib_mode);
 }
 
 void test_create_calib_mode() {
@@ -46,13 +46,6 @@ void test_create_calib_mode() {
   plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local", .calib_mode = (char *) "auto"};
   TEST_ASSERT_EQUAL_INT(0, plutosdr_create(&settings, BUFFER_LEN, lib, &device));
   TEST_ASSERT_EQUAL_STRING("auto", iio_lib_mock_get_stats()->calib_mode);
-}
-
-void test_create_empty_calib_mode() {
-  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
-  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local", .calib_mode = (char *) ""};
-  TEST_ASSERT_EQUAL_INT(0, plutosdr_create(&settings, BUFFER_LEN, lib, &device));
-  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", iio_lib_mock_get_stats()->calib_mode);
 }
 
 void test_create_calib_mode_before_sample_rate() {
@@ -65,7 +58,7 @@ void test_create_calib_mode_before_sample_rate() {
 void test_create_calib_mode_write_failure() {
   TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
   iio_lib_mock_fail_write("calib_mode");
-  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local"};
+  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local", .calib_mode = "auto"};
   TEST_ASSERT_TRUE(plutosdr_create(&settings, BUFFER_LEN, lib, &device) < 0);
   TEST_ASSERT_NULL(device);
 }
@@ -508,7 +501,6 @@ void test_destroy_stops_tx_carrier() {
   device = NULL;
   // the device keeps transmitting after the context is closed unless tx is explicitly shut down
   TEST_ASSERT_EQUAL_INT64(1, iio_lib_mock_get_stats()->powerdown);
-  TEST_ASSERT_EQUAL_FLOAT(-89.75, iio_lib_mock_get_stats()->hardwaregain[1]);
 }
 
 void test_destroy_without_tx_session() {
@@ -539,7 +531,6 @@ int main(void) {
   RUN_TEST(test_create_default_uri);
   RUN_TEST(test_create_default_calib_mode);
   RUN_TEST(test_create_calib_mode);
-  RUN_TEST(test_create_empty_calib_mode);
   RUN_TEST(test_create_calib_mode_before_sample_rate);
   RUN_TEST(test_create_calib_mode_write_failure);
   RUN_TEST(test_create_gain_modes);

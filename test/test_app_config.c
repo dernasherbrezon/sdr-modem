@@ -55,7 +55,7 @@ static void ignore_if_no_libairspy() {
 void test_pluto_calib_mode_default() {
   char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", NULL};
   TEST_ASSERT_EQUAL_INT(0, app_config_create(3, argv, &config));
-  TEST_ASSERT_NULL(config->plutosdr.calib_mode);
+  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", config->plutosdr.calib_mode);
 }
 
 void test_pluto_calib_mode_from_file() {
@@ -73,7 +73,7 @@ void test_pluto_calib_mode_from_cli() {
 void test_pluto_calib_mode_empty() {
   char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", "--plutosdr_calib_mode", "", NULL};
   TEST_ASSERT_EQUAL_INT(0, app_config_create(5, argv, &config));
-  TEST_ASSERT_NULL(config->plutosdr.calib_mode);
+  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", config->plutosdr.calib_mode);
 }
 
 void test_airspy_enabled() {
