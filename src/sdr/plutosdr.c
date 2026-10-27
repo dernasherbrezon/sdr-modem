@@ -9,7 +9,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
-#include <unistd.h>
+#include <time.h>
 
 #include "../log.h"
 
@@ -77,7 +77,8 @@ struct plutosdr_t {
 
 static void plutosdr_flush_tx(void *plugin) {
   plutosdr *pluto = (plutosdr *) plugin;
-  usleep(pluto->timeout_ms * 1000);
+  struct timespec req = {0, pluto->timeout_ms * 1000000};
+  nanosleep(&req, NULL);
 }
 
 static int plutosdr_process_tx(float complex *input, size_t input_len, void *plugin) {
