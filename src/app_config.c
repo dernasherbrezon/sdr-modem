@@ -438,6 +438,13 @@ static int app_config_load_from_file(config_t *libconfig, const char *path, app_
         return code;
       }
     }
+    setting = config_lookup(libconfig, "plutosdr_calib_mode");
+    if (setting != NULL) {
+      code = app_config_replace_str(config_setting_get_string(setting), &result->plutosdr.calib_mode);
+      if (code != 0) {
+        return code;
+      }
+    }
   }
   if (result->sdr_type == SDR_TYPE_AIRSPY) {
     code = app_config_load_airspy_from_file(libconfig, result);
@@ -519,6 +526,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     OPT_PLUTOSDR_TX_POWERDOWN,
     OPT_PLUTOSDR_TIMEOUT_MS,
     OPT_PLUTOSDR_URI,
+    OPT_PLUTOSDR_CALIB_MODE,
     OPT_AIRSPY_GAIN_MODE,
     OPT_AIRSPY_LNA_GAIN,
     OPT_AIRSPY_MIXER_GAIN,
@@ -578,6 +586,7 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
     {"plutosdr_tx_powerdown", required_argument, NULL, OPT_PLUTOSDR_TX_POWERDOWN},
     {"plutosdr_timeout_ms", required_argument, NULL, OPT_PLUTOSDR_TIMEOUT_MS},
     {"plutosdr_uri", required_argument, NULL, OPT_PLUTOSDR_URI},
+    {"plutosdr_calib_mode", required_argument, NULL, OPT_PLUTOSDR_CALIB_MODE},
     {"airspy_gain_mode", required_argument, NULL, OPT_AIRSPY_GAIN_MODE},
     {"airspy_lna_gain", required_argument, NULL, OPT_AIRSPY_LNA_GAIN},
     {"airspy_mixer_gain", required_argument, NULL, OPT_AIRSPY_MIXER_GAIN},
@@ -680,6 +689,13 @@ static int app_config_load_from_cli(int argc, char **argv, app_config *result) {
         break;
       case OPT_PLUTOSDR_URI: {
         int code = app_config_replace_str(optarg, &result->plutosdr.uri);
+        if (code != 0) {
+          return code;
+        }
+        break;
+      }
+      case OPT_PLUTOSDR_CALIB_MODE: {
+        int code = app_config_replace_str(optarg, &result->plutosdr.calib_mode);
         if (code != 0) {
           return code;
         }
@@ -982,6 +998,14 @@ static int app_config_validate_and_log(app_config *result) {
       free(result->plutosdr.uri);
       result->plutosdr.uri = NULL;
     }
+    if (result->plutosdr.calib_mode != NULL && result->plutosdr.calib_mode[0] == '\0') {
+      // empty calib_mode means the default one will be used
+      free(result->plutosdr.calib_mode);
+      result->plutosdr.calib_mode = NULL;
+    }
+    if (result->plutosdr.calib_mode == NULL) {
+      result->plutosdr.calib_mode = strdup("manual_tx_quad");
+    }
     result->plutosdr.sample_rate = result->sample_rate;
   } else if (result->sdr_type == SDR_TYPE_AIRSPY) {
     result->airspy.sample_rate = result->sample_rate;
@@ -1142,6 +1166,9 @@ void app_config_destroy(app_config *config) {
   }
   if (config->plutosdr.uri != NULL) {
     free(config->plutosdr.uri);
+  }
+  if (config->plutosdr.calib_mode != NULL) {
+    free(config->plutosdr.calib_mode);
   }
   if (config->iio != NULL) {
     iio_lib_destroy(config->iio);

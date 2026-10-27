@@ -27,6 +27,8 @@ struct iio_lib_t {
 
     int (*iio_channel_attr_write_longlong)(const struct iio_channel *chn, const char *attr, long long val);
 
+    ssize_t (*iio_device_attr_write)(const struct iio_device *dev, const char *attr, const char *src);
+
     int (*iio_device_attr_write_bool)(const struct iio_device *dev, const char *attr, bool val);
 
     int (*iio_channel_attr_write_bool)(const struct iio_channel *chn, const char *attr, bool val);

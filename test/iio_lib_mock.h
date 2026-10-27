@@ -24,6 +24,9 @@ typedef struct {
   long long powerdown;
   int powerdown_writes;
   char gain_control_mode[32];
+  char calib_mode[32];
+  // value of sampling_frequency_writes at the moment calib_mode was written
+  int calib_mode_sampling_frequency_writes;
 } iio_lib_mock_stats;
 
 int iio_lib_mock_create(int16_t *expected_rx, size_t expected_rx_len, int16_t *expected_tx, iio_lib **lib);

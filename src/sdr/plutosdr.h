@@ -23,6 +23,9 @@ typedef struct {
   iio_gain_mode gain_control_mode;
   unsigned int timeout_ms; // timeout for all iio operations
   char *uri;
+  // ad9361 "calib_mode" attribute, written before the first sample rate change to avoid spurs.
+  // NULL or empty means "manual_tx_quad"
+  char *calib_mode;
   uint64_t sample_rate;  // default sample rate
 } plutosdr_settings;
 

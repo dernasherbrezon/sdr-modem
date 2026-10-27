@@ -564,6 +564,15 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
     return -1;
   }
 
+  // calibration mode must be set before any sample rate change. otherwise spurs will appear
+  if (settings->calib_mode != NULL) {
+    code = plutosdr_error_check(pluto->lib->iio_device_attr_write(pluto->control_device, "calib_mode", settings->calib_mode), "calib_mode", pluto);
+    if (code < 0) {
+      plutosdr_destroy(pluto);
+      return code;
+    }
+  }
+
   const char *gain_control_mode_str = plutosdr_convert_gain_mode(settings->gain_control_mode);
   if (gain_control_mode_str == NULL) {
     plutosdr_destroy(pluto);
@@ -705,8 +714,8 @@ int plutosdr_create(const plutosdr_settings *settings, uint32_t sdr_buffer_len, 
   result->stop_rx = plutosdr_stop_rx;
   result->sdr_flush_tx = plutosdr_flush_tx;
 
-  LOG_INFO("plutosdr: uri=%s gain_control_mode=%d tx_powerdown=%s timeout_ms=%u frequency=%.0f~%.0f sample_rate=%.0f~%.0f gain=%.0f~%.0f power=%.2f~%.2f",
-           pluto->uri, settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms,
+  LOG_INFO("plutosdr: uri=%s calib_mode=%s gain_control_mode=%d tx_powerdown=%s timeout_ms=%u frequency=%.0f~%.0f sample_rate=%.0f~%.0f gain=%.0f~%.0f power=%.2f~%.2f",
+           pluto->uri, settings->calib_mode, settings->gain_control_mode, settings->tx_powerdown ? "true" : "false", settings->timeout_ms,
            pluto->frequency.min, pluto->frequency.max,
            pluto->sample_rate.min, pluto->sample_rate.max,
            pluto->gain.min, pluto->gain.max,

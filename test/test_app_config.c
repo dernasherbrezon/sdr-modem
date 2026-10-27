@@ -52,6 +52,30 @@ static void ignore_if_no_libairspy() {
   airspy_lib_destroy(lib);
 }
 
+void test_pluto_calib_mode_default() {
+  char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", NULL};
+  TEST_ASSERT_EQUAL_INT(0, app_config_create(3, argv, &config));
+  TEST_ASSERT_NULL(config->plutosdr.calib_mode);
+}
+
+void test_pluto_calib_mode_from_file() {
+  char *argv[] = {"test_app_config", "--config", "pluto_calib_mode.conf", NULL};
+  TEST_ASSERT_EQUAL_INT(0, app_config_create(3, argv, &config));
+  TEST_ASSERT_EQUAL_STRING("auto", config->plutosdr.calib_mode);
+}
+
+void test_pluto_calib_mode_from_cli() {
+  char *argv[] = {"test_app_config", "--config", "pluto_calib_mode.conf", "--plutosdr_calib_mode", "tx_quad", NULL};
+  TEST_ASSERT_EQUAL_INT(0, app_config_create(5, argv, &config));
+  TEST_ASSERT_EQUAL_STRING("tx_quad", config->plutosdr.calib_mode);
+}
+
+void test_pluto_calib_mode_empty() {
+  char *argv[] = {"test_app_config", "--config", "pluto_enabled.conf", "--plutosdr_calib_mode", "", NULL};
+  TEST_ASSERT_EQUAL_INT(0, app_config_create(5, argv, &config));
+  TEST_ASSERT_NULL(config->plutosdr.calib_mode);
+}
+
 void test_airspy_enabled() {
   ignore_if_no_libairspy();
   char *argv[] = {"test_app_config", "--config", "airspy_enabled.conf", NULL};
@@ -321,6 +345,10 @@ int main(void) {
   RUN_TEST(test_missing_file);
   RUN_TEST(test_unknown_sdr_type);
   RUN_TEST(test_pluto_enabled);
+  RUN_TEST(test_pluto_calib_mode_default);
+  RUN_TEST(test_pluto_calib_mode_from_file);
+  RUN_TEST(test_pluto_calib_mode_from_cli);
+  RUN_TEST(test_pluto_calib_mode_empty);
   RUN_TEST(test_airspy_enabled);
   RUN_TEST(test_airspy_defaults);
   RUN_TEST(test_airspy_gain_modes_from_cli);

@@ -36,6 +36,40 @@ void test_create_default_uri() {
   TEST_ASSERT_EQUAL_STRING("manual", iio_lib_mock_get_stats()->gain_control_mode);
 }
 
+void test_create_default_calib_mode() {
+  TEST_ASSERT_EQUAL_INT(0, create_device(0, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
+  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", iio_lib_mock_get_stats()->calib_mode);
+}
+
+void test_create_calib_mode() {
+  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
+  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local", .calib_mode = (char *) "auto"};
+  TEST_ASSERT_EQUAL_INT(0, plutosdr_create(&settings, BUFFER_LEN, lib, &device));
+  TEST_ASSERT_EQUAL_STRING("auto", iio_lib_mock_get_stats()->calib_mode);
+}
+
+void test_create_empty_calib_mode() {
+  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
+  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local", .calib_mode = (char *) ""};
+  TEST_ASSERT_EQUAL_INT(0, plutosdr_create(&settings, BUFFER_LEN, lib, &device));
+  TEST_ASSERT_EQUAL_STRING("manual_tx_quad", iio_lib_mock_get_stats()->calib_mode);
+}
+
+void test_create_calib_mode_before_sample_rate() {
+  TEST_ASSERT_EQUAL_INT(0, create_device(3000000, IIO_GAIN_MODE_MANUAL, NULL, 0, NULL));
+  const iio_lib_mock_stats *stats = iio_lib_mock_get_stats();
+  TEST_ASSERT_EQUAL_INT(0, stats->calib_mode_sampling_frequency_writes);
+  TEST_ASSERT_TRUE(stats->sampling_frequency_writes > 0);
+}
+
+void test_create_calib_mode_write_failure() {
+  TEST_ASSERT_EQUAL_INT(0, iio_lib_mock_create(NULL, 0, NULL, &lib));
+  iio_lib_mock_fail_write("calib_mode");
+  plutosdr_settings settings = {.gain_control_mode = IIO_GAIN_MODE_MANUAL, .timeout_ms = 1000, .uri = (char *) "ip:pluto.local"};
+  TEST_ASSERT_TRUE(plutosdr_create(&settings, BUFFER_LEN, lib, &device) < 0);
+  TEST_ASSERT_NULL(device);
+}
+
 void test_create_gain_modes() {
   struct {
     iio_gain_mode mode;
@@ -503,6 +537,11 @@ void setUp() {
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_create_default_uri);
+  RUN_TEST(test_create_default_calib_mode);
+  RUN_TEST(test_create_calib_mode);
+  RUN_TEST(test_create_empty_calib_mode);
+  RUN_TEST(test_create_calib_mode_before_sample_rate);
+  RUN_TEST(test_create_calib_mode_write_failure);
   RUN_TEST(test_create_gain_modes);
   RUN_TEST(test_create_invalid_gain_mode);
   RUN_TEST(test_create_gain_mode_write_failure);

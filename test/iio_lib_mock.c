@@ -140,6 +140,17 @@ int iio_channel_attr_write_longlong(const struct iio_channel *chn, const char *a
   return 0;
 }
 
+ssize_t iio_device_attr_write(const struct iio_device *dev, const char *attr, const char *src) {
+  if (mock_should_fail(attr)) {
+    return -EIO;
+  }
+  if (strcmp(attr, "calib_mode") == 0) {
+    strncpy(iio_lib_mock_stats_data.calib_mode, src, sizeof(iio_lib_mock_stats_data.calib_mode) - 1);
+    iio_lib_mock_stats_data.calib_mode_sampling_frequency_writes = iio_lib_mock_stats_data.sampling_frequency_writes;
+  }
+  return 0;
+}
+
 int iio_device_attr_write_bool(const struct iio_device *dev, const char *attr, bool val) {
   if (mock_should_fail(attr)) {
     return -EIO;
@@ -358,6 +369,7 @@ int iio_lib_mock_create(int16_t *expected_rx, size_t expected_rx_len, int16_t *e
   result->iio_context_set_timeout = iio_context_set_timeout;
   result->iio_create_context_from_uri = iio_create_context_from_uri;
   result->iio_create_scan_context = iio_create_scan_context;
+  result->iio_device_attr_write = iio_device_attr_write;
   result->iio_device_attr_write_bool = iio_device_attr_write_bool;
   result->iio_device_attr_write_raw = iio_device_attr_write_raw;
   result->iio_device_create_buffer = iio_device_create_buffer;
