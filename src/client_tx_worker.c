@@ -30,7 +30,8 @@ struct client_tx_worker_t {
 typedef enum {
   CLIENT_TX_SOFT_BITS = 0,
   CLIENT_TX_RESPONSE,
-  CLIENT_TX_NEW_CLIENT
+  CLIENT_TX_NEW_CLIENT,
+  CLIENT_TX_COMPLETE
 } client_tx_message_type;
 
 void client_tx_worker_send_new(int client_socket, client_tx_worker *worker) {
@@ -60,6 +61,20 @@ void client_tx_worker_send_response(uint32_t request_id, response_status type, r
   };
   queue_message message = {
     .type = CLIENT_TX_RESPONSE,
+    .request_id = request_id,
+    .buffer_len = sizeof(response),
+    .buffer = &resp
+  };
+  queue_put(&message, worker->queue);
+}
+
+void client_tx_worker_send_tx_complete(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker) {
+  response resp = {
+    .status = type,
+    .details = details
+  };
+  queue_message message = {
+    .type = CLIENT_TX_COMPLETE,
     .request_id = request_id,
     .buffer_len = sizeof(response),
     .buffer = &resp
@@ -125,6 +140,32 @@ static void *client_tx_worker_callback(void *arg) {
         }
 
         header.type = MESSAGE_TYPE_RESPONSE;
+        header.protocol_version = PROTOCOL_VERSION;
+        header.request_id = message.request_id;
+        header.message_length = written;
+        code = client_tx_send_header(&header, worker);
+        if (code != 0) {
+          break;
+        }
+        code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
+        if (code != 0) {
+          worker->client_socket = -1;
+          break;
+        }
+        break;
+      }
+      case CLIENT_TX_COMPLETE: {
+        if (worker->client_socket < 0) {
+          break;
+        }
+        response *resp = (response *) message.buffer;
+
+        code = api_encode_response(resp, worker->buffer, worker->buffer_len, &written);
+        if (code != 0) {
+          break;
+        }
+
+        header.type = MESSAGE_TYPE_TX_COMPLETE;
         header.protocol_version = PROTOCOL_VERSION;
         header.request_id = message.request_id;
         header.message_length = written;

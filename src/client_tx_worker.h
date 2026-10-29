@@ -13,6 +13,8 @@ void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t b
 
 void client_tx_worker_send_response(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker);
 
+void client_tx_worker_send_tx_complete(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker);
+
 int client_tx_worker_create(uint32_t buffer_size, uint16_t queue_size, client_tx_worker **worker);
 
 void client_tx_worker_destroy(client_tx_worker *worker);
