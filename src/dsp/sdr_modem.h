@@ -50,7 +50,15 @@ int sdr_modem_set_debug_constellation_file(const char *debug_constellation_file,
 // rx only. only honored by the psk_pm modem, ignored (returns 0) for others -- see psk_pm_modem.h
 int sdr_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_modem *modem);
 
+// streaming: no tail is produced, the filters keep their history for the next call. call
+// sdr_modem_modulate_flush at the end of the transmission
 void sdr_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem);
+
+// assumes zero input and produces the remaining tail samples of what was modulated since the last flush,
+// then resets the tx state (filters, differential reference, phases) so that the next sdr_modem_modulate starts a
+// new independent transmission. output is NULL and output_len is 0 if there is nothing to flush.
+// the output buffer is reused: consume the output of sdr_modem_modulate first
+void sdr_modem_modulate_flush(float complex **output, size_t *output_len, sdr_modem *modem);
 
 void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, sdr_modem *modem);
 

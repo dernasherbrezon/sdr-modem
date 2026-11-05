@@ -25,6 +25,9 @@ void halfband_interp_process(const float complex *input, size_t input_len, float
 void halfband_interp_process_flush(const float complex *input, size_t input_len, float complex **output, size_t *output_len,
                                    halfband_interp *filter);
 
+// clears the filter history, so that the next input starts a new independent signal
+void halfband_interp_reset(halfband_interp *filter);
+
 size_t halfband_interp_max_output_buffer_length(halfband_interp *filter);
 
 void halfband_interp_destroy(halfband_interp *filter);

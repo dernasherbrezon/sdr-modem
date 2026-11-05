@@ -35,6 +35,11 @@ void psk_pm_modem_demodulate(const float complex *input, size_t input_len, int8_
 
 void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
 
+// pushes the remaining tail of the modulated signal out and resets the tx state, so that the next
+// modulate starts a new independent transmission. output_len is 0 if nothing was modulated since the last flush.
+// the output buffer is the same as of modulate: consume the modulate output first
+void psk_pm_modem_modulate_flush(float complex **output, size_t *output_len, void *modem);
+
 size_t psk_pm_modem_max_modulation_buffer_length(void *modem);
 
 void psk_pm_modem_destroy(void *modem);

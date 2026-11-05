@@ -110,6 +110,78 @@ void test_round_trip() {
   TEST_ASSERT(mismatches <= total / 20);
 }
 
+static size_t modulate_and_flush(const uint8_t *input, size_t input_len, size_t chunk_len, float complex *result, size_t result_capacity) {
+  size_t total = 0;
+  for (size_t offset = 0; offset < input_len; offset += chunk_len) {
+    size_t len = input_len - offset < chunk_len ? input_len - offset : chunk_len;
+    float complex *output = NULL;
+    size_t output_len = 0;
+    psk_pm_modem_modulate(input + offset, len, &output, &output_len, mod);
+    TEST_ASSERT_NOT_NULL(output);
+    TEST_ASSERT(total + output_len <= result_capacity);
+    memcpy(result + total, output, sizeof(float complex) * output_len);
+    total += output_len;
+  }
+  float complex *output = NULL;
+  size_t output_len = 0;
+  psk_pm_modem_modulate_flush(&output, &output_len, mod);
+  TEST_ASSERT_NOT_NULL(output);
+  TEST_ASSERT(total + output_len <= result_capacity);
+  memcpy(result + total, output, sizeof(float complex) * output_len);
+  return total + output_len;
+}
+
+static void assert_same_signal(const float complex *expected, size_t expected_len, const float complex *actual, size_t actual_len) {
+  TEST_ASSERT_EQUAL_size_t(expected_len, actual_len);
+  for (size_t i = 0; i < expected_len; i++) {
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, crealf(expected[i]), crealf(actual[i]));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, cimagf(expected[i]), cimagf(actual[i]));
+  }
+}
+
+// the flush resets the tx, including the subcarrier phase: the second transmission is the same as the first
+void test_flush_resets_state() {
+  psk_pm_modem_settings settings = default_settings(48000);
+  TEST_ASSERT_EQUAL_INT(0, psk_pm_modem_create(&settings, 16, &mod));
+  setup_random_input(&mod_input, 16);
+  size_t capacity = psk_pm_modem_max_modulation_buffer_length(mod);
+  float complex *first = malloc(sizeof(float complex) * capacity);
+  float complex *second = malloc(sizeof(float complex) * capacity);
+  TEST_ASSERT_NOT_NULL(first);
+  TEST_ASSERT_NOT_NULL(second);
+  size_t first_len = modulate_and_flush(mod_input, 16, 16, first, capacity);
+  size_t second_len = modulate_and_flush(mod_input, 16, 16, second, capacity);
+  assert_same_signal(first, first_len, second, second_len);
+  free(first);
+  free(second);
+}
+
+// frames one after another without a gap: the same signal as one long frame
+void test_streaming_chunks() {
+  psk_pm_modem_settings settings = default_settings(48000);
+  TEST_ASSERT_EQUAL_INT(0, psk_pm_modem_create(&settings, 16, &mod));
+  setup_random_input(&mod_input, 16);
+  size_t capacity = psk_pm_modem_max_modulation_buffer_length(mod);
+  float complex *whole = malloc(sizeof(float complex) * capacity);
+  float complex *chunks = malloc(sizeof(float complex) * capacity);
+  TEST_ASSERT_NOT_NULL(whole);
+  TEST_ASSERT_NOT_NULL(chunks);
+  size_t whole_len = modulate_and_flush(mod_input, 16, 16, whole, capacity);
+  size_t chunks_len = modulate_and_flush(mod_input, 16, 4, chunks, capacity);
+  assert_same_signal(whole, whole_len, chunks, chunks_len);
+  free(whole);
+  free(chunks);
+}
+
+void test_flush_without_modulate() {
+  psk_pm_modem_settings settings = default_settings(48000);
+  TEST_ASSERT_EQUAL_INT(0, psk_pm_modem_create(&settings, 16, &mod));
+  float complex *output = NULL;
+  size_t output_len = 123;
+  psk_pm_modem_modulate_flush(&output, &output_len, mod);
+  TEST_ASSERT_EQUAL_size_t(0, output_len);
+}
+
 void tearDown() {
   if (mod != NULL) {
     psk_pm_modem_destroy(mod);
@@ -136,5 +208,8 @@ int main(void) {
   RUN_TEST(test_invalid_modulation_index);
   RUN_TEST(test_invalid_carrier_pll_bandwidth);
   RUN_TEST(test_round_trip);
+  RUN_TEST(test_flush_resets_state);
+  RUN_TEST(test_streaming_chunks);
+  RUN_TEST(test_flush_without_modulate);
   return UNITY_END();
 }

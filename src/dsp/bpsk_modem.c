@@ -1,5 +1,6 @@
 #include "bpsk_modem.h"
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -67,6 +68,13 @@ struct bpsk_modem_t {
   msresamp_crcf resampler_tx;
   float complex *resampler_tx_output;
   size_t resampler_tx_output_len;
+  // zero samples pushed into resampler_tx on flush, so that its filter delay is flushed too
+  size_t resampler_tx_flush_len;
+
+  // zero symbols pushed into interp on flush: the rrc pulse is 2 * rrc_delay symbols long
+  size_t tx_tail_symbols;
+  // true when something was modulated since the creation or the last flush, i.e. there is a tail to flush
+  bool tx_pending;
 
   // SYMMETRIC_DIFFERENTIAL only: liquid-dsp has no built-in modem for it, so bits are
   // encoded/decoded as +-90 degree rotations relative to the previous symbol instead of
@@ -212,13 +220,9 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   //////// TX chain
 
   result->max_modulation_input_bits = (size_t) max_input_buffer_length * 8;
-  result->max_modulation_buffer_length = result->max_modulation_input_bits * sps;
-  result->modulation_output = malloc(sizeof(float complex) * result->max_modulation_buffer_length);
-  if (result->modulation_output == NULL) {
-    bpsk_modem_destroy(result);
-    return -ENOMEM;
-  }
-
+  result->tx_tail_symbols = 2 * (size_t) settings->rrc_delay;
+  // the buffer has to fit either the data or the tail (see bpsk_modem_modulate_flush)
+  result->max_modulation_buffer_length = (result->max_modulation_input_bits + result->tx_tail_symbols) * sps;
   result->interp = firinterp_crcf_create_prototype(LIQUID_FIRFILT_RRC, sps, settings->rrc_delay, settings->rrc_beta, 0.0f);
   if (result->interp == NULL) {
     bpsk_modem_destroy(result);
@@ -233,12 +237,21 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
       bpsk_modem_destroy(result);
       return -ENOMEM;
     }
+    // the delay is in input samples, and the impulse response is as long after its peak as before it
+    result->resampler_tx_flush_len = (size_t) ceil(2.0 * (double) msresamp_crcf_get_delay(result->resampler_tx)) + 1;
+    result->max_modulation_buffer_length += result->resampler_tx_flush_len;
     result->resampler_tx_output_len = (size_t) ceil((double) result->max_modulation_buffer_length * resample_rate_tx) + BPSK_MODEM_RESAMPLER_OUTPUT_MARGIN;
     result->resampler_tx_output = malloc(sizeof(float complex) * result->resampler_tx_output_len);
     if (result->resampler_tx_output == NULL) {
       bpsk_modem_destroy(result);
       return -ENOMEM;
     }
+  }
+
+  result->modulation_output = malloc(sizeof(float complex) * result->max_modulation_buffer_length);
+  if (result->modulation_output == NULL) {
+    bpsk_modem_destroy(result);
+    return -ENOMEM;
   }
 
   LOG_INFO("%s: sample_rate=%" PRIu64 " baud_rate=%u bandwidth=%u rrc_beta=%.3f rrc_delay=%u costas_bandwidth=%.5f symsync_filter_bank_size=%u",
@@ -378,6 +391,18 @@ void bpsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
   *output_len = num_symbols;
 }
 
+// passes modulation_output[0..len) through the tx resampler, if any
+static void bpsk_modem_resample_tx(size_t len, float complex **output, size_t *output_len, bpsk_modem *mod) {
+  *output = mod->modulation_output;
+  *output_len = len;
+  if (mod->resampler_tx != NULL) {
+    unsigned int resampled_len = 0;
+    msresamp_crcf_execute(mod->resampler_tx, *output, (unsigned int) *output_len, mod->resampler_tx_output, &resampled_len);
+    *output = mod->resampler_tx_output;
+    *output_len = resampled_len;
+  }
+}
+
 void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
   bpsk_modem *mod = mod_v;
   if (input_len * 8 > mod->max_modulation_input_bits) {
@@ -407,16 +432,47 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
       sample_index += mod->samples_per_symbol;
     }
   }
+  if (input_len > 0) {
+    mod->tx_pending = true;
+  }
 
-  *output = mod->modulation_output;
-  *output_len = sample_index;
+  bpsk_modem_resample_tx(sample_index, output, output_len, mod);
+}
+
+void bpsk_modem_modulate_flush(float complex **output, size_t *output_len, void *mod_v) {
+  bpsk_modem *mod = mod_v;
+  if (!mod->tx_pending) {
+    *output = mod->modulation_output;
+    *output_len = 0;
+    return;
+  }
+
+  // zero symbols push the tail of the rrc pulse out. they are not real symbols: the differential
+  // state (tx_prev_symbol, modemcf) is not touched and nothing goes to the debug constellation
+  size_t sample_index = 0;
+  for (size_t i = 0; i < mod->tx_tail_symbols; i++) {
+    firinterp_crcf_execute(mod->interp, 0.0f, mod->modulation_output + sample_index);
+    sample_index += mod->samples_per_symbol;
+  }
 
   if (mod->resampler_tx != NULL) {
-    unsigned int resampled_len = 0;
-    msresamp_crcf_execute(mod->resampler_tx, *output, (unsigned int) *output_len, mod->resampler_tx_output, &resampled_len);
-    *output = mod->resampler_tx_output;
-    *output_len = resampled_len;
+    // flush the resampler filter: the carrier stops after the tail
+    memset(mod->modulation_output + sample_index, 0, sizeof(float complex) * mod->resampler_tx_flush_len);
+    sample_index += mod->resampler_tx_flush_len;
   }
+
+  bpsk_modem_resample_tx(sample_index, output, output_len, mod);
+
+  // ready for the next independent transmission
+  firinterp_crcf_reset(mod->interp);
+  if (mod->resampler_tx != NULL) {
+    msresamp_crcf_reset(mod->resampler_tx);
+  }
+  if (mod->mod != NULL) {
+    modemcf_reset(mod->mod);
+  }
+  mod->tx_prev_symbol = 1.0f + 0.0f * I;
+  mod->tx_pending = false;
 }
 
 void bpsk_modem_destroy(void *modem_v) {

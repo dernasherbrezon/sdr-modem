@@ -174,18 +174,8 @@ void psk_pm_modem_demodulate(const float complex *input, size_t input_len, int8_
   bpsk_modem_demodulate(demod->subcarrier_output, input_len, output, output_len, demod->subcarrier_modem);
 }
 
-void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
-  psk_pm_modem *mod = mod_v;
-
-  float complex *subcarrier_symbols = NULL;
-  size_t subcarrier_symbols_len = 0;
-  bpsk_modem_modulate(input, input_len, &subcarrier_symbols, &subcarrier_symbols_len, mod->subcarrier_modem);
-  if (subcarrier_symbols == NULL) {
-    *output = NULL;
-    *output_len = 0;
-    return;
-  }
-
+// phase-modulates the carrier with the subcarrier waveform, shared by modulate and modulate_flush
+static void psk_pm_modem_phase_modulate(const float complex *subcarrier_symbols, size_t subcarrier_symbols_len, float complex **output, size_t *output_len, psk_pm_modem *mod) {
   for (size_t i = 0; i < subcarrier_symbols_len; i++) {
     // subcarrier_symbols is the RRC-shaped BPSK baseband waveform (real-valued: BPSK's constellation
     // sits on the real axis and the RRC taps are real, so the imaginary part is always exactly 0).
@@ -200,6 +190,38 @@ void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex
 
   *output = mod->modulation_output;
   *output_len = subcarrier_symbols_len;
+}
+
+void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *mod_v) {
+  psk_pm_modem *mod = mod_v;
+
+  float complex *subcarrier_symbols = NULL;
+  size_t subcarrier_symbols_len = 0;
+  bpsk_modem_modulate(input, input_len, &subcarrier_symbols, &subcarrier_symbols_len, mod->subcarrier_modem);
+  if (subcarrier_symbols == NULL) {
+    *output = NULL;
+    *output_len = 0;
+    return;
+  }
+  psk_pm_modem_phase_modulate(subcarrier_symbols, subcarrier_symbols_len, output, output_len, mod);
+}
+
+void psk_pm_modem_modulate_flush(float complex **output, size_t *output_len, void *mod_v) {
+  psk_pm_modem *mod = mod_v;
+
+  float complex *subcarrier_symbols = NULL;
+  size_t subcarrier_symbols_len = 0;
+  bpsk_modem_modulate_flush(&subcarrier_symbols, &subcarrier_symbols_len, mod->subcarrier_modem);
+  if (subcarrier_symbols == NULL) {
+    *output = NULL;
+    *output_len = 0;
+    return;
+  }
+  psk_pm_modem_phase_modulate(subcarrier_symbols, subcarrier_symbols_len, output, output_len, mod);
+
+  // the subcarrier modem is already reset. restart the subcarrier tone from phase 0 as well, so that
+  // the next transmission is independent of this one
+  nco_crcf_set_phase(mod->subcarrier_nco, 0.0f);
 }
 
 int psk_pm_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, psk_pm_modem *modem) {

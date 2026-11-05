@@ -79,6 +79,10 @@ void halfband_interp_process_flush(const float complex *input, size_t input_len,
     *output_len = (input_len + filter->tail_length) * filter->interpolation;
 }
 
+void halfband_interp_reset(halfband_interp *filter) {
+    msresamp2_crcf_reset(filter->resampler);
+}
+
 size_t halfband_interp_max_output_buffer_length(halfband_interp *filter) {
     return filter->output_len;
 }

@@ -46,6 +46,13 @@ static void *sdr_tx_worker_callback(void *arg) {
         sdr_modem_modulate(message.buffer, message.buffer_len, &output, &output_len, worker->modem);
 
         code = worker->sdr->sdr_process_tx(output, output_len, worker->sdr->plugin);
+        if (code == 0) {
+          // packet mode: every frame is a separate transmission, so push its tail out
+          sdr_modem_modulate_flush(&output, &output_len, worker->modem);
+          if (output != NULL) {
+            code = worker->sdr->sdr_process_tx(output, output_len, worker->sdr->plugin);
+          }
+        }
         if (code != 0) {
           client_tx_worker_send_tx_complete(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
           break;

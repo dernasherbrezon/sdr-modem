@@ -1,5 +1,6 @@
 #include "sdr_modem.h"
 #include <errno.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <math.h>
@@ -31,6 +32,9 @@ struct sdr_modem_t {
 
   void (*modulate)(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem);
 
+  // pushes the tail of the modulated signal out and resets the tx state
+  void (*modulate_flush)(float complex **output, size_t *output_len, void *modem);
+
   void (*demodulate)(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, void *modem);
 
   size_t (*max_modulation_buffer_length)(void *modem);
@@ -60,6 +64,9 @@ struct sdr_modem_t {
 
   // which wrapped modem is in use (MODEM_TYPE_*), needed to dispatch modem-specific debug setters
   sdr_modem_type modem_type;
+
+  // true when something was modulated since the creation or the last flush
+  bool tx_pending;
 
   // sample rate after halfband decimation
   uint64_t baseband_sample_rate;
@@ -175,6 +182,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       gfsk_modem_settings decimated = settings->modem.gfsk;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = gfsk_modem_modulate;
+      result->modulate_flush = gfsk_modem_modulate_flush;
       result->demodulate = gfsk_modem_demodulate;
       result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
       result->destroy = gfsk_modem_destroy;
@@ -187,6 +195,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       bpsk_modem_settings decimated = settings->modem.psk;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = bpsk_modem_modulate;
+      result->modulate_flush = bpsk_modem_modulate_flush;
       result->demodulate = bpsk_modem_demodulate;
       result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
       result->destroy = bpsk_modem_destroy;
@@ -197,6 +206,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       psk_pm_modem_settings decimated = settings->modem.psk_pm;
       decimated.sample_rate = result->baseband_sample_rate;
       result->modulate = psk_pm_modem_modulate;
+      result->modulate_flush = psk_pm_modem_modulate_flush;
       result->demodulate = psk_pm_modem_demodulate;
       result->max_modulation_buffer_length = psk_pm_modem_max_modulation_buffer_length;
       result->destroy = psk_pm_modem_destroy;
@@ -295,17 +305,47 @@ int sdr_modem_set_debug_subcarrier_file(const char *debug_subcarrier_file, sdr_m
   return psk_pm_modem_set_debug_subcarrier_file(debug_subcarrier_file, modem->modem);
 }
 
-void sdr_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
-  modem->modulate(input, input_len, output, output_len, modem->modem);
-  if (modem->halfband_tx != NULL && *output != NULL) {
-    halfband_interp_process_flush(*output, *output_len, output, output_len, modem->halfband_tx);
-  }
+// debug dump and frequency offset correction
+static void sdr_modem_tx_postprocess(float complex **output, size_t *output_len, sdr_modem *modem) {
   if (modem->debug_freq_offset_file != NULL && *output != NULL) {
     fwrite(*output, sizeof(float complex), *output_len, modem->debug_freq_offset_file);
   }
   if (modem->freq_offset != NULL && *output != NULL) {
     freq_offset_process(*output, *output_len, output, output_len, modem->freq_offset);
   }
+}
+
+void sdr_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, sdr_modem *modem) {
+  modem->modulate(input, input_len, output, output_len, modem->modem);
+  if (*output == NULL) {
+    return;
+  }
+  if (input_len > 0) {
+    modem->tx_pending = true;
+  }
+  if (modem->halfband_tx != NULL) {
+    // streaming: the filter keeps its history for the next call, the tail comes with sdr_modem_modulate_flush
+    halfband_interp_process(*output, *output_len, output, output_len, modem->halfband_tx);
+  }
+  sdr_modem_tx_postprocess(output, output_len, modem);
+}
+
+void sdr_modem_modulate_flush(float complex **output, size_t *output_len, sdr_modem *modem) {
+  if (!modem->tx_pending) {
+    *output = NULL;
+    *output_len = 0;
+    return;
+  }
+  modem->modulate_flush(output, output_len, modem->modem);
+  if (*output == NULL) {
+    return;
+  }
+  if (modem->halfband_tx != NULL) {
+    halfband_interp_process_flush(*output, *output_len, output, output_len, modem->halfband_tx);
+    halfband_interp_reset(modem->halfband_tx);
+  }
+  sdr_modem_tx_postprocess(output, output_len, modem);
+  modem->tx_pending = false;
 }
 
 void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, sdr_modem *modem) {

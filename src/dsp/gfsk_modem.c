@@ -2,6 +2,7 @@
 #include "gfsk_correlator.h"
 #include "dc_blocker.h"
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -14,7 +15,7 @@
 #define GFSK_MODEM_SPS 2
 // filter delay in symbols of both tx gaussian pulse and rx matched filter
 #define GFSK_MODEM_FILTER_DELAY 3
-// symbols that repeat the last bit of the frame: the first GFSK_MODEM_FILTER_DELAY flush the tx pulse and
+// symbols that repeat the last bit when the tx is flushed: the first GFSK_MODEM_FILTER_DELAY flush the tx pulse and
 // the rest keep the carrier steady while the rx filter (which is as long) reads the last bit
 #define GFSK_MODEM_TX_TAIL_SYMBOLS (2 * GFSK_MODEM_FILTER_DELAY)
 #define GFSK_MODEM_RESAMPLER_STOPBAND_ATTENUATION_DB 60.0f
@@ -82,8 +83,12 @@ struct gfsk_modem_t {
   size_t max_modulation_input_bits;
   size_t max_modulation_buffer_length;
   float complex *modulation_output;
-  // zero samples pushed into resampler_tx after the frame, so that its filter delay is flushed too
+  // zero samples pushed into resampler_tx on flush, so that its filter delay is flushed too
   size_t resampler_tx_flush_len;
+  // last bit passed to cpfskmod: the flush repeats it
+  unsigned int tx_last_bit;
+  // true when something was modulated since the creation or the last flush, i.e. there is a tail to flush
+  bool tx_pending;
 
   cpfskmod mod;
 
@@ -282,8 +287,9 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
   //////// TX chain
 
   result->max_modulation_input_bits = (size_t) max_input_buffer_length * 8;
-  // the tx pulse is GFSK_MODEM_FILTER_DELAY symbols long on each side: the last bits of the frame come
-  // out of cpfskmod only after that many more symbols, so the tail is appended to the frame
+  // the tx pulse is GFSK_MODEM_FILTER_DELAY symbols long on each side: the last bits come out of
+  // cpfskmod only after that many more symbols. the tail is produced by gfsk_modem_modulate_flush, so
+  // the buffer has to fit either the data or the tail
   result->max_modulation_buffer_length = (result->max_modulation_input_bits + GFSK_MODEM_TX_TAIL_SYMBOLS) * GFSK_MODEM_SPS;
 
   result->mod = cpfskmod_create(1, result->modulation_index, GFSK_MODEM_SPS, GFSK_MODEM_FILTER_DELAY, settings->bt, LIQUID_CPFSK_GMSK);
@@ -387,6 +393,18 @@ void gfsk_modem_demodulate(const float complex *input, size_t input_len, int8_t 
   *output_len = symbols_len;
 }
 
+// passes modulation_output[0..len) through the tx resampler, if any
+static void gfsk_modem_resample_tx(size_t len, float complex **output, size_t *output_len, gfsk_modem *mod) {
+  *output = mod->modulation_output;
+  *output_len = len;
+  if (mod->resampler_tx != NULL) {
+    unsigned int resampled_len = 0;
+    msresamp_crcf_execute(mod->resampler_tx, *output, (unsigned int) *output_len, mod->resampler_tx_output, &resampled_len);
+    *output = mod->resampler_tx_output;
+    *output_len = resampled_len;
+  }
+}
+
 void gfsk_modem_modulate(const uint8_t *input, size_t input_len, float complex **output, size_t *output_len, void *modem) {
   gfsk_modem *mod = (gfsk_modem *) modem;
   if (input_len * 8 > mod->max_modulation_input_bits) {
@@ -401,34 +419,47 @@ void gfsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
     for (int j = 0; j < 8; j++) {
       unsigned int bit = (input[i] >> (7 - j)) & 1U;
       cpfskmod_modulate(mod->mod, bit, mod->modulation_output + sample_index);
+      mod->tx_last_bit = bit;
       sample_index += GFSK_MODEM_SPS;
     }
   }
-
-  // flush cpfskmod: keep the last frequency, so that the last bits get their full pulse
   if (input_len > 0) {
-    unsigned int last_bit = input[input_len - 1] & 1U;
-    for (int j = 0; j < GFSK_MODEM_TX_TAIL_SYMBOLS; j++) {
-      cpfskmod_modulate(mod->mod, last_bit, mod->modulation_output + sample_index);
-      sample_index += GFSK_MODEM_SPS;
-    }
+    mod->tx_pending = true;
+  }
+
+  gfsk_modem_resample_tx(sample_index, output, output_len, mod);
+}
+
+void gfsk_modem_modulate_flush(float complex **output, size_t *output_len, void *modem) {
+  gfsk_modem *mod = (gfsk_modem *) modem;
+  if (!mod->tx_pending) {
+    *output = mod->modulation_output;
+    *output_len = 0;
+    return;
+  }
+
+  // keep the last frequency, so that the last bits get their full pulse
+  size_t sample_index = 0;
+  for (int j = 0; j < GFSK_MODEM_TX_TAIL_SYMBOLS; j++) {
+    cpfskmod_modulate(mod->mod, mod->tx_last_bit, mod->modulation_output + sample_index);
+    sample_index += GFSK_MODEM_SPS;
   }
 
   if (mod->resampler_tx != NULL) {
-    // flush the resampler filter: the carrier stops after the frame
+    // flush the resampler filter: the carrier stops after the tail
     memset(mod->modulation_output + sample_index, 0, sizeof(float complex) * mod->resampler_tx_flush_len);
     sample_index += mod->resampler_tx_flush_len;
   }
 
-  *output = mod->modulation_output;
-  *output_len = sample_index;
+  gfsk_modem_resample_tx(sample_index, output, output_len, mod);
 
+  // ready for the next independent transmission
+  cpfskmod_reset(mod->mod);
   if (mod->resampler_tx != NULL) {
-    unsigned int resampled_len = 0;
-    msresamp_crcf_execute(mod->resampler_tx, *output, (unsigned int) *output_len, mod->resampler_tx_output, &resampled_len);
-    *output = mod->resampler_tx_output;
-    *output_len = resampled_len;
+    msresamp_crcf_reset(mod->resampler_tx);
   }
+  mod->tx_last_bit = 0;
+  mod->tx_pending = false;
 }
 
 void gfsk_modem_destroy(void *modem) {

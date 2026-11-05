@@ -128,6 +128,10 @@ add_test(NAME test_halfband_decim COMMAND test_halfband_decim)
 add_executable(test_halfband_decim ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_decim.c)
 target_link_libraries(test_halfband_decim sdr_modemLib sdr_modemTestLib)
 
+add_test(NAME test_sdr_modem COMMAND test_sdr_modem)
+add_executable(test_sdr_modem ${CMAKE_CURRENT_SOURCE_DIR}/test/test_sdr_modem.c)
+target_link_libraries(test_sdr_modem sdr_modemLib sdr_modemTestLib)
+
 add_test(NAME test_halfband_interp COMMAND test_halfband_interp)
 add_executable(test_halfband_interp ${CMAKE_CURRENT_SOURCE_DIR}/test/test_halfband_interp.c)
 target_link_libraries(test_halfband_interp sdr_modemLib sdr_modemTestLib)

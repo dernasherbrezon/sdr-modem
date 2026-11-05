@@ -366,13 +366,20 @@ void test_false_sync_word_in_payload() {
   size_t modulated_len = 0;
   gfsk_modem_modulate(frame, sizeof(frame), &modulated, &modulated_len, mod);
   TEST_ASSERT(modulated != NULL);
+  float complex *input = calloc(max_samples + 1, sizeof(float complex));
+  TEST_ASSERT_NOT_NULL(input);
+  memcpy(input, modulated, sizeof(float complex) * modulated_len);
+  // the flush reuses the modulate buffer, so the frame is already copied
+  float complex *flushed = NULL;
+  size_t flushed_len = 0;
+  gfsk_modem_modulate_flush(&flushed, &flushed_len, mod);
+  TEST_ASSERT(flushed != NULL);
 
   // the demodulator is ~50 symbols behind: silence after the frame pushes the last symbols out
   size_t silence_len = 96 * (sample_rate / BAUD_RATE);
-  TEST_ASSERT(modulated_len + silence_len <= max_samples);
-  float complex *input = calloc(modulated_len + silence_len, sizeof(float complex));
-  TEST_ASSERT_NOT_NULL(input);
-  memcpy(input, modulated, sizeof(float complex) * modulated_len);
+  TEST_ASSERT(modulated_len + flushed_len + silence_len <= max_samples);
+  memcpy(input + modulated_len, flushed, sizeof(float complex) * flushed_len);
+  modulated_len += flushed_len;
 
   int8_t *output = NULL;
   size_t output_len = 0;
@@ -407,9 +414,18 @@ void test_modulation_deviation() {
   float complex *output = NULL;
   size_t output_len = 0;
   gfsk_modem_modulate(ones, sizeof(ones), &output, &output_len, mod);
-  // the frame and the symbols that flush the tx pulse and the resampler
-  TEST_ASSERT_GREATER_THAN_size_t(64 * 8 * 8 + 6 * 8 - 1, output_len);
-  TEST_ASSERT_LESS_THAN_size_t(64 * 8 * 8 + MAX_TX_FLUSH_SYMBOLS * 8, output_len);
+  // streaming: just the frame, no tail. the resampler can be off by a few samples
+  TEST_ASSERT_UINT32_WITHIN(32, 64 * 8 * 8, (uint32_t) output_len);
+  // the symbols that flush the tx pulse and the resampler
+  float complex *flushed = NULL;
+  size_t flushed_len = 0;
+  gfsk_modem_modulate_flush(&flushed, &flushed_len, mod);
+  TEST_ASSERT_GREATER_THAN_size_t(6 * 8 - 1, flushed_len);
+  TEST_ASSERT_LESS_THAN_size_t(MAX_TX_FLUSH_SYMBOLS * 8, flushed_len);
+  // nothing left: the second flush is empty
+  gfsk_modem_modulate_flush(&flushed, &flushed_len, mod);
+  TEST_ASSERT_EQUAL_size_t(0, flushed_len);
+  gfsk_modem_modulate(ones, sizeof(ones), &output, &output_len, mod);
   // steady state: skip the leading transient
   float complex *tail = output + output_len / 2;
   double sum = 0;
@@ -484,6 +500,95 @@ void test_invalid_buffers() {
   TEST_ASSERT_EQUAL_size_t(0, modulated_len);
 }
 
+// copies modulate output followed by the flush output
+static size_t modulate_and_flush(const uint8_t *input, size_t input_len, size_t chunk_len, float complex *result, size_t result_capacity) {
+  size_t total = 0;
+  for (size_t offset = 0; offset < input_len; offset += chunk_len) {
+    size_t len = input_len - offset < chunk_len ? input_len - offset : chunk_len;
+    float complex *output = NULL;
+    size_t output_len = 0;
+    gfsk_modem_modulate(input + offset, len, &output, &output_len, mod);
+    TEST_ASSERT_NOT_NULL(output);
+    TEST_ASSERT(total + output_len <= result_capacity);
+    memcpy(result + total, output, sizeof(float complex) * output_len);
+    total += output_len;
+  }
+  float complex *output = NULL;
+  size_t output_len = 0;
+  gfsk_modem_modulate_flush(&output, &output_len, mod);
+  TEST_ASSERT_NOT_NULL(output);
+  TEST_ASSERT(total + output_len <= result_capacity);
+  memcpy(result + total, output, sizeof(float complex) * output_len);
+  return total + output_len;
+}
+
+static void assert_same_signal(const float complex *expected, size_t expected_len, const float complex *actual, size_t actual_len) {
+  TEST_ASSERT_EQUAL_size_t(expected_len, actual_len);
+  for (size_t i = 0; i < expected_len; i++) {
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, crealf(expected[i]), crealf(actual[i]));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, cimagf(expected[i]), cimagf(actual[i]));
+  }
+}
+
+// the frame sent twice: the flush resets the tx, so the second transmission is the same as the first
+static void flush_resets_state(uint64_t sample_rate) {
+  gfsk_modem_settings settings = default_settings(sample_rate, 3000, SYNC_WORD_BITS);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, 32, &mod));
+  setup_random_input(&mod_input, 32);
+  size_t capacity = gfsk_modem_max_modulation_buffer_length(mod);
+  float complex *first = malloc(sizeof(float complex) * capacity);
+  float complex *second = malloc(sizeof(float complex) * capacity);
+  TEST_ASSERT_NOT_NULL(first);
+  TEST_ASSERT_NOT_NULL(second);
+  size_t first_len = modulate_and_flush(mod_input, 32, 32, first, capacity);
+  size_t second_len = modulate_and_flush(mod_input, 32, 32, second, capacity);
+  assert_same_signal(first, first_len, second, second_len);
+  free(first);
+  free(second);
+}
+
+void test_flush_resets_state() {
+  flush_resets_state(2 * BAUD_RATE);
+}
+
+void test_flush_resets_state_resampled() {
+  flush_resets_state(44100);
+}
+
+// frames one after another without a gap: the same signal as one long frame
+static void streaming_chunks(uint64_t sample_rate) {
+  gfsk_modem_settings settings = default_settings(sample_rate, 3000, SYNC_WORD_BITS);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, 32, &mod));
+  setup_random_input(&mod_input, 32);
+  size_t capacity = gfsk_modem_max_modulation_buffer_length(mod);
+  float complex *whole = malloc(sizeof(float complex) * capacity);
+  float complex *chunks = malloc(sizeof(float complex) * capacity);
+  TEST_ASSERT_NOT_NULL(whole);
+  TEST_ASSERT_NOT_NULL(chunks);
+  size_t whole_len = modulate_and_flush(mod_input, 32, 32, whole, capacity);
+  size_t chunks_len = modulate_and_flush(mod_input, 32, 8, chunks, capacity);
+  assert_same_signal(whole, whole_len, chunks, chunks_len);
+  free(whole);
+  free(chunks);
+}
+
+void test_streaming_chunks() {
+  streaming_chunks(2 * BAUD_RATE);
+}
+
+void test_streaming_chunks_resampled() {
+  streaming_chunks(44100);
+}
+
+void test_flush_without_modulate() {
+  gfsk_modem_settings settings = default_settings(2 * BAUD_RATE, 3000, SYNC_WORD_BITS);
+  TEST_ASSERT_EQUAL_INT(0, gfsk_modem_create(&settings, 32, &mod));
+  float complex *output = NULL;
+  size_t output_len = 123;
+  gfsk_modem_modulate_flush(&output, &output_len, mod);
+  TEST_ASSERT_EQUAL_size_t(0, output_len);
+}
+
 void tearDown() {
   if (mod != NULL) {
     gfsk_modem_destroy(mod);
@@ -526,6 +631,11 @@ int main(void) {
   RUN_TEST(test_soft_symbols_normalized_by_sync_word);
   RUN_TEST(test_bursts);
   RUN_TEST(test_modulation_deviation);
+  RUN_TEST(test_flush_resets_state);
+  RUN_TEST(test_flush_resets_state_resampled);
+  RUN_TEST(test_streaming_chunks);
+  RUN_TEST(test_streaming_chunks_resampled);
+  RUN_TEST(test_flush_without_modulate);
   RUN_TEST(test_create_invalid_settings);
   RUN_TEST(test_create_invalid_syncword);
   RUN_TEST(test_create_smallest_sps);

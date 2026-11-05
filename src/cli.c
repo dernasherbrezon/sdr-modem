@@ -231,6 +231,13 @@ int cli_process(cli *cli) {
         return -1;
       }
     }
+    // the whole file is one transmission: push the tail of the last frame out
+    float complex *tail = NULL;
+    size_t tail_len = 0;
+    sdr_modem_modulate_flush(&tail, &tail_len, cli->modem);
+    if (tail != NULL && cli->sdr->sdr_process_tx(tail, tail_len, cli->sdr->plugin) != 0) {
+      return -1;
+    }
     if (cli->sdr->sdr_flush_tx != NULL) {
       cli->sdr->sdr_flush_tx(cli->sdr->plugin);
     }
