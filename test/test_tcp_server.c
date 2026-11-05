@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <unistd.h>
+#include <time.h>
 #include <unity.h>
 
 #include "../src/tcp_server.h"
@@ -94,8 +94,9 @@ static void deliver_noise(size_t buffers) {
 
 // the server notices the disconnect asynchronously
 static void wait_for_stop_rx(void) {
+  struct timespec ts = {.tv_sec = 0, .tv_nsec = 50 * 1000 * 1000};
   for (int i = 0; i < 100 && airspy_lib_mock_get_stats()->stop_rx_calls == 0; i++) {
-    sleep(50);
+    nanosleep(&ts, NULL);
   }
   TEST_ASSERT_GREATER_THAN_INT(0, airspy_lib_mock_get_stats()->stop_rx_calls);
 }

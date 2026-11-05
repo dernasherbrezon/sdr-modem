@@ -1,11 +1,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <unistd.h>
+#include <time.h>
 #include <unity.h>
 #include "../src/queue.h"
 
 queue *q = NULL;
+
+static void sleep_100ms(void) {
+  struct timespec ts = {.tv_sec = 0, .tv_nsec = 100 * 1000 * 1000};
+  nanosleep(&ts, NULL);
+}
 
 static void put_byte(uint8_t value, int expected) {
   queue_message in = {.type = value, .request_id = value, .buffer = &value, .buffer_len = 1};
@@ -61,7 +66,7 @@ void test_nonblocking_overwrites_last_when_full(void) {
 }
 
 static void *delayed_complete(void *arg) {
-  sleep(100);
+  sleep_100ms();
   queue_message out = {0};
   queue_take(&out, q);
   queue_complete(q);
@@ -80,7 +85,7 @@ void test_blocking_put_waits_for_free_node(void) {
 }
 
 static void *delayed_interrupt(void *arg) {
-  sleep(100);
+  sleep_100ms();
   queue_interrupt(q);
   return NULL;
 }
