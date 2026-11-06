@@ -115,10 +115,12 @@ static void *sdr_rx_worker_callback(void *arg) {
   LOG_DEBUG("sdr_rx_worker is starting");
   while (true) {
     queue_message message;
-    if (worker->rx_enabled) {
+    if (worker->rx_enabled && worker->sdr->sdr_process_rx != NULL) {
+      // pull model: check for a command without blocking and then read the samples
       queue_peak(&message, worker->queue);
     } else {
-      // rx is off: nothing to do except waiting for the next command
+      // rx is off or the sdr pushes samples from its own thread (sdr_process_rx is NULL):
+      // nothing to do except waiting for the next command. do not spin.
       queue_take(&message, worker->queue);
       if (message.buffer == NULL) {
         // queue interrupted
