@@ -22,7 +22,16 @@ public class PskPmSettings {
 	}
 
 	public PskPmSettings(DataInputStream dis) throws IOException {
-		// FIXME
+		sampleRate = dis.readLong();
+		subcarrierFrequency = dis.readInt();
+		carrierPllBandwidth = dis.readFloat();
+		baudRate = dis.readInt();
+		subcarrierBandwidth = dis.readInt();
+		rrcBeta = dis.readFloat();
+		rrcDelay = dis.readByte();
+		costasBandwidth = dis.readFloat();
+		symsyncFilterBankSize = dis.readByte();
+		modulationIndex = dis.readFloat();
 	}
 
 	public long getSampleRate() {
@@ -106,16 +115,15 @@ public class PskPmSettings {
 	}
 
 	public void encode(DataOutputStream dos) throws IOException {
-		// FIXME
-//		o.writeLong(p.sampleRate());
-//		o.writeInt(p.subcarrierFrequency());
-//		o.writeFloat(p.carrierPllBandwidth());
-//		o.writeInt(p.baudRate());
-//		o.writeInt(p.subcarrierBandwidth());
-//		o.writeFloat(p.rrcBeta());
-//		o.writeByte(p.rrcDelay());
-//		o.writeFloat(p.costasBandwidth());
-//		o.writeByte(p.symsyncFilterBankSize());
-//		o.writeFloat(p.modulationIndex());
+		dos.writeLong(sampleRate);
+		dos.writeInt(subcarrierFrequency);
+		dos.writeFloat(carrierPllBandwidth);
+		dos.writeInt(baudRate);
+		dos.writeInt(subcarrierBandwidth);
+		dos.writeFloat(rrcBeta);
+		dos.writeByte(rrcDelay);
+		dos.writeFloat(costasBandwidth);
+		dos.writeByte(symsyncFilterBankSize);
+		dos.writeFloat(modulationIndex);
 	}
 }

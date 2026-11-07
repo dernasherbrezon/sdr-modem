@@ -5,7 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 public class CommSettings {
-	
+
 	private SdrChannelConfig sdrSettings;
 	private ModemSettings modemSettings;
 
@@ -15,27 +15,34 @@ public class CommSettings {
 
 	public CommSettings(DataInputStream dis) throws IOException {
 		sdrSettings = new SdrChannelConfig(dis);
+		modemSettings = new ModemSettings(dis);
 	}
-	
+
 	public SdrChannelConfig getSdrSettings() {
 		return sdrSettings;
 	}
-	
+
 	public void setSdrSettings(SdrChannelConfig sdrSettings) {
 		this.sdrSettings = sdrSettings;
 	}
-	
+
 	public ModemSettings getModemSettings() {
 		return modemSettings;
 	}
-	
+
 	public void setModemSettings(ModemSettings modemSettings) {
 		this.modemSettings = modemSettings;
 	}
-	
+
 	public void encode(DataOutputStream dos) throws IOException {
+		if (sdrSettings == null) {
+			throw new IllegalStateException("sdrSettings are missing");
+		}
+		if (modemSettings == null) {
+			throw new IllegalStateException("modemSettings are missing");
+		}
 		sdrSettings.encode(dos);
-		
+		modemSettings.encode(dos);
 	}
 
 }

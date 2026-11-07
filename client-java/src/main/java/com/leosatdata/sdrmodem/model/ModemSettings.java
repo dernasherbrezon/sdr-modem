@@ -6,6 +6,7 @@ import java.io.IOException;
 
 public class ModemSettings {
 
+	private ModemType type;
 	private GfskSettings gfsk;
 	private PskSettings psk;
 	private PskPmSettings pskpm;
@@ -15,7 +16,7 @@ public class ModemSettings {
 	}
 
 	public ModemSettings(DataInputStream dis) throws IOException {
-		ModemType type = ModemType.valueOfCode(dis.readUnsignedByte());
+		type = ModemType.valueOfCode(dis.readUnsignedByte());
 		switch (type) {
 		case GFSK: {
 			gfsk = new GfskSettings(dis);
@@ -32,7 +33,7 @@ public class ModemSettings {
 			break;
 		}
 		default:
-			throw new IllegalArgumentException("Unexpected value: " + type);
+			throw new IllegalArgumentException("unsupported type: " + type);
 		}
 	}
 
@@ -59,9 +60,26 @@ public class ModemSettings {
 	public void setPskpm(PskPmSettings pskpm) {
 		this.pskpm = pskpm;
 	}
-	
+
+	public ModemType getType() {
+		return type;
+	}
+
+	public void setType(ModemType type) {
+		this.type = type;
+	}
+
 	public void encode(DataOutputStream dos) throws IOException {
-		//FIXME
+		dos.writeByte(type.code());
+		if (gfsk != null) {
+			gfsk.encode(dos);
+		} else if (psk != null) {
+			psk.encode(dos);
+		} else if (pskpm != null) {
+			pskpm.encode(dos);
+		} else {
+			throw new IllegalArgumentException("unsupported type: " + type);
+		}
 	}
 
 }

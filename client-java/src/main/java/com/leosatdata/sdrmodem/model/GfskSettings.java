@@ -20,7 +20,14 @@ public class GfskSettings {
 	}
 
 	public GfskSettings(DataInputStream dis) throws IOException {
-		//FIXME
+		sampleRate = dis.readLong();
+		baudRate = dis.readInt();
+		deviation = dis.readLong();
+		bandwidth = dis.readInt();
+		bt = dis.readFloat();
+		useDcBlock = dis.readByte() > 0;
+		syncword = dis.readLong();
+		syncwordBits = dis.readInt();
 	}
 
 	public long getSampleRate() {
@@ -88,14 +95,13 @@ public class GfskSettings {
 	}
 
 	public void encode(DataOutputStream dos) throws IOException {
-		// FIXME
-//		o.writeLong(g.sampleRate());
-//		o.writeInt(g.baudRate());
-//		o.writeLong(g.deviation());
-//		o.writeInt(g.bandwidth());
-//		o.writeFloat(g.bt());
-//		o.writeByte(g.useDcBlock() ? 1 : 0);
-//		o.writeLong(g.syncword());
-//		o.writeInt(g.syncwordBits());
+		dos.writeLong(sampleRate);
+		dos.writeInt(baudRate);
+		dos.writeLong(deviation);
+		dos.writeInt(bandwidth);
+		dos.writeFloat(bt);
+		dos.writeByte(useDcBlock ? 1 : 0);
+		dos.writeLong(syncword);
+		dos.writeInt(syncwordBits);
 	}
 }

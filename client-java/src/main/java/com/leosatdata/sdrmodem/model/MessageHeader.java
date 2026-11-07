@@ -8,7 +8,7 @@ public class MessageHeader {
 	public static final int PROTOCOL_VERSION = 0;
 
 	private int protocolVersion;
-	private int type;
+	private MessageType type;
 	private int requestId;
 	private int messageLength;
 
@@ -28,11 +28,11 @@ public class MessageHeader {
 		this.protocolVersion = protocolVersion;
 	}
 
-	public int getType() {
+	public MessageType getType() {
 		return type;
 	}
 
-	public void setType(int type) {
+	public void setType(MessageType type) {
 		this.type = type;
 	}
 
@@ -53,10 +53,16 @@ public class MessageHeader {
 	}
 
 	public void decode(DataInputStream dis) throws IOException {
-		// FIXME
+		protocolVersion = dis.readByte();
+		type = MessageType.valueOfCode(dis.readByte());
+		requestId = dis.readInt();
+		messageLength = dis.readInt();
 	}
 
 	public void encode(DataOutputStream dos) throws IOException {
-		// FIXME
+		dos.writeByte(protocolVersion);
+		dos.writeByte(type.code());
+		dos.writeInt(requestId);
+		dos.writeInt(messageLength);
 	}
 }

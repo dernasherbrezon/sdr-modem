@@ -19,7 +19,13 @@ public class PskSettings {
 	}
 
 	public PskSettings(DataInputStream dis) throws IOException {
-		// FIXME
+		sampleRate = dis.readLong();
+		baudRate = dis.readInt();
+		bandwidth = dis.readInt();
+		rrcBeta = dis.readFloat();
+		rrcDelay = dis.readByte();
+		costasBandwidth = dis.readFloat();
+		symsyncFilterBankSize = dis.readByte();
 	}
 
 	public long getSampleRate() {
@@ -77,15 +83,14 @@ public class PskSettings {
 	public void setSymsyncFilterBankSize(int symsyncFilterBankSize) {
 		this.symsyncFilterBankSize = symsyncFilterBankSize;
 	}
-
+	
 	public void encode(DataOutputStream dos) throws IOException {
-		// FIXME
-//		o.writeLong(p.sampleRate());
-//		o.writeInt(p.baudRate());
-//		o.writeInt(p.bandwidth());
-//		o.writeFloat(p.rrcBeta());
-//		o.writeByte(p.rrcDelay());
-//		o.writeFloat(p.costasBandwidth());
-//		o.writeByte(p.symsyncFilterBankSize());
+		dos.writeLong(sampleRate);
+		dos.writeInt(baudRate);
+		dos.writeInt(bandwidth);
+		dos.writeFloat(rrcBeta);
+		dos.writeByte(rrcDelay);
+		dos.writeFloat(costasBandwidth);
+		dos.writeByte(symsyncFilterBankSize);
 	}
 }

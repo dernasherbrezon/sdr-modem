@@ -74,7 +74,6 @@ public class SdrModemClient implements Closeable, Runnable {
 		sendAsync(MessageType.TX_FRAME, frame);
 	}
 
-	/** Asks the server to disconnect. SHUTDOWN has no response. */
 	public void shutdown() throws IOException {
 		sendAsync(MessageType.SHUTDOWN, new byte[0]);
 	}
@@ -136,16 +135,15 @@ public class SdrModemClient implements Closeable, Runnable {
 				// always fully read payload in case protocol changes it should drain remaining bytes
 				byte[] payload = new byte[header.getMessageLength()];
 				in.readFully(payload);
-				MessageType type = MessageType.valueOfCode(header.getType());
-				if (type == MessageType.RESPONSE && payload.length >= Response.SIZE) {
+				if (header.getType() == MessageType.RESPONSE && payload.length >= Response.SIZE) {
 					CompletableFuture<Response> future = pending.get(header.getRequestId());
 					if (future != null) {
 						Response response = new Response(new DataInputStream(new ByteArrayInputStream(payload)));
 						future.complete(response);
 					}
-				} else if (type == MessageType.SOFT_BITS) {
+				} else if (header.getType() == MessageType.SOFT_BITS) {
 					callback.onRx(payload);
-				} else if (type == MessageType.TX_COMPLETE) {
+				} else if (header.getType() == MessageType.TX_COMPLETE) {
 					callback.onTx();
 				}
 			}

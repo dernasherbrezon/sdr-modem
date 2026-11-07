@@ -5,7 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 public class Response {
-	
+
 	public static final int SIZE = 2;
 
 	private int status;
@@ -49,10 +49,12 @@ public class Response {
 	}
 
 	public void decode(DataInputStream dis) throws IOException {
-		// FIXME
+		status = dis.readByte();
+		details = dis.readByte();
 	}
 
 	public void encode(DataOutputStream dos) throws IOException {
-		// FIXME
+		dos.writeByte(status);
+		dos.writeByte(details);
 	}
 }
