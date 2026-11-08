@@ -14,11 +14,17 @@
 //    peak / median bin power >= min_peak_db and the peak holds at least min_carrier_fraction of the signal power.
 //    confirm_frames consecutive frames with a peak at (nearly) the same bin confirm the carrier. The callback is fired once with the coarse frequency offset
 // 3. the detector stays quiet until the gate closes, so the modulation which follows the carrier
-//    cannot trigger a second event
-// If the carrier is not confirmed within max_check_frames the transmission is ignored (no event).
+//    cannot trigger a second CARRIER_DETECTED. When the gate closes, CARRIER_LOST is fired (frequency_offset is 0)
+// If the carrier is not confirmed within max_check_frames the transmission is ignored (no event, including no CARRIER_LOST).
+// carrier_detector_reset drops the state silently: no CARRIER_LOST is fired.
 //
 // the input is expected to be channel-limited (e.g. after half-band decimation): the gate measures all power in the band
 typedef struct carrier_detector_t carrier_detector;
+
+typedef enum {
+  CARRIER_DETECTED = 0,
+  CARRIER_LOST = 1
+} carrier_detector_event_type;
 
 typedef struct {
   uint64_t sample_rate;
@@ -42,16 +48,13 @@ typedef struct {
   uint32_t max_drift_bins;
 } carrier_detector_settings;
 
-// frequency_offset: Hz, positive when the carrier is above the center
-typedef void (*carrier_detector_callback)(float frequency_offset, void *ctx);
-
 // defaults: ~100 Hz bin width (fft_size is clamped to [64, 4096]), open 6 dB, close 3 dB, peak 15 dB
 carrier_detector_settings carrier_detector_default_settings(uint64_t sample_rate);
 
 int carrier_detector_create(const carrier_detector_settings *settings, carrier_detector **detector);
 
 // the callback runs synchronously inside carrier_detector_process, from the calling thread
-void carrier_detector_set_callback(carrier_detector_callback callback, void *ctx, carrier_detector *detector);
+void carrier_detector_set_callback(void (*callback)(carrier_detector_event_type event_type, float frequency_offset, void *ctx), void *ctx, carrier_detector *detector);
 
 // streaming: any input length, partial frames are kept for the next call
 void carrier_detector_process(const float complex *input, size_t input_len, carrier_detector *detector);

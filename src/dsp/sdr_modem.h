@@ -21,6 +21,11 @@ typedef enum {
   MODEM_TYPE_PSK_PM = 5
 } sdr_modem_type;
 
+typedef enum {
+  MODEM_EVENT_TYPE_CARRIER_DETECTED = 0,
+  MODEM_EVENT_TYPE_CARRIER_LOST = 1
+} sdr_modem_event_type;
+
 typedef struct sdr_modem_t sdr_modem;
 
 typedef struct {
@@ -72,15 +77,7 @@ void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t *
 //   see gfsk_modem_get_frequency_offset, bpsk_modem_get_frequency_offset and psk_pm_modem_get_frequency_offset
 float sdr_modem_get_frequency_offset(sdr_modem *modem);
 
-// rx only. modulation independent: every transmission is expected to start with an unmodulated carrier. the callback is
-// called once per transmission, from the thread which calls sdr_modem_demodulate, with the coarse frequency offset of the carrier in Hz
-// (positive: the carrier is above the center). like sdr_modem_get_frequency_offset it is what is left after the
-// freq_offset (doppler) correction. the detector runs on the baseband samples, i.e. within the signal bandwidth
-// after the half-band decimation. see carrier_detector.h. NULL callback disables the notification.
-// the callback does not control the correction: sdr_modem always mixes the baseband down by the detected frequency
-// before the wrapped modem, starting with the buffer which contains the carrier, and keeps doing it until the next
-// carrier is detected (the new frequency replaces the old one, it does not add up). a new modem starts uncorrected
-void sdr_modem_set_carrier_callback(carrier_detector_callback callback, void *ctx, sdr_modem *modem);
+void sdr_modem_set_callback(void (*callback)(sdr_modem_event_type event_type, void *ctx), void *ctx, sdr_modem *modem);
 
 size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem);
 

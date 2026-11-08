@@ -50,19 +50,14 @@ static void *sdr_tx_worker_callback(void *arg) {
           // packet mode: every frame is a separate transmission, so push its tail out
           sdr_modem_modulate_flush(&output, &output_len, worker->modem);
           if (output != NULL) {
-            code = worker->sdr->sdr_process_tx(output, output_len, worker->sdr->plugin);
+            worker->sdr->sdr_process_tx(output, output_len, worker->sdr->plugin);
           }
         }
-        if (code != 0) {
-          client_tx_worker_send_tx_complete(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
-          break;
-        }
-
-        client_tx_worker_send_tx_complete(message.request_id, RESPONSE_STATUS_SUCCESS, RESPONSE_DETAILS_NO_DETAILS, worker->tx_worker);
+        client_tx_worker_send_event(CLIENT_TX_COMPLETE, message.request_id, worker->tx_worker);
         break;
       }
       case SDR_TX_COMM_PARAMETERS: {
-        comm_settings settings;
+        comm_parameters settings;
         code = api_decode_comm_settings(message.buffer, message.buffer_len, &settings);
         if (code != 0) {
           client_tx_worker_send_response(message.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);

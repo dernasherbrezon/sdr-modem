@@ -81,9 +81,9 @@ struct sdr_modem_t {
   // Hz, relative to the center. what carrier_nco removes
   float carrier_offset;
 
-  // optional. user callback, called after the carrier_nco is updated
-  carrier_detector_callback carrier_callback;
-  void *carrier_callback_ctx;
+  void (*callback)(sdr_modem_event_type event_type, void *ctx);
+
+  void *callback_ctx;
 
   // which wrapped modem is in use (MODEM_TYPE_*), needed to dispatch modem-specific debug setters
   sdr_modem_type modem_type;
@@ -162,8 +162,8 @@ static int sdr_modem_get_sample_date(sdr_modem_type modem_type, const sdr_modem_
 }
 
 static int sdr_modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_rate, uint32_t max_input_buffer_length,
-                                       halfband_decim **halfband, uint64_t *decimated_sample_rate,
-                                       uint32_t *decimated_max_input_buffer_length) {
+                                           halfband_decim **halfband, uint64_t *decimated_sample_rate,
+                                           uint32_t *decimated_max_input_buffer_length) {
   *halfband = NULL;
   *decimated_sample_rate = sample_rate;
   *decimated_max_input_buffer_length = max_input_buffer_length;
@@ -184,12 +184,18 @@ static int sdr_modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_r
 }
 
 // called by the carrier detector from sdr_modem_demodulate, before the buffer which contains the carrier is corrected
-static void sdr_modem_on_carrier(float frequency_offset, void *ctx) {
+static void sdr_modem_on_carrier(carrier_detector_event_type event_type, float frequency_offset, void *ctx) {
   sdr_modem *modem = (sdr_modem *) ctx;
-  modem->carrier_offset = frequency_offset;
-  nco_crcf_set_frequency(modem->carrier_nco, (float) (2.0 * M_PI * (double) frequency_offset / (double) modem->baseband_sample_rate));
-  if (modem->carrier_callback != NULL) {
-    modem->carrier_callback(frequency_offset, modem->carrier_callback_ctx);
+  if (event_type == CARRIER_DETECTED) {
+    modem->carrier_offset = frequency_offset;
+    nco_crcf_set_frequency(modem->carrier_nco, (float) (2.0 * M_PI * (double) frequency_offset / (double) modem->baseband_sample_rate));
+    if (modem->callback != NULL) {
+      modem->callback(MODEM_EVENT_TYPE_CARRIER_DETECTED, modem->callback_ctx);
+    }
+  } else if (event_type == CARRIER_LOST) {
+    if (modem->callback != NULL) {
+      modem->callback(MODEM_EVENT_TYPE_CARRIER_LOST, modem->callback_ctx);
+    }
   }
 }
 
@@ -447,12 +453,12 @@ float sdr_modem_get_frequency_offset(sdr_modem *modem) {
   return modem->carrier_offset + modem->get_frequency_offset(modem->modem);
 }
 
-void sdr_modem_set_carrier_callback(carrier_detector_callback callback, void *ctx, sdr_modem *modem) {
+void sdr_modem_set_callback(void (*callback)(sdr_modem_event_type event_type, void *ctx), void *ctx, sdr_modem *modem) {
   if (modem == NULL) {
     return;
   }
-  modem->carrier_callback = callback;
-  modem->carrier_callback_ctx = ctx;
+  modem->callback = callback;
+  modem->callback_ctx = ctx;
 }
 
 size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem) {

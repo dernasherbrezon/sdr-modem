@@ -152,13 +152,11 @@ void test_frequency_offset_bpsk() {
 
 typedef struct {
   int count;
-  float frequency;
 } carrier_events;
 
-static void on_carrier(float frequency, void *ctx) {
+static void on_carrier(sdr_modem_event_type event_type, void *ctx) {
   carrier_events *events = (carrier_events *) ctx;
   events->count++;
-  events->frequency = frequency;
 }
 
 static float carrier_test_noise(uint32_t *state) {
@@ -180,7 +178,7 @@ void test_carrier_callback() {
   sdr_modem_settings settings = gfsk_settings(sample_rate);
   TEST_ASSERT_EQUAL_INT(0, sdr_modem_create(&settings, chunk_len, NULL, &modem));
   carrier_events events = {0};
-  sdr_modem_set_carrier_callback(on_carrier, &events, modem);
+  sdr_modem_set_callback(on_carrier, &events, modem);
 
   float complex *chunk = malloc(sizeof(float complex) * chunk_len);
   TEST_ASSERT_NOT_NULL(chunk);
@@ -206,7 +204,6 @@ void test_carrier_callback() {
   }
   free(chunk);
   TEST_ASSERT_EQUAL_INT(1, events.count);
-  TEST_ASSERT_FLOAT_WITHIN(20.0f, carrier_frequency, events.frequency);
   // the offset which the modem reports includes the detected carrier
   TEST_ASSERT_FLOAT_WITHIN(40.0f, carrier_frequency, sdr_modem_get_frequency_offset(modem));
 }
@@ -269,7 +266,7 @@ void test_carrier_is_removed_before_modem() {
 }
 
 void test_carrier_callback_null_modem() {
-  sdr_modem_set_carrier_callback(on_carrier, NULL, NULL);
+  sdr_modem_set_callback(on_carrier, NULL, NULL);
 }
 
 void tearDown() {

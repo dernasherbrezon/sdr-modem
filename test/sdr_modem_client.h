@@ -17,9 +17,9 @@ int sdr_modem_client_create(const char *host, uint16_t port, int timeout_seconds
 // payload == NULL sends only the header, which claims payload_len bytes
 int sdr_modem_client_send(uint8_t protocol_version, uint8_t type, uint32_t request_id, const uint8_t *payload, size_t payload_len, sdr_modem_client *client);
 
-int sdr_modem_client_set_rx_parameters(uint32_t request_id, const comm_settings *settings, sdr_modem_client *client);
+int sdr_modem_client_set_rx_parameters(uint32_t request_id, const comm_parameters *settings, sdr_modem_client *client);
 
-int sdr_modem_client_set_tx_parameters(uint32_t request_id, const comm_settings *settings, sdr_modem_client *client);
+int sdr_modem_client_set_tx_parameters(uint32_t request_id, const comm_parameters *settings, sdr_modem_client *client);
 
 int sdr_modem_client_rx_start(uint32_t request_id, sdr_modem_client *client);
 

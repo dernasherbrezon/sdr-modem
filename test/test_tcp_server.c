@@ -67,8 +67,8 @@ static void assert_server_alive(uint32_t request_id) {
   assert_success(request_id);
 }
 
-static comm_settings gfsk_settings(void) {
-  comm_settings settings = {
+static comm_parameters gfsk_settings(void) {
+  comm_parameters settings = {
     .sdr_settings = {
       .frequency = SDR_FREQUENCY,
       .sample_rate = SDR_SAMPLE_RATE,
@@ -137,7 +137,7 @@ void test_disconnect_via_shutdown_message() {
 }
 
 void test_disconnect_stops_rx() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   connect_client();
   TEST_ASSERT_EQUAL_INT(0, sdr_modem_client_set_rx_parameters(1, &settings, client));
   assert_success(1);
@@ -153,7 +153,7 @@ void test_disconnect_stops_rx() {
 // rx //////////////////////////////////////////////////////////////////////////
 
 void test_rx_start_twice() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   connect_client();
   TEST_ASSERT_EQUAL_INT(0, sdr_modem_client_set_rx_parameters(1, &settings, client));
   assert_success(1);
@@ -172,7 +172,7 @@ void test_rx_start_twice() {
 }
 
 void test_rx_success() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   connect_client();
   TEST_ASSERT_EQUAL_INT(0, sdr_modem_client_set_rx_parameters(1, &settings, client));
   assert_success(1);
@@ -234,7 +234,7 @@ void test_message_is_too_big() {
 }
 
 void test_truncated_settings() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   uint8_t buffer[256];
   size_t written = 0;
   TEST_ASSERT_EQUAL_INT(0, api_encode_comm_settings(&settings, buffer, sizeof(buffer), &written));
@@ -250,7 +250,7 @@ void test_truncated_settings() {
 }
 
 void test_sdr_rejects_rx_parameters() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   // airspy doesn't support such sample rate
   settings.sdr_settings.sample_rate = 123456;
   connect_client();
@@ -264,7 +264,7 @@ void test_sdr_rejects_rx_parameters() {
 }
 
 void test_tx_is_not_supported_by_sdr() {
-  comm_settings settings = gfsk_settings();
+  comm_parameters settings = gfsk_settings();
   connect_client();
   TEST_ASSERT_EQUAL_INT(0, sdr_modem_client_set_tx_parameters(1, &settings, client));
   assert_invalid_request(1);

@@ -108,11 +108,11 @@ int api_encode_soft_bits(const soft_bits *bits, uint8_t *buffer, size_t buffer_l
 #define API_PSK_SIZE (8 + 4 + 4 + 4 + 1 + 4 + 1)
 #define API_PSK_PM_SIZE (8 + 4 + 4 + 4 + 4 + 4 + 1 + 4 + 1 + 4)
 
-int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_settings *settings) {
+int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_parameters *settings) {
   if (buffer == NULL || settings == NULL || buffer_len < API_SDR_SIZE + 1) {
     return -1;
   }
-  comm_settings decoded;
+  comm_parameters decoded;
   memset(&decoded, 0, sizeof(decoded));
   decoded.sdr_settings.frequency = read_u64(buffer);
   decoded.sdr_settings.sample_rate = read_u64(buffer + 8);
@@ -183,7 +183,7 @@ int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_sett
   return 0;
 }
 
-int api_encode_comm_settings(const comm_settings *settings, uint8_t *buffer, size_t buffer_len, size_t *written) {
+int api_encode_comm_settings(const comm_parameters *settings, uint8_t *buffer, size_t buffer_len, size_t *written) {
   if (settings == NULL || buffer == NULL || written == NULL) {
     return -1;
   }

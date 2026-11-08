@@ -96,7 +96,7 @@ static void *tcp_worker_callback(tcp_server *server) {
         // this will validate if settings can be created from the worker->buffer
         // if OK then pass worker->buffer (serialized settings) to the worker thread
         // next step of validation will happen there
-        comm_settings settings;
+        comm_parameters settings;
         code = api_decode_comm_settings(server->buffer, header.message_length, &settings);
         if (code != 0) {
           client_tx_worker_send_response(header.request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, server->tx_worker);

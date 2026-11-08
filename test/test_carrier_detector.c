@@ -16,12 +16,18 @@ size_t signal_len = 0;
 uint32_t rng_state = 12345;
 
 typedef struct {
+  // CARRIER_DETECTED events
   int count;
   float frequency;
+  int lost_count;
 } events;
 
-static void on_carrier(float frequency, void *ctx) {
+static void on_carrier(carrier_detector_event_type event_type, float frequency, void *ctx) {
   events *e = (events *) ctx;
+  if (event_type == CARRIER_LOST) {
+    e->lost_count++;
+    return;
+  }
   e->count++;
   e->frequency = frequency;
 }
@@ -180,6 +186,7 @@ void test_two_transmissions() {
   append(SEGMENT_NOISE, 0.5f, 0, 0, 1.0f);
   process_in_chunks(signal_len);
   TEST_ASSERT_EQUAL_INT(1, e.count);
+  TEST_ASSERT_EQUAL_INT(1, e.lost_count);
   TEST_ASSERT_FLOAT_WITHIN(10.0f, 1500.0f, e.frequency);
   TEST_ASSERT_FALSE(carrier_detector_is_gate_open(detector));
 
@@ -191,6 +198,7 @@ void test_two_transmissions() {
   append(SEGMENT_NOISE, 0.5f, 0, 0, 1.0f);
   process_in_chunks(signal_len);
   TEST_ASSERT_EQUAL_INT(2, e.count);
+  TEST_ASSERT_EQUAL_INT(2, e.lost_count);
   TEST_ASSERT_FLOAT_WITHIN(10.0f, -2000.0f, e.frequency);
 }
 

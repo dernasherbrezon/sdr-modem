@@ -56,8 +56,10 @@ struct carrier_detector_t {
   uint32_t confirmed;
   float frequency_sum;
   uint32_t last_peak_bin;
+  // CARRIER_DETECTED was fired for the current transmission, so CARRIER_LOST is due when the gate closes
+  bool carrier_reported;
 
-  carrier_detector_callback callback;
+  void (*callback)(carrier_detector_event_type event_type, float frequency_offset, void *ctx);
   void *callback_ctx;
 };
 
@@ -137,7 +139,7 @@ int carrier_detector_create(const carrier_detector_settings *settings, carrier_d
   return 0;
 }
 
-void carrier_detector_set_callback(carrier_detector_callback callback, void *ctx, carrier_detector *detector) {
+void carrier_detector_set_callback(void (*callback)(carrier_detector_event_type event_type, float frequency_offset, void *ctx), void *ctx, carrier_detector *detector) {
   if (detector == NULL) {
     return;
   }
@@ -152,6 +154,7 @@ static void reset_state(carrier_detector *detector) {
   detector->checked = 0;
   detector->confirmed = 0;
   detector->frequency_sum = 0.0f;
+  detector->carrier_reported = false;
 }
 
 void carrier_detector_reset(carrier_detector *detector) {
@@ -308,8 +311,9 @@ static void process_frame(carrier_detector *detector) {
         if (detector->confirmed >= detector->settings.confirm_frames) {
           detector->state = STATE_HOLD;
           detector->low_count = 0;
+          detector->carrier_reported = true;
           if (detector->callback != NULL) {
-            detector->callback(detector->frequency_sum / (float) detector->confirmed, detector->callback_ctx);
+            detector->callback(CARRIER_DETECTED, detector->frequency_sum / (float) detector->confirmed, detector->callback_ctx);
           }
           break;
         }
@@ -326,7 +330,12 @@ static void process_frame(carrier_detector *detector) {
     }
     case STATE_HOLD: {
       if (update_close_counter(detector, power)) {
+        bool lost = detector->carrier_reported;
         reset_state(detector);
+        // fired after the state is reset, so the callback sees a consistent detector. no offset for the lost carrier
+        if (lost && detector->callback != NULL) {
+          detector->callback(CARRIER_LOST, 0.0f, detector->callback_ctx);
+        }
       }
       break;
     }

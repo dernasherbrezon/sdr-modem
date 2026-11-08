@@ -76,7 +76,7 @@ int sdr_modem_client_send(uint8_t protocol_version, uint8_t type, uint32_t reque
   return tcp_utils_write_data(payload, payload_len, client->socket);
 }
 
-static int sdr_modem_client_send_settings(message_type type, uint32_t request_id, const comm_settings *settings, sdr_modem_client *client) {
+static int sdr_modem_client_send_settings(message_type type, uint32_t request_id, const comm_parameters *settings, sdr_modem_client *client) {
   uint8_t buffer[256];
   size_t written = 0;
   int code = api_encode_comm_settings(settings, buffer, sizeof(buffer), &written);
@@ -86,11 +86,11 @@ static int sdr_modem_client_send_settings(message_type type, uint32_t request_id
   return sdr_modem_client_send(PROTOCOL_VERSION, type, request_id, buffer, written, client);
 }
 
-int sdr_modem_client_set_rx_parameters(uint32_t request_id, const comm_settings *settings, sdr_modem_client *client) {
+int sdr_modem_client_set_rx_parameters(uint32_t request_id, const comm_parameters *settings, sdr_modem_client *client) {
   return sdr_modem_client_send_settings(MESSAGE_TYPE_RX_COMM_PARAMETERS, request_id, settings, client);
 }
 
-int sdr_modem_client_set_tx_parameters(uint32_t request_id, const comm_settings *settings, sdr_modem_client *client) {
+int sdr_modem_client_set_tx_parameters(uint32_t request_id, const comm_parameters *settings, sdr_modem_client *client) {
   return sdr_modem_client_send_settings(MESSAGE_TYPE_TX_COMM_PARAMETERS, request_id, settings, client);
 }
 

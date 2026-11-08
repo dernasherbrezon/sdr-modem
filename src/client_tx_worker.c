@@ -27,14 +27,6 @@ struct client_tx_worker_t {
   int client_socket;
 };
 
-typedef enum {
-  CLIENT_TX_SOFT_BITS = 0,
-  CLIENT_TX_RESPONSE,
-  CLIENT_TX_NEW_CLIENT,
-  CLIENT_TX_COMPLETE,
-  CLIENT_TX_CARRIER_DETECTED
-} client_tx_message_type;
-
 void client_tx_worker_send_new(int client_socket, client_tx_worker *worker) {
   queue_message message = {
     .type = CLIENT_TX_NEW_CLIENT,
@@ -55,19 +47,6 @@ void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t b
   queue_put(&message, worker->queue);
 }
 
-void client_tx_worker_send_carrier_detected(uint32_t request_id, float frequency_offset, client_tx_worker *worker) {
-  carrier_detected detected = {
-    .frequency_offset = frequency_offset
-  };
-  queue_message message = {
-    .type = CLIENT_TX_CARRIER_DETECTED,
-    .request_id = request_id,
-    .buffer_len = sizeof(carrier_detected),
-    .buffer = &detected
-  };
-  queue_put(&message, worker->queue);
-}
-
 void client_tx_worker_send_response(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker) {
   response resp = {
     .status = type,
@@ -82,16 +61,12 @@ void client_tx_worker_send_response(uint32_t request_id, response_status type, r
   queue_put(&message, worker->queue);
 }
 
-void client_tx_worker_send_tx_complete(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker) {
-  response resp = {
-    .status = type,
-    .details = details
-  };
+void client_tx_worker_send_event(client_tx_message_type event_type, uint32_t request_id, client_tx_worker *worker) {
   queue_message message = {
-    .type = CLIENT_TX_COMPLETE,
+    .type = event_type,
     .request_id = request_id,
-    .buffer_len = sizeof(response),
-    .buffer = &resp
+    .buffer_len = 0,
+    .buffer = NULL
   };
   queue_put(&message, worker->queue);
 }
@@ -108,6 +83,20 @@ static int client_tx_send_header(message_header *header, client_tx_worker *worke
     return code;
   }
   return 0;
+}
+
+static message_type convert(client_tx_message_type tx_message_type) {
+  switch (tx_message_type) {
+    case CLIENT_TX_COMPLETE:
+      return MESSAGE_TYPE_TX_COMPLETE;
+    case CLIENT_TX_CARRIER_DETECTED:
+      return MESSAGE_TYPE_CARRIER_DETECTED;
+    case CLIENT_TX_CARRIER_LOST:
+      return MESSAGE_TYPE_CARRIER_LOST;
+    default:
+      // shouldn't happen
+      return MESSAGE_TYPE_RESPONSE;
+  }
 }
 
 static void *client_tx_worker_callback(void *arg) {
@@ -168,54 +157,18 @@ static void *client_tx_worker_callback(void *arg) {
         }
         break;
       }
+      case CLIENT_TX_CARRIER_DETECTED:
+      case CLIENT_TX_CARRIER_LOST:
       case CLIENT_TX_COMPLETE: {
         if (worker->client_socket < 0) {
           break;
         }
-        response *resp = (response *) message.buffer;
-
-        code = api_encode_response(resp, worker->buffer, worker->buffer_len, &written);
-        if (code != 0) {
-          break;
-        }
-
-        header.type = MESSAGE_TYPE_TX_COMPLETE;
+        header.type = convert(message.type);
         header.protocol_version = PROTOCOL_VERSION;
         header.request_id = message.request_id;
-        header.message_length = written;
+        header.message_length = 0;
         code = client_tx_send_header(&header, worker);
         if (code != 0) {
-          break;
-        }
-        code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
-        if (code != 0) {
-          worker->client_socket = -1;
-          break;
-        }
-        break;
-      }
-      case CLIENT_TX_CARRIER_DETECTED: {
-        if (worker->client_socket < 0) {
-          break;
-        }
-        carrier_detected *detected = (carrier_detected *) message.buffer;
-
-        code = api_encode_carrier_detected(detected, worker->buffer, worker->buffer_len, &written);
-        if (code != 0) {
-          break;
-        }
-
-        header.type = MESSAGE_TYPE_CARRIER_DETECTED;
-        header.protocol_version = PROTOCOL_VERSION;
-        header.request_id = message.request_id;
-        header.message_length = written;
-        code = client_tx_send_header(&header, worker);
-        if (code != 0) {
-          break;
-        }
-        code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
-        if (code != 0) {
-          worker->client_socket = -1;
           break;
         }
         break;

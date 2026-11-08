@@ -18,7 +18,9 @@ typedef enum {
   MESSAGE_TYPE_TX_FRAME = 6,
   MESSAGE_TYPE_RX_START = 7,
   MESSAGE_TYPE_RX_STOP = 8,
-  MESSAGE_TYPE_TX_COMPLETE = 9
+  MESSAGE_TYPE_TX_COMPLETE = 9,
+  MESSAGE_TYPE_CARRIER_DETECTED = 10,
+  MESSAGE_TYPE_CARRIER_LOST = 11
 } message_type;
 
 #define API_HEADER_SIZE 10
@@ -50,21 +52,23 @@ typedef struct {
 // doesn't really need encoding
 // just a byte array after the header
 typedef struct {
+  uint32_t frequency_offset;
   int8_t *data;
+  uint32_t data_length;
 } soft_bits;
 
 typedef struct {
   sdr_channel_config sdr_settings;
   sdr_modem_settings modem_settings;
-} comm_settings;
+} comm_parameters;
 
 int api_decode_message_header(const uint8_t *buffer, size_t buffer_len, message_header *header);
 
 int api_encode_message_header(const message_header *header, uint8_t *buffer, size_t buffer_len, size_t *written);
 
-int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_settings *settings);
+int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_parameters *settings);
 
-int api_encode_comm_settings(const comm_settings *settings, uint8_t *buffer, size_t buffer_len, size_t *written);
+int api_encode_comm_settings(const comm_parameters *settings, uint8_t *buffer, size_t buffer_len, size_t *written);
 
 int api_decode_response(const uint8_t *buffer, size_t buffer_len, response *resp);
 
