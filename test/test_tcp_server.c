@@ -68,17 +68,26 @@ static void assert_server_alive(uint32_t request_id) {
 }
 
 static comm_settings gfsk_settings(void) {
-  comm_settings settings = {0};
-  settings.sdr_settings.frequency = SDR_FREQUENCY;
-  settings.sdr_settings.sample_rate = SDR_SAMPLE_RATE;
-  settings.sdr_settings.gain = 0.0f;
-  settings.modem_settings.modem_type = MODEM_TYPE_GFSK;
-  settings.modem_settings.modem.gfsk.sample_rate = SDR_SAMPLE_RATE;
-  settings.modem_settings.modem.gfsk.baud_rate = 9600;
-  settings.modem_settings.modem.gfsk.deviation = 5000;
-  settings.modem_settings.modem.gfsk.bandwidth = 15600;
-  settings.modem_settings.modem.gfsk.bt = 0.5f;
-  settings.modem_settings.modem.gfsk.use_dc_block = 1;
+  comm_settings settings = {
+    .sdr_settings = {
+      .frequency = SDR_FREQUENCY,
+      .sample_rate = SDR_SAMPLE_RATE,
+      .gain = 0.0f
+    },
+    .modem_settings = {
+      .modem_type = MODEM_TYPE_GFSK,
+      .modem = {
+        .gfsk = {
+          .sample_rate = SDR_SAMPLE_RATE,
+          .baud_rate = 9600,
+          .deviation = 5000,
+          .bandwidth = 15600,
+          .bt = 0.5f,
+          .use_dc_block = 1
+        }
+      }
+    }
+  };
   return settings;
 }
 
