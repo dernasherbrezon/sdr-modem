@@ -150,6 +150,128 @@ void test_frequency_offset_bpsk() {
   sdr_modem_destroy(demod);
 }
 
+typedef struct {
+  int count;
+  float frequency;
+} carrier_events;
+
+static void on_carrier(float frequency, void *ctx) {
+  carrier_events *events = (carrier_events *) ctx;
+  events->count++;
+  events->frequency = frequency;
+}
+
+static float carrier_test_noise(uint32_t *state) {
+  float sum = 0.0f;
+  for (int i = 0; i < 4; i++) {
+    *state ^= *state << 13;
+    *state ^= *state >> 17;
+    *state ^= *state << 5;
+    sum += (float) (*state >> 8) / (float) (1 << 24) - 0.5f;
+  }
+  return sum;
+}
+
+// the carrier is detected behind the half-band decimator, before the demodulator, whatever the modem is.
+// the frequency is reported in Hz of the original sample rate
+void test_carrier_callback() {
+  const uint32_t chunk_len = 4096;
+  const uint64_t sample_rate = 1920000;
+  sdr_modem_settings settings = gfsk_settings(sample_rate);
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_create(&settings, chunk_len, NULL, &modem));
+  carrier_events events = {0};
+  sdr_modem_set_carrier_callback(on_carrier, &events, modem);
+
+  float complex *chunk = malloc(sizeof(float complex) * chunk_len);
+  TEST_ASSERT_NOT_NULL(chunk);
+  uint32_t rng = 777;
+  const float carrier_frequency = 2000.0f;
+  const size_t noise_samples = 768000;
+  const size_t carrier_samples = 768000;
+  for (size_t offset = 0; offset < noise_samples + carrier_samples; offset += chunk_len) {
+    for (size_t i = 0; i < chunk_len; i++) {
+      size_t n = offset + i;
+      float complex value = 0.5f * (carrier_test_noise(&rng) + I * carrier_test_noise(&rng));
+      if (n >= noise_samples) {
+        value += 0.5f * cexpf(I * (float) (2.0 * 3.14159265358979323846 * carrier_frequency * (double) n / (double) sample_rate));
+      }
+      chunk[i] = value;
+    }
+    int8_t *output = NULL;
+    size_t output_len = 0;
+    sdr_modem_demodulate(chunk, chunk_len, &output, &output_len, modem);
+    if (offset + chunk_len <= noise_samples) {
+      TEST_ASSERT_EQUAL_INT(0, events.count);
+    }
+  }
+  free(chunk);
+  TEST_ASSERT_EQUAL_INT(1, events.count);
+  TEST_ASSERT_FLOAT_WITHIN(20.0f, carrier_frequency, events.frequency);
+  // the offset which the modem reports includes the detected carrier
+  TEST_ASSERT_FLOAT_WITHIN(40.0f, carrier_frequency, sdr_modem_get_frequency_offset(modem));
+}
+
+// the wrapped modem must get the carrier at the center: the dump of its input is mixed down by the detected frequency
+void test_carrier_is_removed_before_modem() {
+  const uint32_t chunk_len = 4096;
+  const uint64_t sample_rate = 1920000;
+  const double baseband_rate = 30000.0;
+  const char *debug_file = "test_carrier_baseband.cf32";
+  sdr_modem_settings settings = gfsk_settings(sample_rate);
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_create(&settings, chunk_len, NULL, &modem));
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_set_debug_baseband_file(debug_file, modem));
+
+  float complex *chunk = malloc(sizeof(float complex) * chunk_len);
+  TEST_ASSERT_NOT_NULL(chunk);
+  uint32_t rng = 4242;
+  const float carrier_frequency = -2500.0f;
+  const size_t noise_samples = 768000;
+  const size_t total_samples = 2 * 768000;
+  for (size_t offset = 0; offset < total_samples; offset += chunk_len) {
+    for (size_t i = 0; i < chunk_len; i++) {
+      size_t n = offset + i;
+      float complex value = 0.5f * (carrier_test_noise(&rng) + I * carrier_test_noise(&rng));
+      if (n >= noise_samples) {
+        value += 0.5f * cexpf(I * (float) (2.0 * 3.14159265358979323846 * carrier_frequency * (double) n / (double) sample_rate));
+      }
+      chunk[i] = value;
+    }
+    int8_t *output = NULL;
+    size_t output_len = 0;
+    sdr_modem_demodulate(chunk, chunk_len, &output, &output_len, modem);
+  }
+  free(chunk);
+  TEST_ASSERT_FLOAT_WITHIN(40.0f, carrier_frequency, sdr_modem_get_frequency_offset(modem));
+  // flush the dump
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_set_debug_baseband_file(NULL, modem));
+
+  FILE *file = fopen(debug_file, "rb");
+  TEST_ASSERT_NOT_NULL(file);
+  TEST_ASSERT_EQUAL_INT(0, fseek(file, 0, SEEK_END));
+  long size = ftell(file);
+  const size_t tail_len = 4096;
+  TEST_ASSERT_TRUE(size >= (long) (tail_len * sizeof(float complex)));
+  TEST_ASSERT_EQUAL_INT(0, fseek(file, size - (long) (tail_len * sizeof(float complex)), SEEK_SET));
+  float complex *tail = malloc(sizeof(float complex) * tail_len);
+  TEST_ASSERT_NOT_NULL(tail);
+  TEST_ASSERT_EQUAL_size_t(tail_len, fread(tail, sizeof(float complex), tail_len, file));
+  fclose(file);
+  remove(debug_file);
+  // mean frequency of the tail: lag-1 autocorrelation
+  float complex sum = 0.0f;
+  for (size_t i = 1; i < tail_len; i++) {
+    sum += tail[i] * conjf(tail[i - 1]);
+  }
+  free(tail);
+  double residual = (double) cargf(sum) * baseband_rate / (2.0 * 3.14159265358979323846);
+  // without the correction it would be -2500 Hz
+  TEST_ASSERT_FLOAT_WITHIN(40.0f, 0.0f, (float) residual);
+}
+
+void test_carrier_callback_null_modem() {
+  sdr_modem_set_carrier_callback(on_carrier, NULL, NULL);
+}
+
 void tearDown() {
   if (modem != NULL) {
     sdr_modem_destroy(modem);
@@ -173,5 +295,8 @@ int main(void) {
   RUN_TEST(test_streaming_chunks);
   RUN_TEST(test_frequency_offset_null);
   RUN_TEST(test_frequency_offset_bpsk);
+  RUN_TEST(test_carrier_callback);
+  RUN_TEST(test_carrier_is_removed_before_modem);
+  RUN_TEST(test_carrier_callback_null_modem);
   return UNITY_END();
 }

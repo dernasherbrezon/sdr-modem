@@ -36,6 +36,7 @@ add_library(sdr_modemLib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/tcp_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/sdr_utils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/bpsk_modem.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/carrier_detector.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/dc_blocker.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/fir_filter.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/freq_offset.c
@@ -99,6 +100,10 @@ add_library(sdr_modemTestLib
         ${CMAKE_CURRENT_SOURCE_DIR}/test/sdr_modem_client.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test/unity-2.5.2/src/unity.c
 )
+
+add_test(NAME test_carrier_detector COMMAND test_carrier_detector)
+add_executable(test_carrier_detector ${CMAKE_CURRENT_SOURCE_DIR}/test/test_carrier_detector.c)
+target_link_libraries(test_carrier_detector sdr_modemLib sdr_modemTestLib)
 
 add_test(NAME test_dc_blocker COMMAND test_dc_blocker)
 add_executable(test_dc_blocker ${CMAKE_CURRENT_SOURCE_DIR}/test/test_dc_blocker.c)

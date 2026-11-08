@@ -4,12 +4,17 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <math.h>
+#include <liquid/liquid.h>
 #include "gfsk_modem.h"
 #include "bpsk_modem.h"
 #include "halfband_decim.h"
 #include "halfband_interp.h"
 #include "psk_pm_modem.h"
 #include "../log.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define ERROR_CHECK(x)           \
     do {                           \
@@ -59,10 +64,26 @@ struct sdr_modem_t {
   // interpolation, before freq_offset correction is applied
   FILE *debug_freq_offset_file;
 
-  // optional. rx only: dumps the baseband I/Q samples right after halfband decimation
-  // (i.e. right before the wrapped demodulator runs), or the freq_offset-corrected raw
-  // input when no halfband decimation is configured
+  // optional. rx only: dumps the baseband I/Q samples right before the wrapped demodulator runs: after halfband
+  // decimation (or the freq_offset-corrected raw input when no halfband decimation is configured) and after
+  // the carrier correction
   FILE *debug_baseband_file;
+
+  // rx only. runs on the baseband samples (after halfband decimation, before the carrier correction). modulation independent
+  carrier_detector *carrier_detector;
+
+  // rx only. mixes the baseband down by the frequency of the detected carrier, so that the wrapped modem sees the carrier
+  // at the center and its own loops only track what is left. used from the first detected carrier on: not applied
+  // (and carrier_offset is 0) until then. stays on after the end of the transmission until the next carrier is detected
+  nco_crcf carrier_nco;
+  float complex *carrier_nco_output;
+  size_t carrier_nco_output_len;
+  // Hz, relative to the center. what carrier_nco removes
+  float carrier_offset;
+
+  // optional. user callback, called after the carrier_nco is updated
+  carrier_detector_callback carrier_callback;
+  void *carrier_callback_ctx;
 
   // which wrapped modem is in use (MODEM_TYPE_*), needed to dispatch modem-specific debug setters
   sdr_modem_type modem_type;
@@ -162,6 +183,29 @@ static int sdr_modem_halfband_decim_create(uint32_t bandwidth, uint64_t sample_r
   return 0;
 }
 
+// called by the carrier detector from sdr_modem_demodulate, before the buffer which contains the carrier is corrected
+static void sdr_modem_on_carrier(float frequency_offset, void *ctx) {
+  sdr_modem *modem = (sdr_modem *) ctx;
+  modem->carrier_offset = frequency_offset;
+  nco_crcf_set_frequency(modem->carrier_nco, (float) (2.0 * M_PI * (double) frequency_offset / (double) modem->baseband_sample_rate));
+  if (modem->carrier_callback != NULL) {
+    modem->carrier_callback(frequency_offset, modem->carrier_callback_ctx);
+  }
+}
+
+// the nco phase is continuous across buffers and across frequency updates
+static void sdr_modem_correct_carrier(const float complex **input, size_t input_len, sdr_modem *modem) {
+  if (modem->carrier_offset == 0.0f || *input == NULL) {
+    return;
+  }
+  if (input_len > modem->carrier_nco_output_len) {
+    LOG_ERROR("carrier correction skipped. requested buffer %zu is more than max: %zu", input_len, modem->carrier_nco_output_len);
+    return;
+  }
+  nco_crcf_mix_block_down(modem->carrier_nco, (float complex *) *input, modem->carrier_nco_output, (unsigned int) input_len);
+  *input = modem->carrier_nco_output;
+}
+
 int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, const char *freq_offset_file, sdr_modem **modem) {
   struct sdr_modem_t *result = malloc(sizeof(struct sdr_modem_t));
   if (result == NULL) {
@@ -231,6 +275,21 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
     unsigned int halfband_stages = sdr_modem_estimate_halfband_stages(sample_rate, bandwidth);
     uint32_t max_modulation_buffer_length = (uint32_t) result->max_modulation_buffer_length(result->modem);
     ERROR_CHECK(halfband_interp_create(halfband_stages, sdr_modem_halfband_cutoff(bandwidth, result->baseband_sample_rate), MODEM_HALFBAND_STOPBAND_ATTENUATION_DB, max_modulation_buffer_length, &result->halfband_tx));
+  }
+
+  carrier_detector_settings carrier_settings = carrier_detector_default_settings(result->baseband_sample_rate);
+  ERROR_CHECK(carrier_detector_create(&carrier_settings, &result->carrier_detector));
+  carrier_detector_set_callback(sdr_modem_on_carrier, result, result->carrier_detector);
+  result->carrier_nco = nco_crcf_create(LIQUID_NCO);
+  if (result->carrier_nco == NULL) {
+    sdr_modem_destroy(result);
+    return -ENOMEM;
+  }
+  result->carrier_nco_output_len = decimated_buffer_length;
+  result->carrier_nco_output = malloc(sizeof(float complex) * result->carrier_nco_output_len);
+  if (result->carrier_nco_output == NULL) {
+    sdr_modem_destroy(result);
+    return -ENOMEM;
   }
 
   if (freq_offset_file != NULL) {
@@ -371,6 +430,9 @@ void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t *
     input = halfband_output;
     input_len = halfband_output_len;
   }
+  // the detector must see the signal as it is: the correction below follows its result
+  carrier_detector_process(input, input_len, modem->carrier_detector);
+  sdr_modem_correct_carrier(&input, input_len, modem);
   if (modem->debug_baseband_file != NULL) {
     fwrite(input, sizeof(float complex), input_len, modem->debug_baseband_file);
   }
@@ -381,7 +443,16 @@ float sdr_modem_get_frequency_offset(sdr_modem *modem) {
   if (modem == NULL || modem->modem == NULL) {
     return 0.0f;
   }
-  return modem->get_frequency_offset(modem->modem);
+  // the wrapped modem sees the signal after the carrier correction, so it tracks only the remainder
+  return modem->carrier_offset + modem->get_frequency_offset(modem->modem);
+}
+
+void sdr_modem_set_carrier_callback(carrier_detector_callback callback, void *ctx, sdr_modem *modem) {
+  if (modem == NULL) {
+    return;
+  }
+  modem->carrier_callback = callback;
+  modem->carrier_callback_ctx = ctx;
 }
 
 size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem) {
@@ -410,6 +481,11 @@ void sdr_modem_destroy(sdr_modem *modem) {
   if (modem->freq_offset != NULL) {
     freq_offset_destroy(modem->freq_offset);
   }
+  carrier_detector_destroy(modem->carrier_detector);
+  if (modem->carrier_nco != NULL) {
+    nco_crcf_destroy(modem->carrier_nco);
+  }
+  free(modem->carrier_nco_output);
   if (modem->debug_freq_offset_file != NULL) {
     fclose(modem->debug_freq_offset_file);
   }

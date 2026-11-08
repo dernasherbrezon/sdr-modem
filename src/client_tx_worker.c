@@ -31,7 +31,8 @@ typedef enum {
   CLIENT_TX_SOFT_BITS = 0,
   CLIENT_TX_RESPONSE,
   CLIENT_TX_NEW_CLIENT,
-  CLIENT_TX_COMPLETE
+  CLIENT_TX_COMPLETE,
+  CLIENT_TX_CARRIER_DETECTED
 } client_tx_message_type;
 
 void client_tx_worker_send_new(int client_socket, client_tx_worker *worker) {
@@ -50,6 +51,19 @@ void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t b
     .request_id = request_id,
     .buffer_len = buffer_len,
     .buffer = buffer
+  };
+  queue_put(&message, worker->queue);
+}
+
+void client_tx_worker_send_carrier_detected(uint32_t request_id, float frequency_offset, client_tx_worker *worker) {
+  carrier_detected detected = {
+    .frequency_offset = frequency_offset
+  };
+  queue_message message = {
+    .type = CLIENT_TX_CARRIER_DETECTED,
+    .request_id = request_id,
+    .buffer_len = sizeof(carrier_detected),
+    .buffer = &detected
   };
   queue_put(&message, worker->queue);
 }
@@ -166,6 +180,32 @@ static void *client_tx_worker_callback(void *arg) {
         }
 
         header.type = MESSAGE_TYPE_TX_COMPLETE;
+        header.protocol_version = PROTOCOL_VERSION;
+        header.request_id = message.request_id;
+        header.message_length = written;
+        code = client_tx_send_header(&header, worker);
+        if (code != 0) {
+          break;
+        }
+        code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
+        if (code != 0) {
+          worker->client_socket = -1;
+          break;
+        }
+        break;
+      }
+      case CLIENT_TX_CARRIER_DETECTED: {
+        if (worker->client_socket < 0) {
+          break;
+        }
+        carrier_detected *detected = (carrier_detected *) message.buffer;
+
+        code = api_encode_carrier_detected(detected, worker->buffer, worker->buffer_len, &written);
+        if (code != 0) {
+          break;
+        }
+
+        header.type = MESSAGE_TYPE_CARRIER_DETECTED;
         header.protocol_version = PROTOCOL_VERSION;
         header.request_id = message.request_id;
         header.message_length = written;

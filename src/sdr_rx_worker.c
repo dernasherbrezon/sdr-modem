@@ -36,6 +36,14 @@ struct sdr_rx_worker_t {
   bool thread_started;
 };
 
+// called by the modem from the dsp thread, i.e. the same thread which sends the soft bits
+static void sdr_rx_carrier_callback(float frequency_offset, void *ctx) {
+  sdr_rx_worker *worker = (sdr_rx_worker *) ctx;
+  LOG_DEBUG("carrier detected: %.1f Hz", frequency_offset);
+  client_tx_worker_send_carrier_detected(worker->request_id, frequency_offset, worker->tx_worker);
+  worker->request_id++;
+}
+
 static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_worker *worker) {
   switch (message->type) {
     case SDR_RX_COMM_PARAMETERS: {
@@ -51,6 +59,7 @@ static void sdr_rx_worker_handle_message(const queue_message *message, sdr_rx_wo
         client_tx_worker_send_response(message->request_id, RESPONSE_STATUS_FAILURE, RESPONSE_DETAILS_INVALID_REQUEST, worker->tx_worker);
         break;
       }
+      sdr_modem_set_carrier_callback(sdr_rx_carrier_callback, worker, new_modem);
       code = worker->sdr->set_rx_parameters(&settings.sdr_settings, worker->sdr->plugin);
       if (code != 0) {
         sdr_modem_destroy(new_modem);
