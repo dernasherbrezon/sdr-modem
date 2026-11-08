@@ -29,7 +29,7 @@ struct cli_t {
 };
 
 static int cli_create_modem(app_config *config, struct cli_t *result) {
-  sdr_modem_settings settings;
+  sdr_modem_settings settings = {0};
   settings.modem_type = config->modem;
   switch (config->modem) {
     case MODEM_TYPE_GFSK:
