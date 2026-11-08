@@ -19,6 +19,7 @@
 // the up/down mixing between the subcarrier's real baseband tone and DC.
 struct psk_pm_modem_t {
   float modulation_index;
+  uint64_t sample_rate;
   size_t max_input_buffer_length;
 
   // RX chain ////////////////////////////////
@@ -83,6 +84,7 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
   // init all fields with 0 so that destroy_* method would work
   *result = (struct psk_pm_modem_t){0};
   result->modulation_index = settings->modulation_index;
+  result->sample_rate = settings->sample_rate;
   result->max_input_buffer_length = max_input_buffer_length;
 
   bpsk_modem_settings subcarrier_settings = {0};
@@ -133,6 +135,12 @@ int psk_pm_modem_create(const psk_pm_modem_settings *settings, uint32_t max_inpu
            settings->rrc_delay, settings->costas_bandwidth, settings->symsync_filter_bank_size, settings->modulation_index);
   *modem = result;
   return 0;
+}
+
+float psk_pm_modem_get_frequency_offset(void *modem_v) {
+  psk_pm_modem *modem = modem_v;
+  // the carrier pll runs once per input sample, so its frequency is in radians per sample
+  return (float) ((double) nco_crcf_get_frequency(modem->carrier_pll) * (double) modem->sample_rate / (2.0 * M_PI));
 }
 
 size_t psk_pm_modem_max_modulation_buffer_length(void *modem_v) {

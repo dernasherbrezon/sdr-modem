@@ -62,6 +62,12 @@ void sdr_modem_modulate_flush(float complex **output, size_t *output_len, sdr_mo
 
 void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t **output, size_t *output_len, sdr_modem *modem);
 
+// rx only. carrier frequency offset of the received signal that the wrapped modem currently tracks, in Hz
+// (positive: the signal is above the center). 0 if modem is NULL or the modem has no estimate yet.
+// it is what is left after the freq_offset (doppler) correction, and what each modem can estimate differs:
+// see gfsk_modem_get_frequency_offset, bpsk_modem_get_frequency_offset and psk_pm_modem_get_frequency_offset
+float sdr_modem_get_frequency_offset(sdr_modem *modem);
+
 size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem);
 
 void sdr_modem_destroy(sdr_modem *modem);

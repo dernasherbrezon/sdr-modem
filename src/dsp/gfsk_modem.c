@@ -41,6 +41,8 @@
 
 struct gfsk_modem_t {
   float modulation_index;
+  // in Hz, converts the discriminator output (+-1 for +-deviation) to the frequency offset
+  double deviation;
 
   // RX chain ////////////////////////////////
   size_t max_input_buffer_length;
@@ -221,6 +223,7 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
   // init all fields with 0 so that destroy_* method would work
   *result = (struct gfsk_modem_t){0};
   result->max_input_buffer_length = max_input_buffer_length;
+  result->deviation = fabs((double) settings->deviation);
   // phase change per symbol is pi * h; it is +-pi * deviation / (baud_rate / 2)
   result->modulation_index = (float) (2.0 * (double) settings->deviation / (double) settings->baud_rate);
 
@@ -326,6 +329,17 @@ int gfsk_modem_create(const gfsk_modem_settings *settings, uint32_t max_input_bu
            settings->sample_rate, settings->baud_rate, settings->deviation, settings->bandwidth, settings->bt, settings->use_dc_block, settings->syncword, settings->syncword_bits);
   *modem = result;
   return 0;
+}
+
+float gfsk_modem_get_frequency_offset(void *modem) {
+  gfsk_modem *gfsk = (gfsk_modem *) modem;
+  float dc = 0.0f;
+  if (gfsk->correlator != NULL) {
+    dc = gfsk_correlator_get_dc(gfsk->correlator);
+  } else if (gfsk->dc != NULL) {
+    dc = dc_blocker_get_dc(gfsk->dc);
+  }
+  return (float) ((double) dc * gfsk->deviation);
 }
 
 size_t gfsk_modem_max_modulation_buffer_length(void *modem) {

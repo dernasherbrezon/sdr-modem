@@ -111,6 +111,45 @@ void test_streaming_chunks() {
   free(chunks);
 }
 
+void test_frequency_offset_null() {
+  TEST_ASSERT_EQUAL_FLOAT(0.0f, sdr_modem_get_frequency_offset(NULL));
+}
+
+// the offset is reported in Hz of the original sample rate, behind the half-band decimator
+void test_frequency_offset_bpsk() {
+  sdr_modem_settings settings = {0};
+  settings.modem_type = MODEM_TYPE_BPSK;
+  settings.modem.psk.sample_rate = 48000;
+  settings.modem.psk.baud_rate = BAUD_RATE;
+  settings.modem.psk.rrc_beta = 0.35f;
+  settings.modem.psk.rrc_delay = 5;
+  settings.modem.psk.costas_bandwidth = 0.05f;
+  settings.modem.psk.symsync_filter_bank_size = 32;
+  settings.modem.psk.type = BPSK;
+  size_t len = 128;
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_create(&settings, (uint32_t) len, NULL, &modem));
+  size_t max_samples = sdr_modem_max_modulation_buffer_length(modem);
+  sdr_modem *demod = NULL;
+  TEST_ASSERT_EQUAL_INT(0, sdr_modem_create(&settings, (uint32_t) max_samples, NULL, &demod));
+  TEST_ASSERT_EQUAL_FLOAT(0.0f, sdr_modem_get_frequency_offset(demod));
+
+  setup_random_input(&input, len);
+  float complex *modulated = NULL;
+  size_t modulated_len = 0;
+  sdr_modem_modulate(input, len, &modulated, &modulated_len, modem);
+  TEST_ASSERT_NOT_NULL(modulated);
+  const double offset_hz = 150.0;
+  for (size_t i = 0; i < modulated_len; i++) {
+    modulated[i] *= cexpf(I * (float) (2.0 * 3.14159265358979323846 * offset_hz * (double) i / 48000.0 + 0.7));
+  }
+  int8_t *output = NULL;
+  size_t output_len = 0;
+  sdr_modem_demodulate(modulated, modulated_len, &output, &output_len, demod);
+  TEST_ASSERT_NOT_NULL(output);
+  TEST_ASSERT_FLOAT_WITHIN(25.0f, (float) offset_hz, sdr_modem_get_frequency_offset(demod));
+  sdr_modem_destroy(demod);
+}
+
 void tearDown() {
   if (modem != NULL) {
     sdr_modem_destroy(modem);
@@ -132,5 +171,7 @@ int main(void) {
   RUN_TEST(test_modulate_has_no_tail);
   RUN_TEST(test_flush_resets_state);
   RUN_TEST(test_streaming_chunks);
+  RUN_TEST(test_frequency_offset_null);
+  RUN_TEST(test_frequency_offset_bpsk);
   return UNITY_END();
 }

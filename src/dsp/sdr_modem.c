@@ -39,6 +39,8 @@ struct sdr_modem_t {
 
   size_t (*max_modulation_buffer_length)(void *modem);
 
+  float (*get_frequency_offset)(void *modem);
+
   void (*destroy)(void *modem);
 
   // optional. decimates raw I/Q down to just above the signal bandwidth before demodulate, so the
@@ -185,6 +187,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       result->modulate_flush = gfsk_modem_modulate_flush;
       result->demodulate = gfsk_modem_demodulate;
       result->max_modulation_buffer_length = gfsk_modem_max_modulation_buffer_length;
+      result->get_frequency_offset = gfsk_modem_get_frequency_offset;
       result->destroy = gfsk_modem_destroy;
       code = gfsk_modem_create(&decimated, buffer_size, (gfsk_modem **) &result->modem);
       break;
@@ -198,6 +201,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       result->modulate_flush = bpsk_modem_modulate_flush;
       result->demodulate = bpsk_modem_demodulate;
       result->max_modulation_buffer_length = bpsk_modem_max_modulation_buffer_length;
+      result->get_frequency_offset = bpsk_modem_get_frequency_offset;
       result->destroy = bpsk_modem_destroy;
       code = bpsk_modem_create(&decimated, buffer_size, (bpsk_modem **) &result->modem);
       break;
@@ -209,6 +213,7 @@ int sdr_modem_create(const sdr_modem_settings *settings, uint32_t buffer_size, c
       result->modulate_flush = psk_pm_modem_modulate_flush;
       result->demodulate = psk_pm_modem_demodulate;
       result->max_modulation_buffer_length = psk_pm_modem_max_modulation_buffer_length;
+      result->get_frequency_offset = psk_pm_modem_get_frequency_offset;
       result->destroy = psk_pm_modem_destroy;
       code = psk_pm_modem_create(&decimated, buffer_size, (psk_pm_modem **) &result->modem);
       break;
@@ -370,6 +375,13 @@ void sdr_modem_demodulate(const float complex *input, size_t input_len, int8_t *
     fwrite(input, sizeof(float complex), input_len, modem->debug_baseband_file);
   }
   modem->demodulate(input, input_len, output, output_len, modem->modem);
+}
+
+float sdr_modem_get_frequency_offset(sdr_modem *modem) {
+  if (modem == NULL || modem->modem == NULL) {
+    return 0.0f;
+  }
+  return modem->get_frequency_offset(modem->modem);
 }
 
 size_t sdr_modem_max_modulation_buffer_length(sdr_modem *modem) {

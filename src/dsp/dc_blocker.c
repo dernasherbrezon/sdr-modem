@@ -24,6 +24,9 @@ struct dc_blocker_t {
   float *delayed;
   size_t delayed_len;
   size_t delayed_index;
+
+  // the latest dc estimate
+  float dc;
 };
 
 static float boxcar_process(float input, size_t length, struct boxcar *stage) {
@@ -83,9 +86,14 @@ void dc_blocker_process(float *input, size_t input_len, float **output, size_t *
     }
 
     input[i] = delayed - dc;
+    blocker->dc = dc;
   }
   *output = input;
   *output_len = input_len;
+}
+
+float dc_blocker_get_dc(dc_blocker *blocker) {
+  return blocker->dc;
 }
 
 void dc_blocker_destroy(dc_blocker *blocker) {

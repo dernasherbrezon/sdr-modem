@@ -129,6 +129,12 @@ static void round_trip_syncword(uint64_t sample_rate, uint32_t deviation, double
   TEST_ASSERT(output_len <= INPUT_LEN * 8 + MAX_TX_FLUSH_SYMBOLS);
 
   TEST_ASSERT_TRUE_MESSAGE(best_mismatch_ratio(output, output_len, skip_bits) <= MAX_MISMATCH_RATIO, "too many bit errors");
+
+  // the estimate is the dc of the discriminator output, so its error scales with the deviation. with a
+  // sync word the neighbouring random payload bits leak into the sync word window through the gaussian
+  // pulse (~3% of the deviation at h=1). the dc blocker window is short, so it wanders more
+  float tolerance = (syncword_bits != 0 ? 0.05f : 0.25f) * (float) deviation;
+  TEST_ASSERT_FLOAT_WITHIN(tolerance, (float) carrier_offset_hz, gfsk_modem_get_frequency_offset(demod));
 }
 
 static void round_trip(uint64_t sample_rate, uint32_t deviation, double carrier_offset_hz) {

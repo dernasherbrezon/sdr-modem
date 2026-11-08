@@ -21,6 +21,7 @@
 
 struct bpsk_modem_t {
   unsigned int samples_per_symbol;
+  uint32_t baud_rate;
   size_t max_input_buffer_length;
 
   // RX chain ////////////////////////////////
@@ -121,6 +122,7 @@ int bpsk_modem_create(const bpsk_modem_settings *settings, uint32_t max_input_bu
   // init all fields with 0 so that destroy_* method would work
   *result = (struct bpsk_modem_t){0};
   result->samples_per_symbol = sps;
+  result->baud_rate = settings->baud_rate;
   result->max_input_buffer_length = max_input_buffer_length;
   result->type = settings->type;
 
@@ -290,6 +292,12 @@ int bpsk_modem_set_debug_constellation_file(const char *debug_constellation_file
   modem->debug_constellation_len = modem->symsync_output_len;
   modem->debug_constellation_file = file;
   return 0;
+}
+
+float bpsk_modem_get_frequency_offset(void *modem_v) {
+  bpsk_modem *modem = modem_v;
+  // the costas loop runs once per symbol, so its frequency is in radians per symbol
+  return (float) ((double) nco_crcf_get_frequency(modem->costas) * (double) modem->baud_rate / (2.0 * M_PI));
 }
 
 size_t bpsk_modem_max_modulation_buffer_length(void *modem_v) {

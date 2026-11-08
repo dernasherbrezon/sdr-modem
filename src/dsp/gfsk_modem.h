@@ -30,6 +30,12 @@ void gfsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
 // the output buffer is the same as of modulate: consume the modulate output first
 void gfsk_modem_modulate_flush(float complex **output, size_t *output_len, void *modem);
 
+// carrier frequency offset of the received signal, in Hz (positive: the signal is above the center).
+// with a sync word it is the offset estimated from the latest burst (0 until the first one).
+// without a sync word it is the dc blocker estimate, available only when use_dc_block is set.
+// otherwise the offset is not estimated and the result is always 0
+float gfsk_modem_get_frequency_offset(void *modem);
+
 size_t gfsk_modem_max_modulation_buffer_length(void *modem);
 
 void gfsk_modem_destroy(void *modem);

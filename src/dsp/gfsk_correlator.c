@@ -309,6 +309,10 @@ void gfsk_correlator_process(const float *input, size_t input_len, int8_t **outp
   *output_len = num_symbols;
 }
 
+float gfsk_correlator_get_dc(gfsk_correlator *correlator) {
+  return correlator->dc;
+}
+
 void gfsk_correlator_destroy(gfsk_correlator *correlator) {
   if (correlator == NULL) {
     return;

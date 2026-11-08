@@ -108,6 +108,15 @@ void test_round_trip() {
   // noiseless loopback: allow a little slack for residual loop settling, but it should be well
   // under 1 in 20 bits
   TEST_ASSERT(mismatches <= total / 20);
+
+  // no carrier offset was applied
+  TEST_ASSERT_FLOAT_WITHIN(50.0f, 0.0f, psk_pm_modem_get_frequency_offset(demod));
+}
+
+void test_frequency_offset_before_demodulate() {
+  psk_pm_modem_settings settings = default_settings(48000);
+  TEST_ASSERT_EQUAL_INT(0, psk_pm_modem_create(&settings, 4096, &demod));
+  TEST_ASSERT_EQUAL_FLOAT(0.0f, psk_pm_modem_get_frequency_offset(demod));
 }
 
 static size_t modulate_and_flush(const uint8_t *input, size_t input_len, size_t chunk_len, float complex *result, size_t result_capacity) {
@@ -208,6 +217,7 @@ int main(void) {
   RUN_TEST(test_invalid_modulation_index);
   RUN_TEST(test_invalid_carrier_pll_bandwidth);
   RUN_TEST(test_round_trip);
+  RUN_TEST(test_frequency_offset_before_demodulate);
   RUN_TEST(test_flush_resets_state);
   RUN_TEST(test_streaming_chunks);
   RUN_TEST(test_flush_without_modulate);

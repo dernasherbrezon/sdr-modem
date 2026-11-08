@@ -40,6 +40,11 @@ void psk_pm_modem_modulate(const uint8_t *input, size_t input_len, float complex
 // the output buffer is the same as of modulate: consume the modulate output first
 void psk_pm_modem_modulate_flush(float complex **output, size_t *output_len, void *modem);
 
+// RF carrier frequency offset currently tracked by the outer carrier pll, in Hz (positive: the signal is
+// above the center). it does not include the residual error of the subcarrier. meaningful only after the
+// pll has locked; 0 before the first sample
+float psk_pm_modem_get_frequency_offset(void *modem);
+
 size_t psk_pm_modem_max_modulation_buffer_length(void *modem);
 
 void psk_pm_modem_destroy(void *modem);

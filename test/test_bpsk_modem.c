@@ -138,6 +138,9 @@ static void round_trip(uint64_t sample_rate, uint32_t bandwidth, psk_modem_type 
   }
   // BPSK: costas loop can lock 180 degrees off, so either polarity is fine
   TEST_ASSERT_TRUE_MESSAGE(best <= MAX_MISMATCH_RATIO, "too many bit errors");
+
+  // the costas loop has tracked the carrier offset
+  TEST_ASSERT_FLOAT_WITHIN(25.0f, (float) carrier_offset_hz, bpsk_modem_get_frequency_offset(demod));
 }
 
 // tests are named <sample rate case>_<type>_<lowpass or none>

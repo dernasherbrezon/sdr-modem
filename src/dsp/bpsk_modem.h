@@ -45,6 +45,10 @@ void bpsk_modem_modulate(const uint8_t *input, size_t input_len, float complex *
 // was modulated since the last flush. the output buffer is the same as of modulate: consume the modulate output first
 void bpsk_modem_modulate_flush(float complex **output, size_t *output_len, void *modem);
 
+// residual carrier frequency offset currently tracked by the costas loop, in Hz (positive: the signal is
+// above the center). meaningful only after the loop has locked; 0 before the first symbol
+float bpsk_modem_get_frequency_offset(void *modem);
+
 size_t bpsk_modem_max_modulation_buffer_length(void *modem);
 
 void bpsk_modem_destroy(void *modem);

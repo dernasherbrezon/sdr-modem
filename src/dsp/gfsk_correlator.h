@@ -26,6 +26,10 @@ int gfsk_correlator_create(unsigned int sps, float bt, unsigned int filter_delay
 
 void gfsk_correlator_process(const float *input, size_t input_len, int8_t **output, size_t *output_len, gfsk_correlator *correlator);
 
+// frequency offset of the latest burst: dc of the discriminator output, in units of the configured
+// deviation (+1 is +deviation). 0 until the first sync word is found; kept between bursts
+float gfsk_correlator_get_dc(gfsk_correlator *correlator);
+
 void gfsk_correlator_destroy(gfsk_correlator *correlator);
 
 #endif /* DSP_GFSK_CORRELATOR_H_ */

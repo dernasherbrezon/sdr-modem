@@ -8,6 +8,9 @@ int dc_blocker_create(int length, dc_blocker **blocker);
 
 void dc_blocker_process(float *input, size_t input_len, float **output, size_t *output_len, dc_blocker *blocker);
 
+// the latest dc estimate, i.e. what was subtracted from the most recent sample. 0 before the first sample
+float dc_blocker_get_dc(dc_blocker *blocker);
+
 void dc_blocker_destroy(dc_blocker *blocker);
 
 #endif /* DSP_DC_BLOCKER_H_ */
