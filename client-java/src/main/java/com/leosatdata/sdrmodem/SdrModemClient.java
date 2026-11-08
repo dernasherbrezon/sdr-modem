@@ -145,6 +145,10 @@ public class SdrModemClient implements Closeable, Runnable {
 					callback.onRx(payload);
 				} else if (header.getType() == MessageType.TX_COMPLETE) {
 					callback.onTx();
+				} else if (header.getType() == MessageType.CARRIER_DETECTED) {
+					callback.onCarrierAcquired();
+				} else if (header.getType() == MessageType.CARRIER_LOST) {
+					callback.onCarrierLost();
 				}
 			}
 		} catch (EOFException e) {

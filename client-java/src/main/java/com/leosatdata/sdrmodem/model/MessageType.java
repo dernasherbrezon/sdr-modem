@@ -1,8 +1,21 @@
 package com.leosatdata.sdrmodem.model;
 
 public enum MessageType {
-	
-	RX_COMM_PARAMETERS(0), SHUTDOWN(1), PING(2), TX_COMM_PARAMETERS(3), RESPONSE(4), SOFT_BITS(5), TX_FRAME(6), RX_START(7), RX_STOP(8), TX_COMPLETE(9);
+
+	// @formatter:off
+	RX_COMM_PARAMETERS(0), 
+	SHUTDOWN(1), 
+	PING(2), 
+	TX_COMM_PARAMETERS(3), 
+	RESPONSE(4), 
+	SOFT_BITS(5), 
+	TX_FRAME(6), 
+	RX_START(7), 
+	RX_STOP(8), 
+	TX_COMPLETE(9),
+	CARRIER_DETECTED(10),
+	CARRIER_LOST(11);
+	// @formatter:on
 
 	private final int code;
 

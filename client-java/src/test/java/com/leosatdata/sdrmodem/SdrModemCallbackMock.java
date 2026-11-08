@@ -24,6 +24,16 @@ public class SdrModemCallbackMock implements SdrModemCallback {
 		}
 	}
 
+	@Override
+	public void onCarrierAcquired() {
+		// do nothing
+	}
+
+	@Override
+	public void onCarrierLost() {
+		// do nothing
+	}
+
 	public boolean waitForTxComplete() {
 		synchronized (lock) {
 			long start = System.currentTimeMillis();
