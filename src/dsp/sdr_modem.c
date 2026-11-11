@@ -487,7 +487,9 @@ void sdr_modem_destroy(sdr_modem *modem) {
   if (modem->freq_offset != NULL) {
     freq_offset_destroy(modem->freq_offset);
   }
-  carrier_detector_destroy(modem->carrier_detector);
+  if (modem->carrier_detector != NULL) {
+    carrier_detector_destroy(modem->carrier_detector);
+  }
   if (modem->carrier_nco != NULL) {
     nco_crcf_destroy(modem->carrier_nco);
   }
