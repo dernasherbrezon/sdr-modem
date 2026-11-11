@@ -141,7 +141,10 @@ int sdr_modem_client_receive(message_header *header, const uint8_t **payload, sd
     return -1;
   }
   if (header->type == MESSAGE_TYPE_SOFT_BITS) {
-    client->soft_bits_received += header->message_length;
+    // payload: frequency_offset(4) | data_length(4) | data
+    if (header->message_length > API_SOFT_BITS_HEADER_SIZE) {
+      client->soft_bits_received += header->message_length - API_SOFT_BITS_HEADER_SIZE;
+    }
   }
   *payload = client->payload;
   return 0;

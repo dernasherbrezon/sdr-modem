@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <errno.h>
+#include <math.h>
 #include "dsp/sdr_modem.h"
 #include <complex.h>
 
@@ -112,16 +113,18 @@ static void sdr_rx_callback(float complex *output, size_t output_len, void *ctx)
 
   int8_t *demod_output = NULL;
   size_t demod_output_len = 0;
+  int32_t frequency_offset = 0;
   pthread_mutex_lock(&worker->mutex);
   if (worker->modem != NULL) {
     sdr_modem_demodulate(output, output_len, &demod_output, &demod_output_len, worker->modem);
+    frequency_offset = (int32_t) lrintf(sdr_modem_get_frequency_offset(worker->modem));
   }
   pthread_mutex_unlock(&worker->mutex);
   if (demod_output == NULL) {
     return;
   }
 
-  client_tx_worker_send_soft_bits(worker->request_id, demod_output, demod_output_len, worker->tx_worker);
+  client_tx_worker_send_soft_bits(worker->request_id, frequency_offset, demod_output, demod_output_len, worker->tx_worker);
   worker->request_id++;
 }
 

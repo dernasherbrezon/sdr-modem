@@ -37,14 +37,30 @@ void client_tx_worker_send_new(int client_socket, client_tx_worker *worker) {
   queue_put(&message, worker->queue);
 }
 
-void client_tx_worker_send_soft_bits(uint32_t request_id, void *buffer, size_t buffer_len, client_tx_worker *worker) {
-  queue_message message = {
-    .type = CLIENT_TX_SOFT_BITS,
-    .request_id = request_id,
-    .buffer_len = buffer_len,
-    .buffer = buffer
+void client_tx_worker_send_soft_bits(uint32_t request_id, int32_t frequency_offset, void *buffer, size_t buffer_len, client_tx_worker *worker) {
+  // the queued payload is already encoded: frequency_offset | data_length | data
+  size_t encoded_max = API_SOFT_BITS_HEADER_SIZE + buffer_len;
+  uint8_t *encoded = malloc(encoded_max);
+  if (encoded == NULL) {
+    LOG_ERROR("unable to allocate soft bits buffer");
+    return;
+  }
+  soft_bits bits = {
+    .frequency_offset = frequency_offset,
+    .data = (int8_t *) buffer,
+    .data_length = (uint32_t) buffer_len
   };
-  queue_put(&message, worker->queue);
+  size_t written = 0;
+  if (api_encode_soft_bits(&bits, encoded, encoded_max, &written) == 0) {
+    queue_message message = {
+      .type = CLIENT_TX_SOFT_BITS,
+      .request_id = request_id,
+      .buffer_len = written,
+      .buffer = encoded
+    };
+    queue_put(&message, worker->queue);
+  }
+  free(encoded);
 }
 
 void client_tx_worker_send_response(uint32_t request_id, response_status type, response_details details, client_tx_worker *worker) {
@@ -152,7 +168,8 @@ static void *client_tx_worker_callback(void *arg) {
         }
         code = tcp_utils_write_data(worker->buffer, written, worker->client_socket);
         if (code != 0) {
-          worker->client_socket = -1;
+          //FIXME why here?
+          // worker->client_socket = -1;
           break;
         }
         break;
@@ -197,7 +214,7 @@ int client_tx_worker_create(uint32_t buffer_size, uint16_t queue_size, client_tx
   *result = (struct client_tx_worker_t){0};
   result->client_socket = -1;
 
-  int code = queue_create(buffer_size, queue_size, true, &result->queue);
+  int code = queue_create(buffer_size + API_SOFT_BITS_HEADER_SIZE, queue_size, true, &result->queue);
   if (code != 0) {
     client_tx_worker_destroy(result);
     return code;

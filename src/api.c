@@ -84,18 +84,23 @@ int api_decode_response(const uint8_t *buffer, size_t buffer_len, response *resp
   return 0;
 }
 
-// soft bits payload: data_len raw signed bytes, no extra framing
+// soft bits payload (big-endian): frequency_offset(4, signed) | data_length(4) | data_length raw signed bytes
 int api_encode_soft_bits(const soft_bits *bits, uint8_t *buffer, size_t buffer_len, size_t *written) {
   if (bits == NULL || buffer == NULL || written == NULL) {
     return -1;
   }
-  if (buffer_len > 0) {
-    if (bits->data == NULL) {
-      return -1;
-    }
-    memcpy(buffer, bits->data, buffer_len);
+  if (bits->data_length > 0 && bits->data == NULL) {
+    return -1;
   }
-  *written = buffer_len;
+  if (buffer_len < (size_t) API_SOFT_BITS_HEADER_SIZE + bits->data_length) {
+    return -1;
+  }
+  write_u32(buffer, (uint32_t) bits->frequency_offset);
+  write_u32(buffer + 4, bits->data_length);
+  if (bits->data_length > 0) {
+    memcpy(buffer + API_SOFT_BITS_HEADER_SIZE, bits->data, bits->data_length);
+  }
+  *written = (size_t) API_SOFT_BITS_HEADER_SIZE + bits->data_length;
   return 0;
 }
 

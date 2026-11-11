@@ -49,10 +49,11 @@ typedef struct {
   uint8_t details;
 } response;
 
-// doesn't really need encoding
-// just a byte array after the header
+#define API_SOFT_BITS_HEADER_SIZE 8
+
+// payload: frequency_offset(4, signed, Hz) | data_length(4) | data (raw signed bytes)
 typedef struct {
-  uint32_t frequency_offset;
+  int32_t frequency_offset;
   int8_t *data;
   uint32_t data_length;
 } soft_bits;
@@ -65,6 +66,9 @@ typedef struct {
 int api_decode_message_header(const uint8_t *buffer, size_t buffer_len, message_header *header);
 
 int api_encode_message_header(const message_header *header, uint8_t *buffer, size_t buffer_len, size_t *written);
+
+// buffer_len must be at least API_SOFT_BITS_HEADER_SIZE + bits->data_length
+int api_encode_soft_bits(const soft_bits *bits, uint8_t *buffer, size_t buffer_len, size_t *written);
 
 int api_decode_comm_settings(const uint8_t *buffer, size_t buffer_len, comm_parameters *settings);
 
