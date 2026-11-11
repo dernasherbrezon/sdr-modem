@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import com.leosatdata.sdrmodem.model.MessageHeader;
 import com.leosatdata.sdrmodem.model.MessageType;
 import com.leosatdata.sdrmodem.model.Response;
+import com.leosatdata.sdrmodem.model.SoftBits;
 
 public class SdrModemMock {
 
@@ -150,18 +151,31 @@ public class SdrModemMock {
 			LOG.error("unable to setup streams", e);
 			return;
 		}
-		MessageHeader responseHeader = new MessageHeader();
-		responseHeader.setProtocolVersion(MessageHeader.PROTOCOL_VERSION);
-		responseHeader.setRequestId(0);
-		responseHeader.setType(MessageType.SOFT_BITS);
-		responseHeader.setMessageLength(data.length);
+		SoftBits bits = new SoftBits();
+		bits.setFrequencyOffset(0);
+		bits.setDataLength(data.length);
+		bits.setData(data);
 		try {
+			byte[] payload = encodeSoftBits(bits);
+			MessageHeader responseHeader = new MessageHeader();
+			responseHeader.setProtocolVersion(MessageHeader.PROTOCOL_VERSION);
+			responseHeader.setRequestId(0);
+			responseHeader.setType(MessageType.SOFT_BITS);
+			responseHeader.setMessageLength(payload.length);
 			responseHeader.encode(dos);
-			dos.write(data);
+			dos.write(payload);
 			dos.flush();
 		} catch (IOException e) {
 			LOG.error("unable to send soft bits", e);
 		}
+	}
+
+	private static byte[] encodeSoftBits(SoftBits data) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(baos);
+		data.encode(dos);
+		dos.close();
+		return baos.toByteArray();
 	}
 
 	private static byte[] encode(Response response) throws IOException {

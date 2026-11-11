@@ -20,6 +20,7 @@ import com.leosatdata.sdrmodem.model.CommSettings;
 import com.leosatdata.sdrmodem.model.MessageHeader;
 import com.leosatdata.sdrmodem.model.MessageType;
 import com.leosatdata.sdrmodem.model.Response;
+import com.leosatdata.sdrmodem.model.SoftBits;
 
 public class SdrModemClient implements Closeable, Runnable {
 
@@ -142,7 +143,7 @@ public class SdrModemClient implements Closeable, Runnable {
 						future.complete(response);
 					}
 				} else if (header.getType() == MessageType.SOFT_BITS) {
-					callback.onRx(payload);
+					callback.onRx(new SoftBits(new DataInputStream(new ByteArrayInputStream(payload))));
 				} else if (header.getType() == MessageType.TX_COMPLETE) {
 					callback.onTx();
 				} else if (header.getType() == MessageType.CARRIER_DETECTED) {

@@ -1,5 +1,7 @@
 package com.leosatdata.sdrmodem;
 
+import com.leosatdata.sdrmodem.model.SoftBits;
+
 public class SdrModemCallbackMock implements SdrModemCallback {
 
 	private final static long DEFAULT_TIMEOUT = 10000;
@@ -8,10 +10,10 @@ public class SdrModemCallbackMock implements SdrModemCallback {
 	private boolean txCalled = false;
 
 	@Override
-	public void onRx(byte[] data) {
+	public void onRx(SoftBits data) {
 		synchronized (lock) {
-			rx = new byte[data.length];
-			System.arraycopy(data, 0, rx, 0, data.length);
+			rx = new byte[data.getDataLength()];
+			System.arraycopy(data.getData(), 0, rx, 0, rx.length);
 			lock.notifyAll();
 		}
 	}

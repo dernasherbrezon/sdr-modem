@@ -1,8 +1,10 @@
 package com.leosatdata.sdrmodem;
 
+import com.leosatdata.sdrmodem.model.SoftBits;
+
 public interface SdrModemCallback {
 
-	void onRx(byte[] data);
+	void onRx(SoftBits data);
 
 	void onTx();
 	
