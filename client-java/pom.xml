@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.leosatdata</groupId>
 	<artifactId>sdr-modem-client</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0</version>
 	<url>https://github.com/dernasherbrezon/sdr-modem</url>
 	<name>sdr-modem-client</name>
 	<description>Java client for sdr-modem</description>
@@ -73,7 +73,7 @@
 		<url>https://github.com/dernasherbrezon/sdr-modem</url>
 		<connection>scm:git:git@github.com:dernasherbrezon/sdr-modem.git</connection>
 		<developerConnection>scm:git:git@github.com:dernasherbrezon/sdr-modem.git</developerConnection>
-	  <tag>HEAD</tag>
+	  <tag>sdr-modem-client-1.0</tag>
   </scm>
 
 	<issueManagement>
